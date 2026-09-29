@@ -1,6 +1,6 @@
 # ASUS CSI probe — 2026-09-29
 
-GT-AX11000 firmware 3.0.0.4.388_24548-gcb89015; Broadcom driver 17.10.121.41.
+GT-AX11000 firmware 3.0.0.4.388_24548; Broadcom driver 17.10.121.41.
 Three radios eth6/eth7/eth8 report chipnum 0xaaa4 (43684), revision 3.
 `wl cap` advertises csimon. Stock `/usr/sbin/csimond` is present.
 

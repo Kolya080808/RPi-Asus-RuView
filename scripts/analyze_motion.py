@@ -4,6 +4,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 ROOT=pathlib.Path(__file__).resolve().parent.parent
+EVIDENCE=ROOT/'evidence'
+REPORTS=ROOT/'docs'
 IDS=["c2cd2e65-6601-4b07-be59-2bb2a41773c3","b1819fbf-18a3-4053-8cee-9b56f3783d5f"]
 db=sqlite3.connect(ROOT/"history-snapshot.sqlite3")
 fig,axes=plt.subplots(2,2,figsize=(12,6),layout="constrained")
@@ -38,6 +40,6 @@ for col,sid in enumerate(IDS):
   item["segments"].append({"label":label,"n":int(mask.sum()),"amplitude_rms_median":float(np.median(power[mask])),"normalized_step_median":float(np.median(step[dm])),"normalized_step_p90":float(np.quantile(step[dm],.9))})
  report["sessions"].append(item)
 fig.suptitle("CSI exploratory check — another person was moving; no pose or motion attribution",fontsize=12)
-fig.savefig(ROOT/"motion-confounded.png",dpi=150)
-(ROOT/"motion-confounded.json").write_text(json.dumps(report,indent=2))
+fig.savefig(EVIDENCE/"motion-confounded.png",dpi=150)
+(REPORTS/"motion-confounded.json").write_text(json.dumps(report,indent=2))
 print(json.dumps(report,indent=2))

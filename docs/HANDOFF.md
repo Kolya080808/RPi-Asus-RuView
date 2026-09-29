@@ -19,6 +19,10 @@ GT-AX11000 как источник Wi-Fi sensing, а Raspberry Pi Zero 2 W ка�
    амплитуды вырос примерно с 0.019 до 0.132. Это индикатор движения всей сцены.
 6. При стоянии в трёх участках комнаты средние CSI-профили различались, однако
    границы были размечены вручную и содержали переходы между точками.
+7. RP-AX58 (`192.168.50.136`) и RP-AX56 (`192.168.50.156`) в read-only
+   диагностике рекламируют `csimon`, но отдельный `csimond` на них не найден.
+   Рабочий userspace-захват с повторителей ещё не доказан; подробности в
+   [HARDWARE.md](HARDWARE.md).
 
 Не утверждать на основании этого отчёта наличие скелета, распознавания суставов,
 медицинских измерений или готовой совместимости с pose pipeline RuView. Для этого
@@ -28,4 +32,5 @@ GT-AX11000 как источник Wi-Fi sensing, а Raspberry Pi Zero 2 W ка�
 
 Полный технический отчёт находится в [RESEARCH.md](RESEARCH.md), исходные
 требования — в [REQUIREMENTS.md](REQUIREMENTS.md), эксплуатация — в
-[RECORDING.md](RECORDING.md), откат — в [ROLLBACK.md](ROLLBACK.md).
+[RECORDING.md](RECORDING.md), оборудование — в [HARDWARE.md](HARDWARE.md),
+откат — в [ROLLBACK.md](ROLLBACK.md). Upstream RuView: [github.com/ruvnet/RuView](https://github.com/ruvnet/RuView).

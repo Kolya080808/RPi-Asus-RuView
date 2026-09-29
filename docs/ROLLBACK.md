@@ -3,8 +3,8 @@
 Из PowerShell на этом компьютере:
 
 ```powershell
-python C:\Users\Nikolay\Downloads\ruview-lab\rollback.py --check
-python C:\Users\Nikolay\Downloads\ruview-lab\rollback.py --apply
+python C:\Users\Nikolay\Downloads\ruview-lab\scripts\rollback.py --check
+python C:\Users\Nikolay\Downloads\ruview-lab\scripts\rollback.py --apply
 ```
 
 Первая команда только проверяет. Вторая откатывает перечисленные ниже изменения.
