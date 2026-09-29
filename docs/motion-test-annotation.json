@@ -1,0 +1,9 @@
+{
+  "other_person_moving": true,
+  "scope": "entire recording, both sessions",
+  "location": "same long room as participant",
+  "source": "user report",
+  "motion_free_baseline": false,
+  "hand_motion_attribution_valid": false,
+  "cue_timing": "chat delivery and human response delays; not synchronized ground truth"
+}

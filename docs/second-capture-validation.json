@@ -1,0 +1,36 @@
+{
+  "session": "40ddd901-0f56-44d4-bebd-0c74c4d6eb04",
+  "records": 98,
+  "bytes_min": 2048,
+  "bytes_max": 2048,
+  "fresh_runs_bytes_80pct": [
+    [
+      20,
+      24
+    ],
+    [
+      96,
+      320
+    ]
+  ],
+  "candidate_csi_unique_min": 98,
+  "candidate_csi_unique_max": 98,
+  "tail_unique_min": 2,
+  "tail_unique_max": 2,
+  "tail_hash_count": 2,
+  "tail_alternates": true,
+  "timer_delta_median": 100018,
+  "timer_delta_min": 49739,
+  "timer_delta_max": 200646,
+  "profile_words": [
+    "0x4041004"
+  ],
+  "I_range": [
+    -3009,
+    3167
+  ],
+  "Q_range": [
+    -2958,
+    3202
+  ]
+}

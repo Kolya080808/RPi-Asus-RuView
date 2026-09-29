@@ -1,0 +1,80 @@
+{
+  "session": "a184adec-4489-4322-996e-41b059851ed4",
+  "records": 592,
+  "timer_duration_s": 59.823293,
+  "step_definition": "RMS consecutive difference in 56 tone amplitudes, each packet normalized by its RMS amplitude",
+  "windows": "Conservative rough windows from chat cues; action timestamps are not synchronized to device",
+  "other_person_moving": false,
+  "user_report": "Only user moved in long room",
+  "segments": [
+    {
+      "name": "still_before",
+      "seconds": [
+        1,
+        8
+      ],
+      "samples": 69,
+      "amplitude_rms_median": 1499.498338731038,
+      "step_median": 0.018868288368550482,
+      "step_p90": 0.029863624399240812,
+      "step_over_0_1_fraction": 0.057971014492753624
+    },
+    {
+      "name": "arms_moving",
+      "seconds": [
+        16,
+        30
+      ],
+      "samples": 137,
+      "amplitude_rms_median": 1421.3147082894766,
+      "step_median": 0.1316226267626809,
+      "step_p90": 0.18673386195925126,
+      "step_over_0_1_fraction": 0.6642335766423357
+    },
+    {
+      "name": "still_after",
+      "seconds": [
+        43,
+        54
+      ],
+      "samples": 109,
+      "amplitude_rms_median": 1534.251015502818,
+      "step_median": 0.018081067397305216,
+      "step_p90": 0.029003878536607856,
+      "step_over_0_1_fraction": 0.03669724770642202
+    }
+  ],
+  "header_0x10_unique": [
+    "0x4041004"
+  ],
+  "header_0x40_unique": [
+    "0x10600021"
+  ],
+  "rssi_like_median": [
+    -57.0,
+    -53.0,
+    -53.0,
+    -64.0
+  ],
+  "user_annotation": {
+    "other_person_moving": false,
+    "source": "user report after test",
+    "activity_sequence": [
+      "stand still",
+      "wave both arms in place",
+      "stand still"
+    ],
+    "ground_truth_precision": "manual chat cues; delayed and not synchronized",
+    "inferred_motion_interval_timer_s": [
+      13.002699,
+      38.607353
+    ],
+    "measurement": "normalized consecutive CSI amplitude RMS step",
+    "segment_medians": [
+      0.018868288368550482,
+      0.1316226267626809,
+      0.018081067397305216
+    ],
+    "interpretation": "motion detection in this one experiment; limb-specific pose not established"
+  }
+}

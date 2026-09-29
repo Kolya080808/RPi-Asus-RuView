@@ -1,0 +1,51 @@
+{
+  "records": 16,
+  "record_bytes": [
+    2048,
+    2048,
+    2048,
+    2048,
+    2048,
+    2048,
+    2048,
+    2048,
+    2048,
+    2048,
+    2048,
+    2048,
+    2048,
+    2048,
+    2048,
+    1576
+  ],
+  "I": {
+    "min": -2969,
+    "max": 3164,
+    "mean": -6.832589285714286,
+    "std": 1017.5060947125694
+  },
+  "Q": {
+    "min": -3429,
+    "max": 2824,
+    "mean": -66.57142857142857,
+    "std": 1030.4533478235762
+  },
+  "full_tail_sha256": [
+    "3be34b98ba96f9685c57376a68ac35f72215eaf4570bbb66d548ecc8f6a7aecb",
+    "6cc01b9f5d987a600754c33b6fc5973d8afaa61e7537ad8c3e93e213dc25a5b6",
+    "3be34b98ba96f9685c57376a68ac35f72215eaf4570bbb66d548ecc8f6a7aecb",
+    "6cc01b9f5d987a600754c33b6fc5973d8afaa61e7537ad8c3e93e213dc25a5b6",
+    "3be34b98ba96f9685c57376a68ac35f72215eaf4570bbb66d548ecc8f6a7aecb",
+    "6cc01b9f5d987a600754c33b6fc5973d8afaa61e7537ad8c3e93e213dc25a5b6",
+    "3be34b98ba96f9685c57376a68ac35f72215eaf4570bbb66d548ecc8f6a7aecb",
+    "6cc01b9f5d987a600754c33b6fc5973d8afaa61e7537ad8c3e93e213dc25a5b6",
+    "3be34b98ba96f9685c57376a68ac35f72215eaf4570bbb66d548ecc8f6a7aecb",
+    "6cc01b9f5d987a600754c33b6fc5973d8afaa61e7537ad8c3e93e213dc25a5b6",
+    "3be34b98ba96f9685c57376a68ac35f72215eaf4570bbb66d548ecc8f6a7aecb",
+    "6cc01b9f5d987a600754c33b6fc5973d8afaa61e7537ad8c3e93e213dc25a5b6",
+    "3be34b98ba96f9685c57376a68ac35f72215eaf4570bbb66d548ecc8f6a7aecb",
+    "6cc01b9f5d987a600754c33b6fc5973d8afaa61e7537ad8c3e93e213dc25a5b6",
+    "3be34b98ba96f9685c57376a68ac35f72215eaf4570bbb66d548ecc8f6a7aecb"
+  ],
+  "unique_candidate_vectors": 16
+}

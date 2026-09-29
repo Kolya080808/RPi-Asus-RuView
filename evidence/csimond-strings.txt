@@ -1,0 +1,64 @@
+/lib/ld-linux.so.3
+libc.so.6
+socket
+__stack_chk_fail
+putchar
+abort
+getpid
+printf
+memset
+strtoul
+malloc
+raise
+gettimeofday
+close
+recvmsg
+__libc_start_main
+ld-linux.so.3
+__stack_chk_guard
+nl_socket_id
+__gmon_start__
+src_addr
+nl_addr
+GLIBC_2.4
+%d:Invalid socket id; should be between 0 and 511: %s
+%d:Invalid socket id; should be between 0 and 511: %d
+Invalid rec sz; Using dflt %d
+Correct format: csimond [<nl id>][<record size: 0-64>] [<message frequency: 1-100000 records>]
+If record size is 0, it will display the messages after each <message frequency> records are read
+Invalid msg freq; Using dflt %d
+CSIMOND application started with record size %u and message frequency %u using nl subsystem %d
+Netlink socket %d create failed
+Netlink socket %d bind failed
+Both rec_size and msg_freq cannot be zero!
+Out of memory allocating record buffer
+%d:recvmsg returned %d
+CSI record:
+0x%08x
+Recd msg %u at %u.%u payld sz %d nl id %d msgflags %d 
+%d:csi_nl_sock_open() returned %d
+GCC: (Buildroot 2017.11.1) 5.5.0
+aeabi
+Cortex-A9
+.shstrtab
+.interp
+.note.ABI-tag
+.hash
+.dynsym
+.dynstr
+.gnu.version
+.gnu.version_r
+.rel.dyn
+.rel.plt
+.init
+.text
+.fini
+.rodata
+.ARM.exidx
+.eh_frame
+.init_array
+.fini_array
+.dynamic
+.data
+.comment
+.ARM.attributes

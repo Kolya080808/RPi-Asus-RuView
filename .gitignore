@@ -1,0 +1,18 @@
+# Credentials, device access and runtime deployment state
+router_key
+router_key.pub
+router_known_hosts
+deployment.json
+history*.sqlite3
+__pycache__/
+*.py[cod]
+
+# Proprietary firmware utility and generated local outputs
+evidence/csimond.bin
+csimond.bin
+*.tmp
+
+# Local editor/system files
+.DS_Store
+Thumbs.db
+.idea/

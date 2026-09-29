@@ -1,0 +1,52 @@
+{
+  "session": "60d03eaf-0351-4b28-ad17-d169bc5f2ac1",
+  "records": 595,
+  "duration_s": 59.811626,
+  "windows": [
+    {
+      "name": "near_router",
+      "samples": 150,
+      "power_median": 1586.4936739681757,
+      "power_mad": 74.25180632374929,
+      "step_median": 0.13006954621782052,
+      "step_p90": 0.16778230083583967,
+      "mean_vector_distance": 7.4529083393804125
+    },
+    {
+      "name": "middle",
+      "samples": 147,
+      "power_median": 1544.7879593283067,
+      "power_mad": 37.5048844358887,
+      "step_median": 0.13992348791031758,
+      "step_p90": 0.18526022144436477,
+      "mean_vector_distance": 7.427990132120856
+    },
+    {
+      "name": "far_end",
+      "samples": 298,
+      "power_median": 1527.4226393842987,
+      "power_mad": 23.307282112922053,
+      "step_median": 0.03731178097212126,
+      "step_p90": 0.15946426932503663,
+      "mean_vector_distance": 7.451125262164907
+    }
+  ],
+  "window_assumption": "0-15 near router; 15-30 middle; 30-60 far; chat/start delays make boundaries approximate",
+  "mean_pairwise_l2": [
+    [
+      0.0,
+      0.596779210157472,
+      0.7588931108652444
+    ],
+    [
+      0.596779210157472,
+      0.0,
+      0.3148381231595285
+    ],
+    [
+      0.7588931108652444,
+      0.3148381231595285,
+      0.0
+    ]
+  ]
+}

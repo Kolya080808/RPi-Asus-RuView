@@ -1,0 +1,52 @@
+{
+  "confound": "User reported another person walking; no segment is verified motion-free. Hand-motion attribution invalid.",
+  "timing": "Manual chat cues are delayed; horizontal time uses unverified microsecond-like device timer.",
+  "sessions": [
+    {
+      "id": "c2cd2e65-6601-4b07-be59-2bb2a41773c3",
+      "records": 448,
+      "duration_candidate_s": 44.810405000000024,
+      "timer_gap_median_s": 0.100018,
+      "timer_gap_max_s": 0.2382,
+      "segments": [
+        {
+          "label": "all",
+          "n": 448,
+          "amplitude_rms_median": 1560.8190253024918,
+          "normalized_step_median": 0.12954488886031132,
+          "normalized_step_p90": 0.177830639440472
+        },
+        {
+          "label": "early_2_12_seconds",
+          "n": 99,
+          "amplitude_rms_median": 1499.2136808054702,
+          "normalized_step_median": 0.018529035194014706,
+          "normalized_step_p90": 0.1728209862298478
+        },
+        {
+          "label": "later_25_38_seconds",
+          "n": 130,
+          "amplitude_rms_median": 1590.9249495486865,
+          "normalized_step_median": 0.13310466977826235,
+          "normalized_step_p90": 0.1818114647662788
+        }
+      ]
+    },
+    {
+      "id": "b1819fbf-18a3-4053-8cee-9b56f3783d5f",
+      "records": 148,
+      "duration_candidate_s": 14.803170999999992,
+      "timer_gap_median_s": 0.100019,
+      "timer_gap_max_s": 0.193505,
+      "segments": [
+        {
+          "label": "all",
+          "n": 148,
+          "amplitude_rms_median": 1533.702798224182,
+          "normalized_step_median": 0.03910347176037385,
+          "normalized_step_p90": 0.17087768597120084
+        }
+      ]
+    }
+  ]
+}
