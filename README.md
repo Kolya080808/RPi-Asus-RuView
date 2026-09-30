@@ -1,45 +1,45 @@
 # ASUS CSI sensing lab
 
-Экспериментальная система сбора Channel State Information с ASUS GT-AX11000
-и хранения данных на Raspberry Pi Zero 2 W. Репозиторий фиксирует отправную
-точку, полученные захваты, декодер, детектор движения и ограничения проекта.
+An experimental system for collecting Channel State Information from an ASUS GT-AX11000
+and storing data on a Raspberry Pi Zero 2 W. This repository documents the starting
+point, captures, decoder, motion detector, and project limitations.
 
-## Текущий результат
+## Current results
 
-Штатный Broadcom `csimon` на GT-AX11000 выдаёт записи через Netlink. В двух
-независимых захватах свежая область совпала с `payload[0x60:0x140]`: 224 байта,
-56 пар little-endian signed int16 I/Q. В чистом тесте один человек махал руками;
-изменение нормализованной амплитуды было примерно в семь раз выше спокойного
-фона. В отдельном тесте положение рядом с роутером, в центре и в дальнем конце
-комнаты дало разные средние CSI-профили.
+The stock Broadcom `csimon` on the GT-AX11000 provides records through Netlink. In two
+independent captures, the fresh region matched `payload[0x60:0x140]`: 224 bytes,
+56 pairs of little-endian signed int16 I/Q values. In a clean test, one person waved
+their arms; the change in normalized amplitude was roughly seven times the still
+baseline. In a separate test, positions near the router, in the middle, and at the
+far end of the room produced different mean CSI profiles.
 
-Это доказывает получение данных и обнаружение движения в данном расположении.
-Скелет, отдельные части тела, пульс и дыхание пока не реализованы и не доказаны.
-Upstream RuView сам отмечает, что текущая pose-модель является first-cut и имеет
-низкую подтверждённую точность. Полный разбор и ограничения находятся в
+This demonstrates data acquisition and motion detection in this setup.
+Skeletons, individual body parts, heart rate, and breathing have not yet been implemented or validated.
+Upstream RuView itself describes its current pose model as a first cut with
+low validated accuracy. The full analysis and limitations are in
 [docs/RESEARCH.md](docs/RESEARCH.md).
 
-Сведения о версиях и возможностях устройств собраны в
-[docs/HARDWARE.md](docs/HARDWARE.md). Официальный upstream-проект RuView:
+Device versions and capabilities are documented in
+[docs/HARDWARE.md](docs/HARDWARE.md). Official upstream RuView project:
 [github.com/ruvnet/RuView](https://github.com/ruvnet/RuView).
 
-## Содержимое
+## Contents
 
-- `src/` — декодер, сборщик Pi и консервативный индикатор движения.
-- `scripts/` — откат устройств и анализ сохранённых захватов.
-- `docs/RESEARCH.md` — полный исходный исследовательский отчёт без сокращения.
-- `docs/EXPERIMENTS.md` — журнал трёх основных тестов и их численные результаты.
-- `docs/HARDWARE.md` — адреса, версии прошивок и проверенные CSI-возможности устройств.
-- `docs/` — требования, результаты, формат истории и состояние оборудования.
-- `evidence/` — текстовые захваты, графики и диагностические выводы.
+- `src/` — decoder, Pi collector, and conservative motion indicator.
+- `scripts/` — device rollback and analysis of saved captures.
+- `docs/RESEARCH.md` — the complete original research report, without abridgment.
+- `docs/EXPERIMENTS.md` — a log of the three main tests and their numerical results.
+- `docs/HARDWARE.md` — addresses, firmware versions, and verified device CSI capabilities.
+- `docs/` — requirements, results, history format, and hardware state.
+- `evidence/` — text captures, plots, and diagnostic output.
 
-Приватные ключи, база истории и deployment manifest намеренно исключены из Git.
-Они нужны только на рабочих устройствах; передача репозитория другому человеку
-не должна давать доступ к роутеру.
+Private keys, the history database, and the deployment manifest are deliberately excluded from Git.
+They are needed only on the operational devices; sharing the repository with someone
+else must not grant access to the router.
 
-## Сбор на Raspberry Pi
+## Collection on Raspberry Pi
 
-На Pi файлы развёрнуты в `/home/pi/ruview-lab`. Пример ограниченной сессии:
+Files are deployed on the Pi at `/home/pi/ruview-lab`. Example of a bounded session:
 
 ```sh
 python3 /home/pi/ruview-lab/recorder.py capture --seconds 60 --interval-ms 100
@@ -47,29 +47,29 @@ python3 /home/pi/ruview-lab/recorder.py history
 python3 /home/pi/ruview-lab/motion.py SESSION_ID
 ```
 
-Сессия сама выключает `csimon` и удаляет временный monitored peer. Автозапуск
-не включён. История хранится в SQLite на Pi; автоматического удаления пока нет.
+The session automatically disables `csimon` and removes the temporary monitored peer.
+Autostart is not enabled. History is stored in SQLite on the Pi; automatic deletion is not implemented yet.
 
-## Откат
+## Rollback
 
-Проверка без изменений:
+Check without making changes:
 
 ```powershell
 python .\scripts\rollback.py --check
 ```
 
-Применение отката:
+Apply rollback:
 
 ```powershell
 python .\scripts\rollback.py --apply
 ```
 
-Скрипт удаляет только известные экспериментальные ключи и файлы с совпадающими
-хешами. Полный снимок устройств до эксперимента не создавался; подробности в
-[docs/ROLLBACK.md](docs/ROLLBACK.md).
+The script removes only known experimental keys and files with matching
+hashes. A complete device snapshot was not taken before the experiment; see
+[docs/ROLLBACK.md](docs/ROLLBACK.md) for details.
 
-## Лицензия и внешние компоненты
+## License and external components
 
-Собственные скрипты и документация распространяются по Apache-2.0. Прошивки
-ASUS/Broadcom, утилита `csimond`, RuView и сторонние модели имеют собственные
-лицензии и в этот репозиторий не включаются.
+Original scripts and documentation are distributed under Apache-2.0.
+ASUS/Broadcom firmware, the `csimond` utility, RuView, and third-party models have
+their own licenses and are not included in this repository.

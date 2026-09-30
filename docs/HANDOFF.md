@@ -1,36 +1,36 @@
-# Передача проекта другому человеку
+# Project handoff
 
-Цель проекта — проверить, можно ли использовать встроенный CSI Monitor ASUS
-GT-AX11000 как источник Wi-Fi sensing, а Raspberry Pi Zero 2 W как локальный
-сборщик и сервер истории. Требование пользователя — в перспективе получить
-скелет человека и функции RuView с минимальным энергопотреблением.
+The project aims to test whether the built-in CSI Monitor on an ASUS
+GT-AX11000 can serve as a Wi-Fi sensing source, with a Raspberry Pi Zero 2 W as a local
+collector and history server. The user's long-term requirement is to obtain
+a human skeleton and RuView features with minimal power consumption.
 
-На 29 сентября 2026 года подтверждены следующие факты:
+As of September 29, 2026, the following facts have been confirmed:
 
-1. GT-AX11000 на 3.0.0.4.388_24548 имеет Broadcom chipnum 0xaaa4 и команду
-   `wl csimon`; штатный `/usr/sbin/csimond` принимает Netlink subsystem 23.
-2. Pi Zero 2 W на Debian 13 ARM64 подключается по SSH и может записывать сырой
-   вывод роутера. Встроенный Wi-Fi Pi не используется как CSI-источник.
-3. В захватах полезная динамическая область имеет 96 байт заголовка и 224 байта
-   CSI. Она разбирается как 56 комплексных значений `int16 I + int16 Q`.
-4. Большой хвост до 2048 байт чередуется между двумя старыми образцами и не
-   считается свежим CSI.
-5. При взмахах руками одного человека показатель изменения нормализованной
-   амплитуды вырос примерно с 0.019 до 0.132. Это индикатор движения всей сцены.
-6. При стоянии в трёх участках комнаты средние CSI-профили различались, однако
-   границы были размечены вручную и содержали переходы между точками.
-7. RP-AX58 (`192.168.50.136`) и RP-AX56 (`192.168.50.156`) в read-only
-   диагностике рекламируют `csimon`, но отдельный `csimond` на них не найден.
-   Рабочий userspace-захват с повторителей ещё не доказан; подробности в
-   [HARDWARE.md](HARDWARE.md).
+1. The GT-AX11000 running 3.0.0.4.388_24548 reports Broadcom chipnum 0xaaa4 and provides
+   `wl csimon`; the stock `/usr/sbin/csimond` receives data from Netlink subsystem 23.
+2. The Pi Zero 2 W running Debian 13 ARM64 is accessible over SSH and can record the router's
+   raw output. The Pi's built-in Wi-Fi is not used as a CSI source.
+3. The useful dynamic region in the captures follows a 96-byte header and contains 224 bytes
+   of CSI. It is decoded as 56 complex values, each consisting of `int16 I + int16 Q`.
+4. The large tail extending to 2048 bytes alternates between two old samples and is not
+   treated as fresh CSI.
+5. When one person waved their arms, the normalized amplitude change metric rose
+   from approximately 0.019 to 0.132. This is an indicator of motion across the entire scene.
+6. Mean CSI profiles differed when standing in three areas of the room, but
+   the boundaries were annotated manually and included transitions between positions.
+7. Read-only diagnostics on the RP-AX58 (`192.168.50.136`) and RP-AX56 (`192.168.50.156`)
+   advertise `csimon`, but no standalone `csimond` was found on either device.
+   Working userspace capture from the repeaters has not yet been demonstrated; see
+   [HARDWARE.md](HARDWARE.md) for details.
 
-Не утверждать на основании этого отчёта наличие скелета, распознавания суставов,
-медицинских измерений или готовой совместимости с pose pipeline RuView. Для этого
-нужны синхронные CSI и видеометки, повторные захваты, измерение потерь и сравнение
-с отложенным тестом. Камера разрешена только как инструмент калибровки; конечная
-система должна работать без неё.
+Do not claim skeleton reconstruction, joint recognition, medical measurements,
+or established compatibility with RuView's pose pipeline based on this report.
+These require synchronized CSI and video labels, repeated captures, loss measurements,
+and evaluation on a held-out test. A camera is allowed only as a calibration tool;
+the final system must operate without one.
 
-Полный технический отчёт находится в [RESEARCH.md](RESEARCH.md), исходные
-требования — в [REQUIREMENTS.md](REQUIREMENTS.md), эксплуатация — в
-[RECORDING.md](RECORDING.md), оборудование — в [HARDWARE.md](HARDWARE.md),
-откат — в [ROLLBACK.md](ROLLBACK.md). Upstream RuView: [github.com/ruvnet/RuView](https://github.com/ruvnet/RuView).
+The full technical report is in [RESEARCH.md](RESEARCH.md), the original
+requirements in [REQUIREMENTS.md](REQUIREMENTS.md), operating instructions in
+[RECORDING.md](RECORDING.md), hardware details in [HARDWARE.md](HARDWARE.md),
+and rollback instructions in [ROLLBACK.md](ROLLBACK.md). Upstream RuView: [github.com/ruvnet/RuView](https://github.com/ruvnet/RuView).

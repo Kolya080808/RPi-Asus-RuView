@@ -1,47 +1,47 @@
-# Откат эксперимента
+# Experiment rollback
 
-Из PowerShell на этом компьютере:
+From PowerShell on this computer:
 
 ```powershell
 python C:\Users\Nikolay\Downloads\ruview-lab\scripts\rollback.py --check
 python C:\Users\Nikolay\Downloads\ruview-lab\scripts\rollback.py --apply
 ```
 
-Первая команда только проверяет. Вторая откатывает перечисленные ниже изменения.
-Пароль ASUS вводится скрыто по запросу. Для Pi используется созданный SSH-ключ;
-после его удаления при повторном запуске потребуется пароль Pi. Пароли в файлах
-не сохранены. Требуется установленный Python с paramiko (на этом ПК уже есть).
+The first command only checks. The second rolls back the changes listed below.
+The ASUS password is entered at a hidden prompt. The Pi uses the generated SSH key;
+after that key is removed, a subsequent run will require the Pi password. Passwords
+are not stored in files. Python with paramiko must be installed (already available on this PC).
 
-## Учтённые изменения
+## Recorded changes
 
-* ASUS 192.168.50.1: временно включался csimon на eth6 для
-  A0:36:BC:9B:BF:89 с интервалом 500 мс. До теста монитор выключен, список пуст.
-  После теста это состояние уже восстановлено. Остался только файл
-  /tmp/ruview-csi-probe.txt. Скрипт удаляет этот файл и проверяет состояние.
-* Pi 192.168.50.100: добавлен ключ ruview_pi_lab в pi/.ssh/authorized_keys;
-  права .ssh выставлены 700, authorized_keys — 600. Скрипт удаляет только
-  добавленный ключ, сохраняя остальные записи и доступ по паролю.
-* Повторители и TP-Link: изменений не вносилось.
-* Сборщик: файлы в /home/pi/ruview-lab на Pi (decoder.py, recorder.py,
-  router_key, router_key.pub, router_known_hosts) и отдельный публичный ключ
-  ruview-pi-collector в /root/.ssh/authorized_keys на ASUS. Исходный файл
-  ключей ASUS был пуст, с правами 700; журнал изменений — deployment.json.
-  Откат удаляет только наш ключ и файлы с совпадающими хешами.
-  База history.sqlite3, журналы и каталог сохраняются для сохранности истории.
-  Сервисов и автозапуска нет. Откат запускать после завершения текущего захвата.
-* ПК: исследовательские файлы в Downloads/ruview-lab и отдельные ключи
-  .ssh/ruview_pi_lab, .pub, ruview_known_hosts. Они сохраняются для аудита.
+* ASUS 192.168.50.1: csimon was temporarily enabled on eth6 for
+  A0:36:BC:9B:BF:89 at a 500 ms interval. Before the test, the monitor was disabled and the list was empty.
+  That state has already been restored after the test. Only
+  /tmp/ruview-csi-probe.txt remains. The script removes this file and checks the state.
+* Pi 192.168.50.100: the ruview_pi_lab key was added to pi/.ssh/authorized_keys;
+  permissions were set to 700 for .ssh and 600 for authorized_keys. The script removes only
+  the added key, preserving other entries and password access.
+* Repeaters and TP-Link: no changes were made.
+* Collector: files in /home/pi/ruview-lab on the Pi (decoder.py, recorder.py,
+  router_key, router_key.pub, router_known_hosts) and a dedicated public key,
+  ruview-pi-collector, in /root/.ssh/authorized_keys on the ASUS. The original ASUS
+  key file was empty, with permissions 700; the change log is deployment.json.
+  Rollback removes only our key and files with matching hashes.
+  The history.sqlite3 database, logs, and directory are retained to preserve history.
+  There are no services or autostart. Run rollback after the current capture finishes.
+* PC: research files in Downloads/ruview-lab and dedicated keys
+  .ssh/ruview_pi_lab, .pub, ruview_known_hosts. These are retained for auditing.
 
-## Пределы восстановления
+## Recovery limits
 
-Полный побайтовый снимок до начала работ не создавался. Исходные права и наличие
-файла authorized_keys не зафиксированы; скрипт оставляет файл и безопасные права.
-Счётчик 16 измерений, системные журналы и история SSH-подключений не стираются.
-Это откат внесённых функциональных изменений, а не восстановление образа диска.
-Скрипт откажется менять незнакомую конфигурацию CSI или останавливать новый
-процесс csimond. Ошибка одного устройства не мешает попытке отката другого.
+A complete byte-for-byte snapshot was not taken before work began. The original permissions
+and existence of authorized_keys were not recorded; the script leaves the file with secure permissions.
+The counter of 16 measurements, system logs, and SSH connection history are not erased.
+This rolls back the functional changes made; it does not restore a disk image.
+The script refuses to modify an unfamiliar CSI configuration or stop a new
+csimond process. A failure on one device does not prevent a rollback attempt on the other.
 
-Перед последующими изменениями требуется зафиксировать исходное состояние,
-добавить действие отката и проверку результата в этот комплект. Текущая версия
-охватывает только уже перечисленные изменения; она не является универсальным
-откатом любых будущих установок.
+Before subsequent changes, record the initial state and add a rollback action
+and a result check to this toolkit. The current version
+covers only the changes already listed; it is not a universal
+rollback for any future installations.

@@ -1,27 +1,27 @@
-# Расшифровка бинарного CSI-дампа ASUS ROG Rapture GT-AX11000
+# Decoding the binary CSI dump from the ASUS ROG Rapture GT-AX11000
 
 ## Executive summary
 
-Предоставленный дамп и бинарник `csimond` позволяют восстановить **собственно CSI-данные с высокой уверенностью**, хотя полные семантические имена некоторых проприетарных полей Broadcom в 96-байтовом заголовке без исходников firmware остаются неизвестными.
+The supplied dump and `csimond` binary allow **the CSI data itself to be recovered with high confidence**, although the full semantic names of some proprietary Broadcom fields in the 96-byte header remain unknown without firmware source code.
 
-Главный результат:
+Main result:
 
-> **В этом конкретном дампе одна осмысленная CSI-запись занимает 320 байт, а не 2048 байт.**
+> **In this particular dump, one meaningful CSI record occupies 320 bytes, not 2048 bytes.**
 >
 > ```text
 > 0x000 .. 0x05f    96 bytes     metadata/header
 > 0x060 .. 0x13f   224 bytes     CSI = 56 × (int16 I + int16 Q)
-> 0x140 .. 0x7ff  1728 bytes     не CSI; повторяющийся/stale tail
+> 0x140 .. 0x7ff  1728 bytes     not CSI; repeated/stale tail
 > ```
 >
-> Декодирование CSI:
+> Decoding CSI:
 >
 > ```python
 > vals = np.frombuffer(record[0x60:0x140], dtype="<i2")
 > csi = vals[0::2] + 1j * vals[1::2]
 > ```
 >
-> Для присланного файла:
+> For the supplied file:
 >
 > ```text
 > packets     = 16
@@ -33,11 +33,11 @@
 > csi.dtype = complex64
 > ```
 
-То есть гипотезы `int8`, `uint8`, big-endian `int16`, packed 10/12 bit и формат с 256/512/1024 комплексными значениями **для этого дампа отвергаются**. Лучшее и фактически однозначное по размеру представление — **little-endian signed `int16`, чередование `I,Q`, один complex на одно 32-битное слово**. Само разграничение «первый `int16` именно I, второй именно Q» нельзя математически доказать без firmware-структуры или опорного сигнала: перестановка I/Q сохраняет амплитуду. Поэтому текущий декодер фиксирует рабочую гипотезу `I,Q`; перестановка компонентов остаётся отдельным исследовательским вариантом. По соглашению и по аналогии с другими Broadcom CSI extractor'ами по умолчанию используется `I,Q`. В Nexmon для некоторых Broadcom поколений также используется interleaved `int16 real/int16 imaginary`, хотя для BCM4358/4366 применялся уже иной packed floating-point формат, поэтому переносить формат Nexmon на BCM43684 вслепую было бы ошибкой.
+The `int8`, `uint8`, big-endian `int16`, packed 10/12-bit, and 256/512/1024-complex-value hypotheses are therefore **rejected for this dump**. The best representation, and effectively the only one consistent with the size, is **little-endian signed `int16`, interleaved `I,Q`, one complex value per 32-bit word**. The specific assignment of the first `int16` to I and the second to Q cannot be mathematically proven without a firmware structure definition or reference signal: swapping I/Q preserves amplitude. The current decoder therefore adopts `I,Q` as a working hypothesis; swapping the components remains a separate research option. By convention and by analogy with other Broadcom CSI extractors, `I,Q` is the default. Nexmon also uses interleaved `int16 real/int16 imaginary` for some Broadcom generations, although BCM4358/4366 used a different packed floating-point format, so blindly applying the Nexmon format to BCM43684 would be a mistake.
 
-Особенно важная находка — **2048 байт в выводе `csimond` не означают 2048 байт полезного CSI**. Присланный `csimond` принимает `record size` в диапазоне 0–64, а дизассемблирование показывает умножение этого значения на 32; при 64 получается 2048. Программа выделяет `0x810 = 2064` байт — ровно `16 + 2048`, что согласуется с 16-байтовым Linux Netlink header плюс фиксированным максимальным payload. Затем программа просто печатает полученный буфер 32-битными словами. Строки бинарника прямо содержат `recvmsg`, `CSI record:`, `%08x`, `record size: 0-64` и упоминание netlink subsystem. См. [строки csimond](../evidence/csimond-strings.txt) и [дизассемблирование](../evidence/csimond-disasm.txt).
+A particularly important finding is that **2048 bytes in `csimond` output do not mean 2048 bytes of useful CSI**. The supplied `csimond` accepts a `record size` in the range 0–64, and disassembly shows this value being multiplied by 32; 64 therefore produces 2048. The program allocates `0x810 = 2064` bytes, exactly `16 + 2048`, consistent with a 16-byte Linux Netlink header plus a fixed maximum payload. It then simply prints the received buffer as 32-bit words. The binary's strings explicitly include `recvmsg`, `CSI record:`, `%08x`, `record size: 0-64`, and a reference to the netlink subsystem. See the [csimond strings](../evidence/csimond-strings.txt) and [disassembly](../evidence/csimond-disasm.txt).
 
-В дампе первые 15 записей имеют напечатанные 2048 байт, шестнадцатая обрывается позже начала полезной области, поэтому CSI из неё всё равно полностью читается. В словах `24..79`, то есть строго `0x60..0x13f`, **каждое 32-битное положение изменяется между пакетами**. Начиная со слова 80 (`0x140`) картина резко меняется: каждое положение имеет лишь два варианта, причём весь хвост первых 15 полных записей буквально чередуется между двумя неизменными SHA-256-образами:
+In the dump, the first 15 records contain 2048 printed bytes; the sixteenth is truncated after the start of the useful region, but its CSI can still be read in full. In words `24..79`, exactly `0x60..0x13f`, **every 32-bit position changes between packets**. Starting at word 80 (`0x140`), the pattern changes abruptly: each position has only two possible values, and the entire tail of the first 15 complete records literally alternates between two unchanged SHA-256 hashes:
 
 ```text
 packet  0 -> 3be34b98ba96...
@@ -48,33 +48,33 @@ packet  3 -> 6cc01b9f5d98...
 packet 14 -> 3be34b98ba96...
 ```
 
-Это практически исключает интерпретацию `0x140..0x7ff` как независимых CSI отсчётов каждого пакета. Вероятное объяснение — двойная буферизация/stale область producer buffer, но конкретное происхождение двух страниц по одному userspace-дампу доказать нельзя. Broadcom-платформы того же поколения действительно имеют отдельный `CSIMON` HME user и передают CSIMON в host через netlink; существуют загрузочные логи Broadcom-платформ, где одновременно видны `HMEUSR ... CSIMON`, создание netlink и `HOST CSIMON[1.1.0]`.
+This effectively rules out interpreting `0x140..0x7ff` as independent CSI samples from each packet. Double buffering or a stale region of the producer buffer is a likely explanation, but the specific origin of the two pages cannot be proven from a single userspace dump. Broadcom platforms of the same generation do have a dedicated `CSIMON` HME user and pass CSIMON to the host through netlink; Broadcom platform boot logs exist that show `HMEUSR ... CSIMON`, netlink creation, and `HOST CSIMON[1.1.0]` together.
 
-Готовые артефакты:
+Available artifacts:
 
-[Исходник текущего декодера](../src/decoder.py)
+[Current decoder source](../src/decoder.py)
 
-Сырые записи сохранены в [захвате ASUS](../evidence/asus-csi-probe.txt); отдельный `.npy` в репозиторий не включён.
+Raw records are preserved in the [ASUS capture](../evidence/asus-csi-probe.txt); a separate `.npy` file is not included in the repository.
 
-График движения сохранён как [PNG](../evidence/clean-motion-analysis.png).
+The motion plot is saved as a [PNG](../evidence/clean-motion-analysis.png).
 
-График фазы из исходного исследования отдельно не включён; исходные коэффициенты доступны в захвате выше.
+The phase plot from the original research is not included separately; the original coefficients are available in the capture above.
 
-## Что именно делает штатный ASUS/Broadcom CSIMON
+## What the stock ASUS/Broadcom CSIMON actually does
 
-GT-AX11000 — три-диапазонный Wi-Fi 6 роутер; ASUS официально указывает 4×4 Tx/Rx для 2.4 GHz и обоих 5 GHz radio и поддержку 20/40/80/160 MHz. Аппаратные разборы этой модели идентифицируют radio SoC как Broadcom BCM43684.
+The GT-AX11000 is a tri-band Wi-Fi 6 router; ASUS officially specifies 4×4 Tx/Rx for 2.4 GHz and both 5 GHz radios, with support for 20/40/80/160 MHz. Hardware analyses of this model identify the radio SoC as Broadcom BCM43684.
 
-Это важно, но **4×4-capable radio не означает, что одна запись `csimond` обязательно содержит матрицу 4×4**. В предоставленной записи физически имеется только один непрерывный массив из 56 комплексных коэффициентов. Нет 4×56, 16×56 или другого количества свежих данных.
+This matters, but **a 4×4-capable radio does not mean that a single `csimond` record necessarily contains a 4×4 matrix**. The supplied record physically contains only one contiguous array of 56 complex coefficients. There are no 4×56, 16×56, or other larger sets of fresh data.
 
-В `wl help`, извлечённом с ASUS, присутствует штатная команда:
+The `wl help` output extracted from the ASUS includes the stock command:
 
 ```text
 wl csimon [...]
 ```
 
-с операциями добавления/удаления monitored peer и таймером, то есть речь идёт именно о встроенной Broadcom/ASUS CSI Monitor facility, а не о Nexmon patch. [вывод `wl help`](../evidence/asus-wl-help.txt)
+with operations to add/remove a monitored peer and a timer. This is the built-in Broadcom/ASUS CSI Monitor facility, not a Nexmon patch. [`wl help` output](../evidence/asus-wl-help.txt)
 
-Присланный `csimond` — при этом почти не декодер. По его строкам и ARM-дизассемблированию видно следующую схему. [дизассемблирование `csimond`](../evidence/csimond-disasm.txt) [строки `csimond`](../evidence/csimond-strings.txt)
+The supplied `csimond` itself barely acts as a decoder. Its strings and ARM disassembly reveal the following flow. [`csimond` disassembly](../evidence/csimond-disasm.txt) [`csimond` strings](../evidence/csimond-strings.txt)
 
 ```mermaid
 flowchart LR
@@ -83,16 +83,16 @@ flowchart LR
     C --> D["csimond / recvmsg()"]
     D --> E["16-byte nlmsghdr"]
     E --> F["payload ≤ 2048 bytes"]
-    F --> G["csimond печатает uint32<br/>0x%08x"]
-    G --> H["Наш detector"]
+    F --> G["csimond prints uint32<br/>0x%08x"]
+    G --> H["Our detector"]
     H --> I["96 B metadata"]
     H --> J["224 B CSI"]
-    H --> K["tail отбросить"]
+    H --> K["Discard tail"]
     J --> L["56 × little-endian<br/>int16 I + int16 Q"]
     L --> M["complex64<br/>(P,1,1,56)"]
 ```
 
-Внутри бинарника имеются:
+The binary contains:
 
 ```text
 recvmsg
@@ -108,21 +108,21 @@ CSI record:
 0x%08x
 ```
 
-[строки `csimond`](../evidence/csimond-strings.txt)
+[`csimond` strings](../evidence/csimond-strings.txt)
 
-А дизассемблирование показывает:
+The disassembly shows:
 
 ```asm
 lsl r1, r5, #5
 ```
 
-то есть пользовательская единица размера умножается на `2^5 = 32`. При максимуме 64:
+This multiplies the user-supplied size unit by `2^5 = 32`. At the maximum of 64:
 
 \[
 64 \times 32 = 2048\ {\rm bytes}.
 \]
 
-Затем:
+Then:
 
 ```asm
 mov r0, #0x810
@@ -131,44 +131,44 @@ bl  malloc
 bl  recvmsg
 ```
 
-где
+where
 
 \[
 0x810=2064=16+2048.
 \]
 
-[дизассемблирование `csimond`](../evidence/csimond-disasm.txt)
+[`csimond` disassembly](../evidence/csimond-disasm.txt)
 
-Это согласуется с тем, что `csimond` принимает Netlink message целиком, а при печати пропускает заголовок и выводит payload как native 32-bit words. Поэтому **число 2048 в startup message — параметр dumper'а, а не доказанный размер CSI PHY vector**.
+This is consistent with `csimond` receiving an entire Netlink message, skipping the header when printing, and outputting the payload as native 32-bit words. Therefore, **2048 in the startup message is a dumper parameter, not a proven size of the CSI PHY vector**.
 
-Независимые загрузочные логи Broadcom-платформ показывают тот же механизм: отдельного HME пользователя `CSIMON`, создание netlink и сообщение `HOST CSIMON[1.1.0]`. Это хорошо согласуется с архитектурой, восстановленной из вашего бинарника.
+Independent Broadcom platform boot logs show the same mechanism: a dedicated `CSIMON` HME user, netlink creation, and the `HOST CSIMON[1.1.0]` message. This agrees well with the architecture reconstructed from the supplied binary.
 
-## Восстановленный бинарный формат записи
+## Reconstructed binary record format
 
-По всем шестнадцати записям наиболее надёжная структура выглядит следующим образом. Смещения относятся **к payload после Linux `nlmsghdr`**, то есть именно к байтам, которые `csimond` показывает после `CSI record:`. Исходный дамп подтверждает повторяемость и вариативность этих полей. [сырой захват ASUS](../evidence/asus-csi-probe.txt)
+Across all sixteen records, the most reliable structure is as follows. Offsets refer **to the payload after the Linux `nlmsghdr`**, specifically the bytes that `csimond` displays after `CSI record:`. The original dump confirms the consistency and variability of these fields. [Raw ASUS capture](../evidence/asus-csi-probe.txt)
 
-| Offset | Size | Предлагаемый тип | Наблюдаемое содержимое | Уверенность |
+| Offset | Size | Proposed type | Observed content | Confidence |
 |---:|---:|---|---|---|
-| `0x00` | 4 | `<u32` | всегда `0` | высокая |
-| `0x04` | 6 | `uint8[6]` | `a0:36:bc:9b:bf:89` | высокая для MAC-формы |
-| `0x0A` | 6 | `uint8[6]` | `3c:7c:3f:85:8a:c0` | высокая для MAC-формы |
-| `0x10` | 4 | bitfield / `<u32` | `0x04041004` | тип поля неизвестен |
-| `0x14` | 4 | `<u32` | монотонно растёт примерно на 500000 | очень вероятно timer/timestamp |
-| `0x18` | 4 | `<u32` | `0xa6d82192` в этой выборке | неизвестно |
-| `0x1C` | 4 | `int8[4]` | напр. `[-56,-52,-51,-66]` | вероятно per-chain RSSI/PHY levels |
-| `0x20` | 32 | — | нули во всей выборке | padding/reserved |
-| `0x40` | 4 | `<u32` | `0x10600021` | PHY/flags, точно не установлено |
-| `0x44` | 4 | bitfield / `<u32` | `0x4b83`…`0x4f03` | вероятно rate/rx-status |
+| `0x00` | 4 | `<u32` | always `0` | high |
+| `0x04` | 6 | `uint8[6]` | `a0:36:bc:9b:bf:89` | high for MAC structure |
+| `0x0A` | 6 | `uint8[6]` | `3c:7c:3f:85:8a:c0` | high for MAC structure |
+| `0x10` | 4 | bitfield / `<u32` | `0x04041004` | field type unknown |
+| `0x14` | 4 | `<u32` | increases monotonically by approximately 500000 | very likely a timer/timestamp |
+| `0x18` | 4 | `<u32` | `0xa6d82192` in this sample | unknown |
+| `0x1C` | 4 | `int8[4]` | e.g. `[-56,-52,-51,-66]` | likely per-chain RSSI/PHY levels |
+| `0x20` | 32 | — | zeros throughout the sample | padding/reserved |
+| `0x40` | 4 | `<u32` | `0x10600021` | PHY/flags, not established precisely |
+| `0x44` | 4 | bitfield / `<u32` | `0x4b83`…`0x4f03` | likely rate/rx-status |
 | `0x48` | 4 | `<u32` | `0` | reserved/unknown |
 | `0x4C` | 4 | `<u32` | `0x01000002` | unknown |
 | `0x50` | 4 | `<u32` | `0` | unknown |
 | `0x54` | 4 | `<u32` | `0` | unknown |
 | `0x58` | 4 | `<u32` | `0x80000000` | flags/unknown |
 | `0x5C` | 4 | `<u32` | `3` | enum/count/unknown |
-| **`0x60`** | **224** | **`56 × {<i2 I,<i2 Q}`** | **CSI** | **очень высокая** |
-| **`0x140`** | до `0x800` | — | **stale/repeated tail** | **очень высокая: отбросить** |
+| **`0x60`** | **224** | **`56 × {<i2 I,<i2 Q}`** | **CSI** | **very high** |
+| **`0x140`** | up to `0x800` | — | **stale/repeated tail** | **very high: discard** |
 
-Для двух 6-байтовых областей есть необычно сильное дополнительное подтверждение: обе имеют вид нормальных MAC-адресов, причём их первые три байта — ASUS OUI. Но без знания того, какой MAC был передан пользователем в `wl csimon`, я не называю их жёстко `source` и `BSSID`: в коде они намеренно названы `mac_a` и `mac_b`. Само наличие двух MAC-подобных полей в неизменной части заголовка практически несомненно. Исходный заголовок первого пакета: [сырой захват ASUS](../evidence/asus-csi-probe.txt)
+There is unusually strong additional evidence for the two 6-byte regions: both look like normal MAC addresses, and their first three bytes are ASUS OUIs. However, without knowing which MAC the user supplied to `wl csimon`, I do not label them definitively as `source` and `BSSID`: the code deliberately calls them `mac_a` and `mac_b`. The presence of two MAC-like fields in the unchanging part of the header is virtually certain. Original header of the first packet: [raw ASUS capture](../evidence/asus-csi-probe.txt)
 
 ```text
 0000: 00 00 00 00  a0 36 bc 9b  bf 89 3c 7c  3f 85 8a c0
@@ -181,7 +181,7 @@ bl  recvmsg
 ...
 ```
 
-Особенно интересен `0x14`. Последовательность первых 15 полных записей:
+Field `0x14` is particularly interesting. The sequence from the first 15 complete records:
 
 ```text
 0xa6dfc3a4
@@ -192,7 +192,7 @@ bl  recvmsg
 0xa74aa0c3
 ```
 
-Разности:
+Differences:
 
 ```text
 504074
@@ -211,17 +211,17 @@ bl  recvmsg
 503174
 ```
 
-Средняя:
+Mean:
 
 ```text
 500244.5
 ```
 
-Это исключительно похоже на счётчик времени с шагом порядка 500 ms при единице около микросекунды, что хорошо согласуется с периодическим режимом `wl csimon ... <timer ms>`, присутствующим в ASUS `wl` help. Но без определения структуры Broadcom я оставляю его как **`timer_0x14` / timestamp candidate**, а не выдаю догадку за точное имя поля. См. [вывод `wl help`](../evidence/asus-wl-help.txt) и [сырой захват](../evidence/asus-csi-probe.txt).
+This strongly resembles a time counter with increments of about 500 ms and a unit of approximately one microsecond, consistent with the periodic `wl csimon ... <timer ms>` mode present in ASUS `wl` help. Without the Broadcom structure definition, however, I retain **`timer_0x14` / timestamp candidate** rather than presenting a guess as the exact field name. See the [`wl help` output](../evidence/asus-wl-help.txt) and [raw capture](../evidence/asus-csi-probe.txt).
 
-### Почему граница ровно `0x60..0x140`
+### Why the boundary is exactly `0x60..0x140`
 
-Если для каждого 32-битного положения подсчитать число уникальных значений среди первых 15 полных записей, получается очень характерная картина:
+Counting unique values at each 32-bit position across the first 15 complete records produces a distinctive pattern:
 
 ```text
 header:
@@ -238,58 +238,58 @@ tail:
    exactly 2 unique values at EVERY position
 ```
 
-То есть:
+Thus:
 
 \[
 24\cdot4=96=0x60
 \]
 
-и
+and
 
 \[
 80\cdot4=320=0x140.
 \]
 
-Длина свежей области:
+The length of the fresh region is:
 
 \[
 320-96=224\ {\rm bytes}.
 \]
 
-И здесь появляется ещё более сильное совпадение:
+An even stronger match appears here:
 
 \[
 224/(2+2)=56
 \]
 
-комплексных отсчётов, если каждый состоит из двух signed `int16`.
+complex samples, if each consists of two signed `int16` values.
 
-Не требуется ни одного байта padding между ними.
+Not a single padding byte is needed between them.
 
-## Почему формат — little-endian signed int16 I/Q
+## Why the format is little-endian signed int16 I/Q
 
-Первое слово CSI, напечатанное `csimond`, равно:
+The first CSI word printed by `csimond` is:
 
 ```text
 0xfe54f6ac
 ```
 
-[сырой захват ASUS](../evidence/asus-csi-probe.txt)
+[Raw ASUS capture](../evidence/asus-csi-probe.txt)
 
-Здесь важно не совершить распространённую ошибку и не считать порядок символов в `%08x` порядком байтов памяти. Бинарник `csimond` — little-endian ARM, а программа читает данные 32-битным native load и печатает число через `%08x`. Следовательно, в памяти лежит:
+Avoid the common mistake of treating the character order in `%08x` as the byte order in memory. The `csimond` binary is little-endian ARM, and the program reads data using a native 32-bit load before printing the number with `%08x`. Therefore, memory contains:
 
 ```text
 ac f6 54 fe
 ```
 
-При `<i2,<i2` это:
+Interpreted as `<i2,<i2`, this is:
 
 ```text
 I = 0xf6ac = -2388
 Q = 0xfe54 =  -428
 ```
 
-Первый CSI vector действительно начинается:
+The first CSI vector does indeed begin:
 
 ```text
 [-2388-428j,
@@ -303,25 +303,25 @@ Q = 0xfe54 =  -428
  ...]
 ```
 
-### Сравнение альтернатив
+### Comparing alternatives
 
-| Гипотеза | Получающийся результат | Вердикт |
+| Hypothesis | Result | Verdict |
 |---|---|---|
-| **LE signed int16 I/Q** | **56 complex; σI≈1017.5, σQ≈1030.5; диапазоны симметричны относительно 0** | **принимается** |
-| BE signed int16 I/Q | 56 complex, но ~69% компонент имеют `|x| > 10000`, типичный масштаб ≈25k | крайне маловероятно |
-| LE uint16 | постоянный положительный offset для отрицательных коэффициентов | отвергается |
-| int8 I/Q | 112 complex; `σ≈74.7` у одного компонента и лишь `≈4.0` у другого | явно видны low/high bytes `int16`; отвергается |
-| packed 10+10 bit | `1792/20 = 89.6` complex | невозможно без дополнительного нелокального padding |
-| packed 12+12 bit | `1792/24 = 74.67` complex | невозможно |
-| packed 16+16 bit | `1792/32 = 56` complex | **идеальное совпадение** |
-| compressed stream | отсутствуют framing/length/codebook признаки; каждые четыре байта непосредственно дают разумный complex | не требуется |
-| 256 tones | потребовалось бы минимум 1024 CSI bytes | отсутствуют свежие данные |
-| 512 tones | 2048 CSI bytes без header | противоречит 96-B header и stale-tail |
-| 1024 tones | минимум 4096 bytes при int16 IQ | физически не помещается |
+| **LE signed int16 I/Q** | **56 complex values; σI≈1017.5, σQ≈1030.5; ranges symmetric about 0** | **accepted** |
+| BE signed int16 I/Q | 56 complex values, but ~69% of components have `|x| > 10000`, typical scale ≈25k | extremely unlikely |
+| LE uint16 | constant positive offset for negative coefficients | rejected |
+| int8 I/Q | 112 complex values; `σ≈74.7` for one component and only `≈4.0` for the other | clearly shows low/high bytes of `int16`; rejected |
+| packed 10+10 bit | `1792/20 = 89.6` complex values | impossible without additional nonlocal padding |
+| packed 12+12 bit | `1792/24 = 74.67` complex values | impossible |
+| packed 16+16 bit | `1792/32 = 56` complex values | **exact match** |
+| compressed stream | no framing/length/codebook indicators; every four bytes directly yield a plausible complex value | unnecessary |
+| 256 tones | would require at least 1024 CSI bytes | no fresh data available |
+| 512 tones | 2048 CSI bytes without a header | contradicts the 96-B header and stale tail |
+| 1024 tones | at least 4096 bytes with int16 IQ | physically does not fit |
 
-Самый показательный тест против `int8`: если разобрать те же 224 байта как `int8 I,Q`, стандартное отклонение одного канала получается около `74.7`, другого только `4.0`. Причина именно та, которую ожидаем при ошибочном разрезании signed `int16`: low byte выглядит почти случайным 8-битным числом, а high byte в основном представляет знак и несколько старших битов небольшого `int16`.
+The most revealing test against `int8`: decoding the same 224 bytes as `int8 I,Q` gives a standard deviation of about `74.7` for one channel and only `4.0` for the other. This is exactly what is expected when signed `int16` values are split incorrectly: the low byte looks like an almost random 8-bit number, while the high byte mainly represents the sign and a few upper bits of a small `int16`.
 
-При правильном `int16`:
+With the correct `int16` interpretation:
 
 ```text
 I:
@@ -337,69 +337,69 @@ Q:
     std    1030.45
 ```
 
-То есть I и Q имеют практически одинаковый масштаб и располагаются вокруг нуля — именно то, чего хочется видеть у двух квадратурных signed components.
+I and Q therefore have almost identical scales and are centered around zero, as expected for two signed quadrature components.
 
-### Почему 56, а не 256/512/1024
+### Why 56, rather than 256/512/1024
 
-Здесь важно разделить **FFT size**, **число активных OFDM tones** и **число CSI coefficients, которое решил экспортировать vendor driver**.
+It is necessary to distinguish **FFT size**, **the number of active OFDM tones**, and **the number of CSI coefficients the vendor driver chooses to export**.
 
-Для классического 20 MHz 802.11n используются 64 FFT bins, из которых 56 несут data+pilot; CSI implementations могут отдавать либо все FFT bins, либо только активную часть, либо ещё более разреженную выборку. Исследовательская литература по 802.11n прямо описывает 56 используемых subcarriers в 20 MHz.
+Classic 20 MHz 802.11n uses 64 FFT bins, of which 56 carry data and pilots; CSI implementations may export all FFT bins, only the active portion, or an even sparser selection. Research literature on 802.11n explicitly describes 56 used subcarriers at 20 MHz.
 
-Nexmon, напротив, намеренно выдаёт **все** 64 bins для 20 MHz, 128 для 40 MHz и 256 для 80 MHz, включая guard/null bins. Его документация отдельно предупреждает, что null/guard values могут быть произвольными. Именно поэтому нельзя считать Nexmon wire format идентичным stock Broadcom CSIMON.
+Nexmon, by contrast, deliberately exports **all** 64 bins for 20 MHz, 128 for 40 MHz, and 256 for 80 MHz, including guard/null bins. Its documentation specifically warns that null/guard values may be arbitrary. This is why the Nexmon wire format cannot be assumed identical to stock Broadcom CSIMON.
 
-GT-AX11000 поддерживает не только 802.11ax, но и обратно совместим с 802.11a/b/g/n/ac. Поэтому наличие 56 значений **не означает, что роутер «не AX»**: оно означает, что конкретная экспортированная CSI-запись по размеру соответствует 20-MHz legacy/HT-style active-tone vector либо vendor-представлению из 56 выбранных tones. Из одного dump'а нельзя доказать, какой именно PHY PPDU породил эти коэффициенты.
+The GT-AX11000 supports 802.11ax and is also backward compatible with 802.11a/b/g/n/ac. The presence of 56 values therefore **does not mean the router is not AX**: it means that the size of this particular exported CSI record matches a 20-MHz legacy/HT-style active-tone vector or a vendor representation of 56 selected tones. A single dump cannot prove which PHY PPDU produced these coefficients.
 
-Иными словами, исходная гипотеза «раз AX, значит надо обязательно искать 256/512/1024» в этом файле не подтверждается.
+In other words, the original hypothesis that AX necessarily requires looking for 256/512/1024 values is not supported by this file.
 
-### I/Q против Q/I
+### I/Q versus Q/I
 
-Из одного неизвестного канала перестановку
+For a single unknown channel, swapping
 
 \[
 H=I+jQ
 \]
 
-на
+for
 
 \[
 H'=Q+jI
 \]
 
-по распределению амплитуды определить невозможно:
+cannot be detected from the amplitude distribution:
 
 \[
 |H|=|H'|.
 \]
 
-Аналогично комплексное сопряжение
+Likewise, complex conjugation
 
 \[
 H^*=I-jQ
 \]
 
-не изменяет амплитуду.
+does not change the amplitude.
 
-Поэтому наиболее честная классификация такая:
+The most defensible classification is therefore:
 
 ```text
-endianness       little-endian            подтверждено очень хорошо
-component width  signed int16             подтверждено очень хорошо
-interleaving     two int16 per complex    подтверждено очень хорошо
-I before Q       default/convention       вероятно, но не математически доказано
-phase sign       hardware convention      требует опорного измерения
-fixed-point Qn   неизвестен               абсолютный scale не установлен
+endianness       little-endian            very well supported
+component width  signed int16             very well supported
+interleaving     two int16 per complex    very well supported
+I before Q       default/convention       likely, but not mathematically proven
+phase sign       hardware convention      requires a reference measurement
+fixed-point Qn   unknown                  absolute scale not established
 ```
 
-Для amplitude/sensing задач raw scale часто достаточно. Для физической абсолютной калибровки канала нужно отдельно установить firmware scaling/AGC.
+Raw scale is often sufficient for amplitude/sensing tasks. Absolute physical calibration of the channel requires firmware scaling/AGC to be established separately.
 
-## Декодер и автоматическое определение формата
+## Decoder and automatic format detection
 
-Текущий реализационный файл — [src/decoder.py](../src/decoder.py). Он использует
-только стандартную библиотеку Python и возвращает для каждой записи словарь с
-метаданными, парами `I/Q` и амплитудами. Это capture-specific декодер для
-наблюдаемого формата GT-AX11000, а не универсальный Broadcom decoder.
+The current implementation is [src/decoder.py](../src/decoder.py). It uses
+only the Python standard library and returns a dictionary for each record containing
+metadata, `I/Q` pairs, and amplitudes. This decoder is specific to captures in the
+observed GT-AX11000 format; it is not a universal Broadcom decoder.
 
-Минимальный пример использования:
+Minimal usage example:
 
 ```python
 from pathlib import Path
@@ -412,7 +412,7 @@ decoded = [decode(record) for record in records]
 print(len(decoded), len(decoded[0]["iq"]))  # 16, 56
 ```
 
-На предоставленном файле фактический вывод:
+Actual output for the supplied file:
 
 ```text
 Layout(
@@ -441,7 +441,7 @@ rssi_like[0]:
 [-56, -52, -51, -66]
 ```
 
-Ключевой декодер в итоге очень простой:
+The core decoder is ultimately very simple:
 
 ```python
 import numpy as np
@@ -459,7 +459,7 @@ def decode_one(record: bytes) -> np.ndarray:
     return (i + 1j*q).astype(np.complex64)
 ```
 
-Сборка требуемой размерности:
+Assembling the required dimensions:
 
 ```python
 vectors = [decode_one(record) for record in records]
@@ -470,48 +470,48 @@ csi = csi[:, None, None, :]
 assert csi.shape == (len(records), 1, 1, 56)
 ```
 
-### Как были подтверждены границы CSI в исследовании
+### How the research confirmed the CSI boundaries
 
-Текущая версия декодера проверяет профиль `0x04041004` и использует
-доказанную для этого захвата область `0x60:0x140`. Автоматический поиск
-границ, графики и NumPy-вычисления ниже относятся к исследовательскому
-анализу; они сохранены как описание метода и не выдаются за API репозитория.
+The current decoder checks profile `0x04041004` and uses
+the `0x60:0x140` region established for this capture. The automatic boundary
+search, plots, and NumPy calculations below belong to the research
+analysis; they are retained as a description of the method, not as the repository API.
 
-В исследовательском анализе для четырёх и более записей использовался такой
-алгоритм (он не является отдельным API текущего репозитория):
+The research analysis used the following algorithm for four or more records
+(it is not a separate API in the current repository):
 
 ```text
-1. Разбирает csimond text:
+1. Parse csimond text:
       CSI record:
       0x........
       ...
 
-2. Восстанавливает native LE bytes из каждого uint32.
+2. Reconstruct native LE bytes from each uint32.
 
-3. Для каждой 32-bit позиции считает:
+3. For each 32-bit position, count:
       unique values across packets.
 
-4. Ищет длинный непрерывный участок,
-   меняющийся почти в каждом пакете.
+4. Find a long contiguous region
+   that changes in almost every packet.
 
-5. В данном файле автоматически получает:
+5. For this file, automatically obtain:
       start word = 24
       end word   = 80
 
-6. Получает:
+6. Calculate:
       start = 24*4 = 96
       end   = 80*4 = 320
       size  = 224 bytes
 
-7. Перебирает стандартные candidate tone counts.
+7. Try standard candidate tone counts.
 
-8. 224/4 = 56 complex values — точное совпадение.
+8. 224/4 = 56 complex values — an exact match.
 
-9. Возвращает:
+9. Return:
       (packets, 1, 1, 56)
 ```
 
-Логика в псевдокоде:
+The logic in pseudocode:
 
 ```python
 uniq[j] = number_of_unique_values(records[:, j])
@@ -529,11 +529,11 @@ complex_count = csi_bytes // 4
 # 224 // 4 = 56
 ```
 
-Это существенно надёжнее простого «найти красивое число», потому что граница `0x140` обнаруживается **до** интерпретации I/Q: она следует непосредственно из межпакетной изменчивости.
+This is considerably more reliable than merely finding a convenient number, because the `0x140` boundary is detected **before** interpreting I/Q: it follows directly from variability between packets.
 
-### Контейнеры, рассмотренные в исследовании
+### Containers considered in the research
 
-Исходный исследовательский декодер рассматривал следующие варианты входа:
+The original research decoder considered the following input variants:
 
 ```text
 csimond textual dump
@@ -546,10 +546,10 @@ raw netlink receive buffers × 2064 B
     16 B nlmsghdr
     up to 2048 B payload
 
-уже обрезанные records × 320 B
+already trimmed records × 320 B
 ```
 
-Для raw-netlink в исследовании учитывался:
+For raw netlink, the research accounted for:
 
 ```python
 struct nlmsghdr:
@@ -560,25 +560,25 @@ struct nlmsghdr:
     uint32 nlmsg_pid
 ```
 
-То есть CSI offset `0x60` относится к **CSIMON payload**. Если декодировать сохранённый Netlink message целиком, соответствующее физическое смещение будет:
+Thus, CSI offset `0x60` refers to the **CSIMON payload**. When decoding a saved Netlink message in full, the corresponding physical offset is:
 
 \[
 0x10+0x60=0x70.
 \]
 
-### Cores и streams
+### Cores and streams
 
-Здесь декодер намеренно не придумывает данные, которых нет.
+The decoder deliberately avoids inventing data that is not present.
 
-Хотя GT-AX11000 — 4×4 на каждом radio, предоставленная свежая область содержит:
+Although each GT-AX11000 radio is 4×4, the supplied fresh region contains:
 
 \[
 56\times4=224\ {\rm bytes},
 \]
 
-то есть ровно **один** CSI vector из 56 комплексных чисел. ASUS подтверждает аппаратную поддержку 4×4, но это только capability radio.
+which is exactly **one** CSI vector of 56 complex numbers. ASUS confirms hardware support for 4×4, but that is only a radio capability.
 
-Поэтому корректный результат для этого файла:
+The correct result for this file is therefore:
 
 ```text
 cores   = 1
@@ -587,35 +587,35 @@ streams = 1
 shape = (16, 1, 1, 56)
 ```
 
-а не искусственно созданное:
+rather than an artificially constructed:
 
 ```text
 (16, 4, 4, 56)
 ```
 
-которому потребовалось бы:
+which would require:
 
 \[
 4\times4\times56\times4=3584
 \]
 
-байт CSI на пакет.
+bytes of CSI per packet.
 
-В Nexmon core/stream действительно являются отдельными параметрами CSI extraction и кодируются в его packet header, но stock CSIMON имеет другой wire format.
+In Nexmon, core/stream are indeed separate CSI extraction parameters encoded in its packet header, but stock CSIMON has a different wire format.
 
-Можно подозревать, что один из полей `0x10`, `0x40`, `0x44` или `0x5c` кодирует core/PHY state; однако в данной выборке нет контролируемого изменения core/stream, позволяющего экспериментально назначить биты. Поэтому скрипт сохраняет только доказанную размерность.
+One might suspect that a field at `0x10`, `0x40`, `0x44`, or `0x5c` encodes core/PHY state; however, this sample has no controlled core/stream variation that would allow the bits to be assigned experimentally. The script therefore preserves only the established dimensions.
 
-## Валидация, статистика и графики
+## Validation, statistics, and plots
 
-Для всех:
+Across all:
 
 \[
 16\times56=896
 \]
 
-комплексных CSI coefficients получена следующая статистика:
+complex CSI coefficients, the following statistics were obtained:
 
-| Метрика | Значение |
+| Metric | Value |
 |---|---:|
 | `I min` | `-2969` |
 | `I max` | `3164` |
@@ -631,9 +631,9 @@ shape = (16, 1, 1, 56)
 | `|H| p95` | `2447.39` |
 | `|H| max` | `3447.88` |
 
-Эти значения вычислены непосредственно из предоставленного дампа после применения описанного `<i2 I,Q` decoder. [сырой захват ASUS](../evidence/asus-csi-probe.txt)
+These values were computed directly from the supplied dump using the described `<i2 I,Q` decoder. [Raw ASUS capture](../evidence/asus-csi-probe.txt)
 
-Первые восемь комплексных коэффициентов первого пакета:
+The first eight complex coefficients of the first packet:
 
 ```python
 array([
@@ -648,52 +648,52 @@ array([
 ], dtype=complex64)
 ```
 
-Амплитуда вычисляется стандартно:
+Amplitude is computed in the standard way:
 
 ```python
 amplitude = np.abs(csi)
 ```
 
-а фаза:
+and phase:
 
 ```python
 phase = np.angle(csi)
 ```
 
-Для непрерывного просмотра фазы вдоль tones:
+For a continuous view of phase across tones:
 
 ```python
 phase_unwrapped = np.unwrap(np.angle(csi), axis=-1)
 ```
 
-### Амплитуда нескольких пакетов
+### Amplitude of several packets
 
-![Амплитуда и индикатор движения](../evidence/clean-motion-analysis.png)
+![Amplitude and motion indicator](../evidence/clean-motion-analysis.png)
 
-[PNG с графиком амплитуды и движения](../evidence/clean-motion-analysis.png)
+[PNG of amplitude and motion plot](../evidence/clean-motion-analysis.png)
 
-Здесь индекс по X — **порядковый номер одного из 56 экспортированных tones**, а не пока что гарантированный IEEE subcarrier number `k`. Для превращения `0..55` в, например, `-28..-1,+1..+28` необходимо окончательно подтвердить, сохраняет ли Broadcom pilots и какой порядок bins использует stock CSIMON. Само число 56 хорошо согласуется с 20-MHz active-tone representation, но порядок ещё не следует из userspace dump. Исследовательские реализации CSI также различаются по тому, возвращают ли они все FFT bins или только используемые carriers.
+The X-axis index here is **the ordinal index of one of the 56 exported tones**, not yet a guaranteed IEEE subcarrier number `k`. Converting `0..55` into, for example, `-28..-1,+1..+28` requires confirmation of whether Broadcom retains pilots and which bin order stock CSIMON uses. The number 56 itself agrees well with a 20-MHz active-tone representation, but the order cannot yet be inferred from the userspace dump. Research CSI implementations also differ in whether they return all FFT bins or only the used carriers.
 
-### Фаза нескольких пакетов
+### Phase of several packets
 
-Отдельный график фазы в этот репозиторий не включён; сохранён график амплитуды и движения ([PNG](../evidence/clean-motion-analysis.png)).
+A separate phase plot is not included in this repository; the amplitude and motion plot is preserved ([PNG](../evidence/clean-motion-analysis.png)).
 
-На графике используется `np.unwrap`, чтобы скачки `+π → -π` не выглядели как физические скачки канала.
+The plot uses `np.unwrap` so that `+π → -π` wraps do not look like physical channel jumps.
 
-При использовании CSI для sensing сырую фазу всё равно не следует считать непосредственно абсолютной фазой распространения: packet detection delay, carrier/sampling frequency offsets и другие RX synchronization effects в обычных Wi-Fi CSI measurements вносят packet-dependent phase offsets/slopes. Это известная проблема CSI measurement literature.
+When using CSI for sensing, raw phase should still not be treated directly as absolute propagation phase: packet detection delay, carrier/sampling frequency offsets, and other RX synchronization effects in ordinary Wi-Fi CSI measurements introduce packet-dependent phase offsets/slopes. This is a known problem in the CSI measurement literature.
 
-### Тест stale-tail
+### Stale-tail test
 
-Это, на мой взгляд, самый важный validation test, потому что без него легко принять почти весь 2048-байтный блок за CSI.
+In my view, this is the most important validation test, because without it nearly the entire 2048-byte block could easily be mistaken for CSI.
 
-Для каждого полного пакета:
+For each complete packet:
 
 ```python
 tail = record[0x140:0x800]
 sha256(tail)
 ```
 
-даёт:
+produces:
 
 ```text
 packet  0  3be34b98ba96...
@@ -706,62 +706,62 @@ packet  5  6cc01b9f5d98...
 packet 14  3be34b98ba96...
 ```
 
-При этом **настоящая область `0x60..0x13f` уникальна для каждого пакета**. Такое строгое A/B/A/B повторение большого хвоста несовместимо с представлением, будто там лежат сотни новых CSI bins каждой принятой Wi-Fi frame. [сырой захват ASUS](../evidence/asus-csi-probe.txt)
+Meanwhile, **the actual `0x60..0x13f` region is unique for each packet**. Such strict A/B/A/B repetition of the large tail is incompatible with the idea that it contains hundreds of fresh CSI bins for every received Wi-Fi frame. [Raw ASUS capture](../evidence/asus-csi-probe.txt)
 
-То есть старый вариант:
+Thus, the old approach:
 
 ```python
-# НЕПРАВИЛЬНО
+# INCORRECT
 x = np.frombuffer(record, dtype="<i2")
 ```
 
-или:
+or:
 
 ```python
-# ТОЖЕ НЕПРАВИЛЬНО
+# ALSO INCORRECT
 x = np.frombuffer(record[96:], dtype="<i2")
 ```
 
-загрязняет CSI почти полностью stale-данными.
+contaminates the CSI almost entirely with stale data.
 
-Правильно:
+Correct:
 
 ```python
 x = np.frombuffer(record[0x60:0x140], dtype="<i2")
 ```
 
-## Альтернативные интерпретации, ограничения и запуск
+## Alternative interpretations, limitations, and usage
 
-Есть четыре вещи, которые по имеющемуся файлу нельзя честно назвать полностью доказанными.
+Four things cannot honestly be considered fully proven from the available file.
 
-**Семантическое направление I/Q.** Числовой формат точно выглядит как две signed 16-bit components. Но отличить `(I,Q)` от `(Q,I)` только по неизвестному каналу нельзя. Текущий декодер фиксирует рабочую гипотезу `I,Q`; перестановку можно проверить небольшим отдельным анализом пар в `src/decoder.py`.
+**Semantic I/Q ordering.** The numerical format clearly looks like two signed 16-bit components. However, `(I,Q)` cannot be distinguished from `(Q,I)` using only an unknown channel. The current decoder adopts `I,Q` as a working hypothesis; swapping them can be investigated through a small separate analysis of the pairs in `src/decoder.py`.
 
-Если у тебя есть контролируемый RF reference или исходник firmware structure, это можно зафиксировать окончательно.
+A controlled RF reference or firmware structure source would allow this to be established conclusively.
 
-**Знак фазы / conjugation.** Некоторые PHY chains используют соглашение, эквивалентное комплексному сопряжению относительно ожидаемого пользователем определения transfer function. В текущем стандартном библиотечном декодере фазовый массив не строится автоматически; выбор `H` или `H*` остаётся частью будущего NumPy-анализа.
+**Phase sign / conjugation.** Some PHY chains use a convention equivalent to complex conjugation relative to the user's expected transfer function definition. The current standard-library decoder does not automatically construct a phase array; the choice of `H` or `H*` remains part of future NumPy analysis.
 
-Выбор между `H` и `H*` лучше делать по известному фазовому наклону или сравнением с SDR/reference CSI, а не по красивости графика.
+The choice between `H` and `H*` is best made using a known phase slope or comparison with SDR/reference CSI, rather than how attractive the plot looks.
 
-**Абсолютный fixed-point scale.** Значения явно помещаются в signed `int16`, но из userspace capture нельзя вывести, являются ли они, например, внутренним Q-format с конкретным числом fractional bits или просто scaled PHY estimates. Поэтому декодер сохраняет raw coefficients, не деля их на выдуманное `2^N`.
+**Absolute fixed-point scale.** The values clearly fit within signed `int16`, but a userspace capture cannot establish whether they represent, for example, an internal Q-format with a specific number of fractional bits or simply scaled PHY estimates. The decoder therefore preserves raw coefficients without dividing them by an invented `2^N`.
 
-**Названия status fields.** Граница и тип CSI восстановлены значительно надёжнее, чем proprietary header. Поля `0x40/0x44/...` следует считать unknown bitfields, пока не появится либо Broadcom header definition, либо серия controlled captures с варьированием MCS/BW/core/NSS/chanspec.
+**Status field names.** The CSI boundary and type have been reconstructed far more reliably than the proprietary header. Fields `0x40/0x44/...` should be treated as unknown bitfields until either a Broadcom header definition or a series of controlled captures varying MCS/BW/core/NSS/chanspec becomes available.
 
-### Как отличить оставшиеся варианты экспериментально
+### How to distinguish the remaining alternatives experimentally
 
-Наиболее информативный следующий controlled test — не собирать «ещё много таких же данных», а менять **ровно один PHY параметр за эксперимент**:
+The most informative next controlled test is to vary **exactly one PHY parameter per experiment**, rather than collect more of the same data:
 
 ```text
-capture A: один и тот же peer, 20 MHz, fixed MCS/NSS
-capture B: тот же peer, другой MCS
+capture A: same peer, 20 MHz, fixed MCS/NSS
+capture B: same peer, different MCS
 capture C: 40 MHz
 capture D: 80 MHz
 capture E: NSS=1 / NSS=2
-capture F: разные RX chains/core masks
+capture F: different RX chains/core masks
 ```
 
-И затем diff только первых 96 байт.
+Then compare only the first 96 bytes.
 
-Так можно восстановить proprietary header почти механически:
+This allows the proprietary header to be reconstructed almost mechanically:
 
 ```python
 for offset in range(0, 96, 4):
@@ -772,25 +772,25 @@ for offset in range(0, 96, 4):
     )
 ```
 
-Если, например, при фиксированном всём остальном переход `MCS 3 → MCS 7` изменяет только часть `0x44`, появится сильное основание назначить соответствующие биты rate/MCS. Тот же метод работает для core, NSS и bandwidth.
+For example, if changing `MCS 3 → MCS 7` while holding everything else fixed changes only part of `0x44`, that provides strong grounds for assigning the corresponding bits to rate/MCS. The same method works for core, NSS, and bandwidth.
 
-Для проверки порядка 56 tones нужен частотно-селективный reference: например, известная notch/interference на одной стороне канала. Тогда можно установить, идёт ли массив как:
+Verifying the order of the 56 tones requires a frequency-selective reference, such as a known notch/interference on one side of the channel. This would establish whether the array follows:
 
 ```text
 [-28 ... -1, +1 ... +28]
 ```
 
-либо в FFT-order, либо в каком-либо внутреннем Broadcom order.
+FFT order, or some internal Broadcom order.
 
-### Запуск текущего декодера
+### Running the current decoder
 
-Запуск из корня репозитория:
+Run from the repository root:
 
 ```bash
 python -c "from pathlib import Path; import sys; sys.path.insert(0, 'src'); from decoder import decode, text_records; r=list(text_records(Path('evidence/asus-csi-probe.txt').read_text())); print({'records': len(r), 'iq_per_record': len(decode(r[0])['iq'])})"
 ```
 
-Фактический результат на присланном файле:
+Actual result for the supplied file:
 
 ```text
 layout:
@@ -806,12 +806,12 @@ csi.shape: (16, 1, 1, 56)
 csi.dtype: complex64
 ```
 
-NumPy-массив и графики в текущем репозитории строятся отдельными исследовательскими
-скриптами из `scripts/` и требуют NumPy/Matplotlib. Для уже сохранённого теста
-используй [scripts/analyze_clean.py](../scripts/analyze_clean.py); результат
-сохранён в [JSON](clean-motion-analysis.json) и [PNG](../evidence/clean-motion-analysis.png).
+In the current repository, the NumPy array and plots are built by separate research
+scripts in `scripts/`, which require NumPy/Matplotlib. For the test already saved,
+use [scripts/analyze_clean.py](../scripts/analyze_clean.py); the result
+is saved as [JSON](clean-motion-analysis.json) and [PNG](../evidence/clean-motion-analysis.png).
 
-Если нужен собственный NumPy-анализ декодированных пар:
+For custom NumPy analysis of the decoded pairs:
 
 ```python
 from pathlib import Path
@@ -843,36 +843,36 @@ print(phase.shape)
 # (16, 56)
 ```
 
-Переход на `complex128` не добавляет информации к исходным `int16`, но может быть удобен для последующей численной обработки.
+Switching to `complex128` adds no information to the original `int16` values, but may be convenient for subsequent numerical processing.
 
-## Внешние ориентиры
+## External references
 
-- [Официальные технические характеристики ASUS ROG Rapture GT-AX11000](https://rog.asus.com/us/networking/rog-rapture-gt-ax11000-model/spec/)
-- [Nexmon CSI — отдельный проект CSI для Broadcom](https://github.com/seemoo-lab/nexmon_csi)
+- [Official ASUS ROG Rapture GT-AX11000 specifications](https://rog.asus.com/us/networking/rog-rapture-gt-ax11000-model/spec/)
+- [Nexmon CSI — a separate Broadcom CSI project](https://github.com/seemoo-lab/nexmon_csi)
 - [RuView upstream](https://github.com/ruvnet/RuView)
 
-### Итоговая степень уверенности
+### Overall confidence levels
 
-| Вывод | Уверенность |
+| Conclusion | Confidence |
 |---|---|
-| `csimond` работает через Netlink | **очень высокая** |
-| Максимальный печатаемый payload = 2048 B | **очень высокая** |
-| 2048 B не равны размеру полезного CSI | **очень высокая** |
-| Header = `0x60 = 96 B` | **очень высокая** |
-| CSI end = `0x140 = 320 B` | **очень высокая** |
-| CSI payload = `224 B` | **очень высокая** |
-| 56 complex coefficients | **очень высокая** |
-| signed `int16` components | **очень высокая** |
-| little-endian | **очень высокая** |
-| interleaved two components | **очень высокая** |
-| default `I,Q` rather than `Q,I` | **средняя/высокая, но не доказуемая из одного канала** |
-| absolute fixed-point scale | **не установлен** |
-| tail `0x140..` не использовать как CSI | **очень высокая** |
-| tail связан с двумя producer/HME buffers | **правдоподобная гипотеза, не доказано** |
-| `0x14` — µs-like timer/timestamp | **высокая гипотеза** |
-| `0x1c` — четыре RSSI-like values | **средняя/высокая гипотеза** |
-| точная семантика `0x40/0x44` | **пока неизвестна** |
-| эта запись содержит 4×4 CSI matrix | **нет; противоречит размеру** |
-| практический output shape | **`(16,1,1,56)`** |
+| `csimond` works through Netlink | **very high** |
+| Maximum printed payload = 2048 B | **very high** |
+| 2048 B is not the size of useful CSI | **very high** |
+| Header = `0x60 = 96 B` | **very high** |
+| CSI end = `0x140 = 320 B` | **very high** |
+| CSI payload = `224 B` | **very high** |
+| 56 complex coefficients | **very high** |
+| signed `int16` components | **very high** |
+| little-endian | **very high** |
+| two interleaved components | **very high** |
+| default `I,Q` rather than `Q,I` | **medium/high, but not provable from a single channel** |
+| absolute fixed-point scale | **not established** |
+| do not use tail `0x140..` as CSI | **very high** |
+| tail is related to two producer/HME buffers | **plausible hypothesis, not proven** |
+| `0x14` is a µs-like timer/timestamp | **high-confidence hypothesis** |
+| `0x1c` contains four RSSI-like values | **medium/high-confidence hypothesis** |
+| exact semantics of `0x40/0x44` | **still unknown** |
+| this record contains a 4×4 CSI matrix | **no; contradicted by its size** |
+| practical output shape | **`(16,1,1,56)`** |
 
-Таким образом, непосредственно задача **«превратить этот дамп в комплексный CSI» решена**: полезные коэффициенты находятся в `record[0x60:0x140]` и декодируются как `<i2 I, <i2 Q`, давая 56 complex values на запись. Самая существенная поправка к первоначальной гипотезе — не пытаться интерпретировать все 2048 байт как PHY CSI и не искать в этом конкретном файле 256/512/1024 tones. 2048 здесь является размером вывода `csimond`; реальная динамическая CSI-область составляет только 224 байта. Основания сохранены в [строках `csimond`](../evidence/csimond-strings.txt), [дизассемблировании](../evidence/csimond-disasm.txt) и [сыром захвате](../evidence/asus-csi-probe.txt).
+Thus, the immediate task of **converting this dump into complex CSI is solved**: the useful coefficients are in `record[0x60:0x140]` and decode as `<i2 I, <i2 Q`, yielding 56 complex values per record. The most significant correction to the original hypothesis is to avoid interpreting all 2048 bytes as PHY CSI or looking for 256/512/1024 tones in this particular file. Here, 2048 is the size of the `csimond` output; the actual dynamic CSI region is only 224 bytes. The supporting evidence is preserved in the [`csimond` strings](../evidence/csimond-strings.txt), [disassembly](../evidence/csimond-disasm.txt), and [raw capture](../evidence/asus-csi-probe.txt).
