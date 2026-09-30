@@ -25,6 +25,9 @@ Device versions and capabilities are documented in
 
 ## Contents
 
+- `maps/home/` — apartment plans, source-linked geometry, and annotated device positions.
+- `docs/HOME-MAP.md` — confirmed placement, map limitations, and project decisions.
+- `docs/NEXT-STEPS.md` — proposed map annotation, API, recording, and evaluation workflow.
 - `src/` — decoder, Pi collector, and conservative motion indicator.
 - `scripts/` — device rollback and analysis of saved captures.
 - `docs/RESEARCH.md` — the complete original research report, without abridgment.
@@ -38,6 +41,24 @@ They are needed only on the operational devices; sharing the repository with som
 else must not grant access to the router.
 
 ## Collection on Raspberry Pi
+
+For a live graph directly from ASUS, with no Pi required:
+
+```powershell
+python .\scripts\live_motion.py
+```
+
+Press **Start** in the window. See [docs/LIVE-MOTION.md](docs/LIVE-MOTION.md)
+for smoothing, Stop, saved data, and capture limits.
+
+For automatic recording, export, and a local motion PNG from this PC, run:
+
+```powershell
+python .\scripts\capture_plot.py --seconds 60 --open
+```
+
+See [docs/CAPTURE-PLOT.md](docs/CAPTURE-PLOT.md) for setup and offline replay.
+The PNG opens after the bounded capture; this is not a live display.
 
 Files are deployed on the Pi at `/home/pi/ruview-lab`. Example of a bounded session:
 

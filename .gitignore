@@ -12,6 +12,9 @@ evidence/csimond.bin
 csimond.bin
 *.tmp
 
+# Local recording exports and generated plots
+recordings/
+3dmodelhome.zip
 # Local editor/system files
 .DS_Store
 Thumbs.db

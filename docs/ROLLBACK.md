@@ -1,5 +1,12 @@
 # Experiment rollback
 
+The direct-PC live viewer (`scripts/live_motion.py`) installs no remote files
+and does not change persistent settings. Its temporary CSI peer and owned
+collector are cleaned up on Stop or bounded completion, followed by a read-only
+state check. Before using rollback, stop the viewer and wait for completion.
+If cleanup is unverified, use `--check`; do not force-stop an unidentified
+csimond process. See [LIVE-MOTION.md](LIVE-MOTION.md) for logs and lifecycle details.
+
 From PowerShell on this computer:
 
 ```powershell

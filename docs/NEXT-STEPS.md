@@ -1,0 +1,130 @@
+# Next steps: map, timed annotations, and CSI replay
+
+Draft for discussion, recorded 2026-09-30. The map-first direction is agreed;
+the detailed implementation below is proposed, not already delivered.
+
+## Current checkpoint
+
+- [Apartment map and device placement](HOME-MAP.md) are documented.
+- The collector supports bounded 5–60 second sessions on the documented Pi setup.
+- The decoder handles the observed ASUS profile; motion was demonstrated in a
+  limited experiment. General motion accuracy and location inference are unverified.
+- There is no map editor, web API, live panel, timed route annotation, or trained
+  location model yet. A new session must not inherit earlier experiment labels.
+
+## First deliverable
+
+A local panel where the user can select a point on the apartment map, record a
+short experiment, attach timed activity labels, and replay that same session
+with the map and CSI changes aligned. A first experiment can use one fixed
+position with alternating stillness and arm movement; routes follow once the
+timing and saving work reliably.
+
+### 1. Make the existing map usable for experiments
+
+- Load map geometry and device placements together, retaining their source hashes.
+- Allow the user to name rooms, place experiment points, and draw planned routes.
+- Preserve the supplied scan and retain corrections as versioned edits.
+- Display device models and approximate heights; record placement changes so
+  captures from different layouts are not silently combined.
+- Confirm one physical length to check scale and mark obvious scan mistakes.
+  Unknown north and approximate furniture do not block initial annotation.
+
+Done when a point or route can be saved, reopened, and referenced by a session
+in the same coordinate system.
+
+### 2. Add session timing and the minimum collector fixes
+
+- Use elapsed time instead of fixed frame counts for baseline and smoothing.
+  The current motion analyzer assumes 10 Hz while capture also allows 200/500 ms.
+- Parse and persist records as they arrive; retain partial captures on errors.
+- Distinguish received records, valid decoded records, gaps, and an unavailable source.
+- Record Pi monotonic receive times and raw device timer values. SSH buffering
+  means receive time is not automatically acquisition time; measure and expose
+  synchronization uncertainty rather than claiming exact alignment.
+- Add a preparation countdown and a recorded capture-start event. Planned cue
+  time, cue delivery, and the user's actual action/confirmation are different events.
+- Keep bounded recording, single active capture, cleanup, and rollback verification.
+  Save initial remote state and update the deployment manifest before deployment.
+
+Done when different capture intervals have correct time windows, interruption
+preserves usable records, and a disconnected source is shown as unavailable.
+
+### 3. Connect the panel and API
+
+The panel and scripts should use the same API. Proposed operations:
+
+| Resource | Operations |
+|---|---|
+| Maps | Read geometry/devices; save named points and routes |
+| Sessions | Start, stop, list, inspect state and recording configuration |
+| Measurements | Read samples, signal metrics, validity, cadence, and gaps |
+| Annotations | Save/correct position, action, and time interval for a session |
+| Replay/export | Retrieve aligned records, annotations, and map revision |
+
+Show source/device identity, connection state, last valid sample age, actual
+sample rate, gaps, decode errors, raw signal metrics, motion score/threshold,
+capture state, and history. Do not label a motion score as a probability or
+equate no motion with an empty room. API writes that control recording require
+local access control; no public deployment is proposed.
+
+Each annotation should retain session ID, map revision, point/route coordinates,
+activity, start/end time, time basis, author/source, timing uncertainty, and
+whether it is a planned instruction or an observed action. Interpolated positions
+between confirmed waypoints must be labeled as estimates.
+
+Store reference annotations separately from model predictions. Preserve raw CSI
+so future processing does not require repeating every experiment.
+
+Done when a saved session can be reopened with its original map, device layout,
+reference labels, and signal trace, and exported through the API.
+
+### 4. Collect a small repeatable dataset
+
+Start with points in R08, R07, and R02 after the user selects their exact locations.
+Use separate bounded sessions and repeat each condition:
+
+- Stillness and arm movement at a fixed point.
+- Walking between marked points, including stops and changes of direction.
+- An empty apartment/room baseline with the user's exit interval labeled.
+- Motion elsewhere in the apartment to test cross-room confusion.
+
+Record other occupants, doors, facing direction, changed furniture/devices, and
+unusual network activity. Vary route order, speed, and stops. Keep whole later
+sessions, preferably from another day, out of threshold/model tuning. Neighboring
+frames from one recording must not be split randomly into train and test sets.
+
+Done when recordings and labels can be replayed and independently checked,
+including transitions and uncertain intervals.
+
+### 5. Evaluate simple location estimates before expanding scope
+
+First compare room/zone classification against simple baselines on held-out
+sessions. Report confusion between zones, false motion events per hour, missed
+motion, detection delay, and the fraction of time with insufficient data.
+If testing continuous positions later, report distance errors and uncertainty.
+The runtime predictor must not receive the test's reference route or cue sequence.
+
+If observations do not distinguish zones reliably, investigate additional
+supported peer links on the ASUS and then repeater CSI access as separate
+experiments. Identify the current monitored peer before treating its link as a
+known path on the map. Device placement does not establish a working sensor.
+
+The map supplies reference geometry and labels. It does not by itself improve
+RF measurements or establish that a person's exact position can be recovered.
+Skeleton reconstruction remains a longer-term research objective. Triangulation,
+firmware changes, hardware purchases, and permanent background capture are outside
+this immediate proposal.
+
+## Open questions for the next iteration
+
+- What are the actual names of R01–R08, and which scan features need correction?
+- Where should the first fixed experiment points be placed?
+- Which physical device corresponds to the monitored peer MAC?
+- Is the estimated router height consistent with a physical measurement?
+- How will action timing be verified: confirmations, recorded cues, or optional
+  calibration video? What timing error is acceptable for the intended task?
+- What retention/export policy is needed before moving beyond bounded sessions?
+
+These are items to resolve during implementation and experiments, not reasons
+to postpone the initial map annotation workflow.

@@ -1,5 +1,8 @@
 # Collection and history on Raspberry Pi
 
+For a one-command PC workflow that records, exports, and opens a motion PNG,
+see [CAPTURE-PLOT.md](CAPTURE-PLOT.md). Direct Pi commands are below.
+
 Access: ssh pi@192.168.50.100. On the Pi:
 
 ```sh

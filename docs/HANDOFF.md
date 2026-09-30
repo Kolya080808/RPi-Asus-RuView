@@ -1,5 +1,21 @@
 # Project handoff
 
+## Update: September 30, 2026
+
+The user supplied a Polycam apartment scan and marked the main router and three
+repeaters. Plans, approximate coordinates, model assignments, and reported heights
+are saved under `maps/home/`. See [HOME-MAP.md](HOME-MAP.md) for confirmed facts
+and [NEXT-STEPS.md](NEXT-STEPS.md) for the proposed continuation.
+
+The agreed priority is a map for timed movement annotation, then aligned capture
+and replay through a panel and shared API. Triangulation has been set aside.
+The eventual aim is to estimate location without user hints and compare that
+estimate against separate reference labels. The panel/API and location model
+are not implemented. No new remote changes or captures were made in the map work.
+Repository documentation and code comments are maintained in English.
+
+## Existing sensing baseline
+
 The project aims to test whether the built-in CSI Monitor on an ASUS
 GT-AX11000 can serve as a Wi-Fi sensing source, with a Raspberry Pi Zero 2 W as a local
 collector and history server. The user's long-term requirement is to obtain

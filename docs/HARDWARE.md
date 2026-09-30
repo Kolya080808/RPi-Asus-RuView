@@ -1,5 +1,12 @@
 # Hardware and verified state
 
+Physical placement was documented from the user's map and description on
+September 30, 2026: GT-AX11000 in R08 on a cabinet at approximately 3 m;
+RP-AX56 in R07 and RP-AX58 in R02 at floor level near PCs; TP-Link in R02
+near a printer at approximately 1.40–1.50 m. See [HOME-MAP.md](HOME-MAP.md)
+and [device coordinates](../maps/home/devices.json). These are approximate
+placement observations, not new network or CSI capability checks.
+
 State recorded on September 29, 2026. Repeater diagnostics
 were performed through read-only SSH access; no settings were changed.
 

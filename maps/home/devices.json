@@ -1,0 +1,101 @@
+{
+  "source_image": "floorplan-furnished-routers.png",
+  "source_sha256": "b11bb184566c0e8212dd274d06b7553fa764a1ef2db79bf37a5ec62e3ab1f4cf",
+  "image_size_px": [
+    2400,
+    2400
+  ],
+  "coordinate_system": {
+    "x": "GLB x",
+    "y": "-GLB z",
+    "height": "GLB y",
+    "north": "unknown"
+  },
+  "map_glb_sha256": "d6dfbf0cd5c3c95052f687355033e1df22dad65498bffeea8e4f22d586e31e7e",
+  "placement_source": "User annotation: red ASUS repeaters, green router, purple TP-Link repeater.",
+  "devices": [
+    {
+      "id": "asus-router",
+      "model": "ASUS GT-AX11000",
+      "model_source": "existing hardware inventory; brand/role confirmed by user",
+      "annotation_color": "green",
+      "map_region": "R08",
+      "position_m": {
+        "x": 3.1,
+        "y": 0.1,
+        "height": 3.0
+      },
+      "source_pixel_center": [
+        1778.9,
+        1231.23
+      ],
+      "position_status": "Horizontal position approximated from user-drawn marker; height approximated from user report.",
+      "height_range_m": null,
+      "height_source": "User-reported approximate placement; antenna height not measured.",
+      "placement_notes": "On top of a cabinet, approximately 3 m above the floor."
+    },
+    {
+      "id": "asus-repeater-left",
+      "model": "ASUS RP-AX56",
+      "model_source": "User confirmed: R07 is AX56; R02 is AX58.",
+      "annotation_color": "red",
+      "map_region": "R07",
+      "position_m": {
+        "x": -1.28,
+        "y": -3.67,
+        "height": 0.0
+      },
+      "source_pixel_center": [
+        1024.51,
+        1879.57
+      ],
+      "position_status": "Horizontal position approximated from user-drawn marker; height approximated from user report.",
+      "height_range_m": null,
+      "height_source": "User-reported approximate placement; antenna height not measured.",
+      "placement_notes": "On the floor, powered through an extension strip and placed near a PC to accommodate a short cable. Height 0 m denotes floor placement, not a measured antenna height."
+    },
+    {
+      "id": "asus-repeater-bottom",
+      "model": "ASUS RP-AX58",
+      "model_source": "User confirmed: R07 is AX56; R02 is AX58.",
+      "annotation_color": "red",
+      "map_region": "R02",
+      "position_m": {
+        "x": -0.44,
+        "y": -4.36,
+        "height": 0.0
+      },
+      "source_pixel_center": [
+        1169.09,
+        1998.17
+      ],
+      "position_status": "Horizontal position approximated from user-drawn marker; height approximated from user report.",
+      "height_range_m": null,
+      "height_source": "User-reported approximate placement; antenna height not measured.",
+      "placement_notes": "On the floor, powered through an extension strip and placed near a PC to accommodate a short cable. Height 0 m denotes floor placement, not a measured antenna height."
+    },
+    {
+      "id": "tp-link-repeater",
+      "model": "TP-Link RE200 AC750",
+      "model_source": "existing hardware inventory; brand/role confirmed by user",
+      "annotation_color": "purple",
+      "map_region": "R02",
+      "position_m": {
+        "x": 3.78,
+        "y": -4.07,
+        "height": 1.45
+      },
+      "source_pixel_center": [
+        1896.6,
+        1949.22
+      ],
+      "position_status": "Horizontal position approximated from user-drawn marker; height approximated from user report.",
+      "height_range_m": [
+        1.4,
+        1.5
+      ],
+      "height_source": "User-reported approximate placement; antenna height not measured.",
+      "placement_notes": "Near the printer, approximately 1.40-1.50 m above the floor. Stored height is the midpoint of the reported range."
+    }
+  ]
+}

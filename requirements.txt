@@ -1,0 +1,7 @@
+# Local desktop tools: tested dependency versions.
+# The Pi collector and decoder use only the Python standard library.
+# The live window also requires Tkinter/Tk from your Python or OS installation.
+numpy==2.4.2
+scipy==1.17.1
+matplotlib==3.10.8
+paramiko==3.5.1
