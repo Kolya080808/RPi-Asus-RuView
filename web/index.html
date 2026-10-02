@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RuView Lab</title>
+  <style>
+    :root { color-scheme: dark; font: 15px system-ui, sans-serif; color: #e6edf3; }
+    body { max-width: 1180px; margin: 0 auto; padding: 18px; background: #0d1117; }
+    h1 { margin: 0 0 4px; color: #f0f6fc; } h2 { margin-top: 24px; color: #f0f6fc; }
+    h3 { color: #f0f6fc; } .muted { color: #9aa9b8; } .panel { background: #161b22; border: 1px solid #30363d;
+      border-radius: 10px; padding: 14px; margin-top: 14px; }
+    .layout { display: grid; grid-template-columns: minmax(320px, 1fr) minmax(280px, .75fr); gap: 16px; }
+    .map { position: relative; border: 1px solid #30363d; background: #fff; overflow: hidden; }
+    .map img { display: block; width: 100%; filter: invert(.88) hue-rotate(180deg) brightness(.82) contrast(1.08); }
+    .marker { position: absolute; transform: translate(-50%, -50%);
+      border: 2px solid white; border-radius: 50%; width: 15px; height: 15px; background: #16845b;
+      box-shadow: 0 1px 4px #000; cursor: pointer; } .marker.device { background: #e05d44; }
+    .map-tooltip { position: fixed; z-index: 10000; display: none; max-width: 280px;
+      padding: 9px 11px; border: 1px solid #484f58; border-radius: 7px;
+      background: #0d1117; color: #e6edf3; box-shadow: 0 5px 18px #0009;
+      pointer-events: none; line-height: 1.35; }
+    label { display: block; margin: 8px 0 4px; font-weight: 600; } input, select, button { font: inherit;
+      padding: 7px 9px; border: 1px solid #484f58; border-radius: 6px; } input, select { width: 100%;
+      box-sizing: border-box; color: #e6edf3; background: #0d1117; } button { cursor: pointer; background: #21262d;
+      color: #e6edf3; } button.primary { background: #238636; color: white; border-color: #238636; } button:disabled { opacity: .5; cursor: wait; }
+    .row { display: flex; gap: 8px; align-items: end; } .row > * { flex: 1; }
+    table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 7px 5px;
+      border-bottom: 1px solid #30363d; vertical-align: top; } code { font-size: .85em; color: #79c0ff; }
+    #status { min-height: 22px; margin-top: 8px; } .error { color: #ff7b72; } .ok { color: #56d364; }
+    @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>RuView Lab</h1>
+  <div class="muted">Local map and experiment metadata. CSI recording is disabled during the panel bootstrap phase.</div>
+  <div id="status"></div>
+  <div class="layout">
+    <section class="panel">
+      <h2>Apartment map</h2>
+      <div id="map" class="map"><img src="/maps/home/floorplan-furnished.png" alt="Apartment map"><div id="map-tooltip" class="map-tooltip"></div></div>
+      <p class="muted">Orange: documented devices. Green: saved experiment points. Click inside the plotted map area to prepare a new point.</p>
+      <p class="muted">Click the map to create an experiment point. Coordinates use the scan coordinate system.</p>
+      <form id="point-form">
+        <div class="row"><div><label for="point-label">Point name</label><input id="point-label" required placeholder="R08 stillness"></div>
+          <div><label for="point-region">Region</label><input id="point-region" placeholder="R08"></div></div>
+        <div class="row"><div><label for="point-x">x (m)</label><input id="point-x" type="number" step="any" required></div>
+          <div><label for="point-y">y (m)</label><input id="point-y" type="number" step="any" required></div></div>
+        <button class="primary" type="submit">Save point</button>
+      </form>
+      <h3>Saved points</h3><div id="points">Loading...</div>
+    </section>
+    <section>
+      <div class="panel"><h2>Recording</h2>
+        <p>Recording is intentionally disabled for now. The Pi must not fill its storage
+          before the retention, export, and cleanup policy is agreed.</p>
+      </div>
+      <div class="panel"><h2>Sessions</h2><div id="sessions">Loading...</div>
+        <h3>Add timed activity label</h3>
+        <label for="annotation-session">Session</label><select id="annotation-session"></select>
+        <div class="row"><div><label for="annotation-start">Start (s)</label><input id="annotation-start" type="number" min="0" step="0.1" value="0"></div>
+          <div><label for="annotation-end">End (s)</label><input id="annotation-end" type="number" min="0" step="0.1" placeholder="optional"></div></div>
+        <label for="annotation-activity">Activity</label>
+        <select id="annotation-activity"><option>still</option><option>arm movement</option><option>walking</option><option>empty room</option><option>uncertain</option></select>
+        <label for="annotation-point">Reference point (optional)</label>
+        <select id="annotation-point"><option value="">No point</option></select>
+        <p><button id="save-annotation">Save timed label</button></p>
+      </div>
+    </section>
+  </div>
+  <script>
+    const $ = id => document.getElementById(id);
+    let mapInfo, points = [];
+    function status(text, error=false) { $('status').textContent = text; $('status').className = error ? 'error' : 'ok'; }
+    async function api(url, options) {
+      const response = await fetch(url, options);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || response.statusText);
+      return data;
+    }
+    function mapPosition(x, y) {
+      const [lo, hi] = mapInfo.render.plot_bounds_m;
+      const plot = mapInfo.render.plot_rect;
+      const nx = (x-lo[0])/(hi[0]-lo[0]), ny = (hi[1]-y)/(hi[1]-lo[1]);
+      return { left: `${(plot.left + nx*(plot.right-plot.left))*100}%`,
+        top: `${(plot.top + ny*(plot.bottom-plot.top))*100}%` };
+    }
+    function renderMap() {
+      const map = $('map');
+      const tooltip = $('map-tooltip');
+      map.querySelectorAll('.marker').forEach(x => x.remove());
+      for (const device of mapInfo.devices) {
+        const marker = document.createElement('button'); marker.className = 'marker device'; marker.title = device.model;
+        if (device.source_pixel_center) {
+          marker.style.left = `${device.source_pixel_center[0] / mapInfo.render.image_size_px[0] * 100}%`;
+          marker.style.top = `${device.source_pixel_center[1] / mapInfo.render.image_size_px[1] * 100}%`;
+        } else {
+          Object.assign(marker.style, mapPosition(device.position_m.x, device.position_m.y));
+        }
+        marker.addEventListener('mouseenter', () => {
+          const height = device.height_range_m
+            ? `${device.height_range_m[0]}–${device.height_range_m[1]} m`
+            : `${device.position_m.height} m`;
+          tooltip.innerHTML = `<strong>${device.model}</strong><br>Region: ${device.map_region}` +
+            `<br>Height: ${height}<br>${device.placement_notes || ''}`;
+          tooltip.style.display = 'block';
+          const markerBox = marker.getBoundingClientRect();
+          const tooltipWidth = 300;
+          const left = Math.min(markerBox.right + 12, window.innerWidth - tooltipWidth - 12);
+          const top = Math.max(12, Math.min(markerBox.top - 12, window.innerHeight - 140));
+          tooltip.style.left = `${Math.max(12, left)}px`;
+          tooltip.style.top = `${top}px`;
+        });
+        marker.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+        marker.onclick = () => status(`${device.model}: ${device.position_m.x}, ${device.position_m.y} m`);
+        map.appendChild(marker);
+      }
+      for (const point of points) {
+        const marker = document.createElement('button'); marker.className = 'marker'; marker.title = point.label;
+        Object.assign(marker.style, mapPosition(point.x, point.y));
+        marker.onclick = () => { $('annotation-point').value = point.id; status(`Selected ${point.label}`); };
+        map.appendChild(marker);
+      }
+    }
+    function renderPoints() {
+      $('points').innerHTML = points.length ? '<table><tr><th>Name</th><th>Region</th><th>Coordinates</th></tr>' +
+        points.map(p => `<tr><td>${p.label}<br><code>${p.id}</code></td><td>${p.region}</td><td>${p.x.toFixed(2)}, ${p.y.toFixed(2)}</td></tr>`).join('') +
+        '</table>' : '<span class="muted">No experiment points yet.</span>';
+      $('annotation-point').innerHTML = '<option value="">No point selected</option>' +
+        points.map(p => `<option value="${p.id}">${p.label} (${p.region})</option>`).join('');
+    }
+    async function load() {
+      [mapInfo, {points}] = await Promise.all([api('/api/map'), api('/api/points')]);
+      renderPoints(); renderMap(); await loadSessions();
+    }
+    async function loadSessions() {
+      const data = await api('/api/sessions');
+      $('annotation-session').innerHTML = data.sessions.map(s => `<option value="${s.id}">${s.id.slice(0,8)} — ${s.status}</option>`).join('');
+      $('sessions').innerHTML = data.sessions.length ? '<table><tr><th>Started</th><th>Status</th><th>Records</th></tr>' +
+        data.sessions.map(s => `<tr><td><code>${s.id.slice(0,8)}</code><br>${new Date(s.started).toLocaleString()}</td><td>${s.status}</td><td>${s.records}</td></tr>`).join('') +
+        '</table>' : '<span class="muted">No sessions yet.</span>';
+    }
+    $('map').onclick = event => {
+      if (event.target.tagName !== 'IMG') return;
+      const rect = event.currentTarget.getBoundingClientRect(), plot = mapInfo.render.plot_rect;
+      const px = (event.clientX-rect.left)/rect.width, py = (event.clientY-rect.top)/rect.height;
+      const nx = (px-plot.left)/(plot.right-plot.left), ny = (py-plot.top)/(plot.bottom-plot.top);
+      const [lo, hi] = mapInfo.render.plot_bounds_m;
+      if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return;
+      $('point-x').value = (lo[0] + nx*(hi[0]-lo[0])).toFixed(3);
+      $('point-y').value = (hi[1] - ny*(hi[1]-lo[1])).toFixed(3);
+      status('Map position copied into the point form.');
+    };
+    $('point-form').onsubmit = async event => {
+      event.preventDefault();
+      try {
+        await api('/api/points', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+          label:$('point-label').value, region:$('point-region').value || 'unknown',
+          x:Number($('point-x').value), y:Number($('point-y').value)})});
+        ({points} = await api('/api/points')); renderPoints(); renderMap(); status('Point saved.');
+      } catch (e) { status(e.message, true); }
+    };
+    $('save-annotation').onclick = async () => {
+      const session = $('annotation-session').value;
+      if (!session) { status('Select a session first.', true); return; }
+      try {
+        const end = $('annotation-end').value;
+        await api(`/api/sessions/${session}/annotations`, {method:'POST',
+          headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+            start_s:Number($('annotation-start').value), end_s:end === '' ? null : Number(end),
+            activity:$('annotation-activity').value, point_id:$('annotation-point').value || null})});
+        status('Timed label saved.');
+      } catch (e) { status(e.message, true); }
+    };
+    load().catch(e => status(e.message, true));
+  </script>
+</body>
+</html>

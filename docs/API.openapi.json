@@ -1,0 +1,37 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "RuView Lab API",
+    "version": "0.1.0",
+    "description": "Local map and experiment metadata API. Capture control is disabled during bootstrap."
+  },
+  "servers": [{"url": "http://raspberrypi.local"}],
+  "paths": {
+    "/api/health": {"get": {"responses": {"200": {"description": "Service status"}}}},
+    "/api/map": {"get": {"responses": {"200": {"description": "Map geometry and devices"}}}},
+    "/api/points": {
+      "get": {"responses": {"200": {"description": "Experiment points"}}},
+      "post": {"responses": {"201": {"description": "Point saved"}, "400": {"description": "Invalid point"}}}
+    },
+    "/api/routes": {
+      "get": {"responses": {"200": {"description": "Routes"}}},
+      "post": {"responses": {"201": {"description": "Route saved"}, "400": {"description": "Invalid route"}}}
+    },
+    "/api/sessions": {"get": {"responses": {"200": {"description": "Existing sessions"}}}},
+    "/api/sessions/{id}": {
+      "get": {
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Session and annotations"}, "404": {"description": "Not found"}}
+      }
+    },
+    "/api/sessions/{id}/annotations": {
+      "post": {
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"201": {"description": "Annotation saved"}, "400": {"description": "Invalid annotation"}}
+      }
+    },
+    "/api/captures": {
+      "post": {"responses": {"501": {"description": "Disabled until retention policy is defined"}}}
+    }
+  }
+}

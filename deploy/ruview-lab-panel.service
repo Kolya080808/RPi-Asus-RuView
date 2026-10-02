@@ -1,0 +1,21 @@
+[Unit]
+Description=RuView Lab local panel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/ruview-lab
+ExecStart=/usr/bin/python3 /home/pi/ruview-lab/web_panel.py --host 0.0.0.0 --port 80
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/home/pi/ruview-lab
+
+[Install]
+WantedBy=multi-user.target

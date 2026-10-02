@@ -28,6 +28,14 @@ indicates motion across the entire scene. It does not produce a skeleton, body p
 There are no video recordings or computed skeletons yet. History is currently accessed through history
 and export; a web player has not yet been implemented.
 
+The local panel is deployed separately with `scripts/deploy_panel.py`. It binds
+to port 80 on the Pi and uses the same SQLite history as `recorder.py`. The
+bootstrap panel supports map points, routes, read-only session history, and
+annotations, but deliberately does **not** start captures. This prevents the
+Pi from filling its storage before retention, export, and cleanup are defined.
+The shared client contract is in [API.md](API.md). The service is intended for
+the trusted home LAN only and must not be port-forwarded to the Internet.
+
 Retention duration is undecided: there is no automatic deletion. Once the
 database reaches 256 MiB, new captures are blocked until manual archival.
 Text diagnostic logs increase storage size; long-term storage requirements
