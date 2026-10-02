@@ -1,7 +1,9 @@
 # Requirements and current limitations
 
 User requirements: a human skeleton reflecting actual movement, RuView features,
-and a script to roll back all device changes. The Pi may serve only as a web server.
+continuous apartment observation as a camera replacement, approximately two to
+three weeks of retained recordings, and a script to roll back all device
+changes. The Pi may serve as a web server and low-power sensing/recording host.
 The Pi is currently in the bedroom with two repeaters; it can be relocated.
 
 Do not treat an animated template, simulation, or camera output as evidence of
@@ -9,7 +11,9 @@ Wi-Fi pose reconstruction. Validation requires matched CSI measurements and refe
 movements; also evaluate an empty room and a disconnected source.
 A camera is allowed for calibration/training: a webcam and a phone camera are available.
 Preference: run everything on the Pi Zero 2 W; an always-on PC is undesirable.
-Recording and history playback are required. Retention duration and video recording are undecided.
+Recording and history playback are required. The intended retention window is
+approximately two to three weeks. Cameras are not the final sensing modality;
+they may be used only for calibration, training, or validation labels.
 
 Confirmed: the stock GT-AX11000 csimon provides records, 16 in 8 seconds,
 with no ACK failures/overflows. Working hypothesis: a 96-byte header + 224 bytes of I/Q.

@@ -10,9 +10,20 @@ and [NEXT-STEPS.md](NEXT-STEPS.md) for the proposed continuation.
 The agreed priority is a map for timed movement annotation, then aligned capture
 and replay through a panel and shared API. Triangulation has been set aside.
 The eventual aim is to estimate location without user hints and compare that
-estimate against separate reference labels. The panel/API and location model
-are not implemented. No new remote changes or captures were made in the map work.
+estimate against separate reference labels. A metadata-only panel and shared
+HTTP API are now implemented and deployed on the Pi; measurement/replay
+endpoints and the location model are not implemented. Capture control is
+disabled until retention and cleanup are defined.
+The panel also has dark styling, correctly aligned device markers based on the
+source annotation pixels, and viewport-level hover details for network devices.
 Repository documentation and code comments are maintained in English.
+
+The user has clarified the product direction: the system is intended to replace
+apartment cameras with continuous Wi-Fi observation, retain approximately two
+to three weeks of recordings, and eventually show a human skeleton and the
+person's actions. The immediate sensing priority is to investigate usable CSI
+access on the ASUS repeaters; the dataset and zone-evaluation tasks depend on
+that result.
 
 ## Existing sensing baseline
 
