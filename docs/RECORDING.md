@@ -15,7 +15,8 @@ python3 /home/pi/ruview-lab/motion.py SESSION_ID
 The collector connects directly from the Pi to the ASUS using a dedicated key.
 A PC is not needed to acquire or save data. Python uses only the standard library.
 Operation is limited to a single session of 5–60 seconds. After the session, the monitor
-is disabled and the temporary peer entry is removed. There is no service or autostart.
+is disabled and the temporary peer entry is removed. Capture has no service or
+autostart. The separate web panel is an existing enabled service and does not capture.
 
 History: /home/pi/ruview-lab/history.sqlite3. It contains raw records, provisional
 decoding results, session start/end times, parameters,
@@ -25,13 +26,17 @@ After capture, `recorder.py` automatically runs `motion.py`: the first 8 seconds
 serve as a baseline, after which a sustained increase in normalized amplitude change
 is recorded as an event in the `motion_samples` and `motion_events` tables. This
 indicates motion across the entire scene. It does not produce a skeleton, body parts, or heart rate.
-There are no video recordings or computed skeletons yet. History is currently accessed through history
-and export; a web player has not yet been implemented.
+There are no video recordings or computed skeletons yet. History is accessible
+through the CLI and the local [panel](PANEL.md), which provides replay, raw export
+and reference activity labels. Recording from the panel remains disabled.
 
-Retention duration is undecided: there is no automatic deletion. Once the
-database reaches 256 MiB, new captures are blocked until manual archival.
-Text diagnostic logs increase storage size; long-term storage requirements
-cannot be estimated from the 320-byte useful block alone.
+The requirement is to retain all diagnostic logs for several weeks and then delete
+them. The exact number of weeks and automatic cleanup policy are not implemented yet;
+no logs are automatically deleted today. The 256 MiB database limit blocks new
+captures until manual archival. Log retention must include diagnostics stored in
+session history as well as capture log files, without deleting raw CSI records as a
+side effect. Text diagnostic logs increase storage use; long-term requirements cannot
+be estimated from the 320-byte useful block alone.
 
 Verified 2026-09-29: session 40ddd901-0f56-44d4-bebd-0c74c4d6eb04,
 10 seconds, 100 ms, 98 records. All are 2048 bytes. The 96:320 region updates

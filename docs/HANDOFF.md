@@ -1,5 +1,30 @@
 # Project handoff
 
+## Update: October 4, 2026 — panel iteration
+
+Read-only Pi inspection found an existing bootstrap panel on port 80, served by
+the enabled `ruview-lab-panel.service`, which had not been synchronized to this
+checkout or its documentation. There were seven sessions, 1,881 raw records,
+and no saved points/routes/activity labels. Sources were recovered into ignored
+local backups before work. Existing user edits in this checkout were preserved.
+
+The new local panel implementation is documented in [PANEL.md](PANEL.md):
+reference map/points/routes, device inventory, session filtering, causal signal
+replay, timed reference labels and raw export. No new sensing capability is
+claimed; capture controls remain disabled. Database layouts and raw records are
+preserved. Original capture map layouts are unknown. Deployment and rollback
+use the existing service with the exact scope in [ROLLBACK.md](ROLLBACK.md).
+
+Pi access is available on user request; see AGENTS.md. Use the existing SSH key
+and pinned host key. No password was added to the repository.
+
+Deployed and verified on the Pi on 2026-10-04 (operation
+`20261004T201213Z-29ab70`). All seven target hashes, service state, database
+counts/integrity and raw-record digest passed verification. Twenty local tests
+passed; desktop/mobile UI workflows passed on a separate history copy, and
+read-only replay of every Pi session passed. No test labels were added to the
+Pi. Exact checks and remaining limitations are in [PANEL.md](PANEL.md).
+
 ## Update: September 30, 2026
 
 The user supplied a Polycam apartment scan and marked the main router and three
@@ -7,19 +32,22 @@ repeaters. Plans, approximate coordinates, model assignments, and reported heigh
 are saved under `maps/home/`. See [HOME-MAP.md](HOME-MAP.md) for confirmed facts
 and [NEXT-STEPS.md](NEXT-STEPS.md) for the proposed continuation.
 
-The agreed priority is a map for timed movement annotation, then aligned capture
-and replay through a panel and shared API. Triangulation has been set aside.
-The eventual aim is to estimate location without user hints and compare that
-estimate against separate reference labels. The panel/API and location model
-are not implemented. No new remote changes or captures were made in the map work.
+The first usable sensing version should estimate the position of a moving object;
+the ultimate capability priority is a three-dimensional human skeleton. The map,
+timed movement annotation, and aligned capture/replay are development steps toward
+those capabilities. Triangulation has been set aside. Position estimates must be
+compared against separate reference labels. The panel/API and location model are not
+implemented. No new remote changes or captures were made in the map work.
 Repository documentation and code comments are maintained in English.
 
 ## Existing sensing baseline
 
-The project aims to test whether the built-in CSI Monitor on an ASUS
-GT-AX11000 can serve as a Wi-Fi sensing source, with a Raspberry Pi Zero 2 W as a local
-collector and history server. The user's long-term requirement is to obtain
-a human skeleton and RuView features with minimal power consumption.
+The project's end goal is to replace a conventional surveillance system with one
+that observes the environment through Wi-Fi radio signals, using ASUS routers and
+repeaters. The current phase tests whether the built-in CSI Monitor on an ASUS
+GT-AX11000 can serve as a sensing source, with a Raspberry Pi Zero 2 W as a local
+collector and history server. A human skeleton and RuView features with minimal power
+consumption are desired capabilities, not yet validated results.
 
 As of September 29, 2026, the following facts have been confirmed:
 

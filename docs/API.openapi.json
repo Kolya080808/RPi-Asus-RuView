@@ -1,0 +1,553 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "RuView local workspace API",
+    "version": "2.0.0",
+    "description": "Trusted LAN panel. Points and labels are references, not inferred positions. Writes use X-Panel-Token from /api/health and same-origin JSON. Historical map_at_capture is null. Capture is bounded and manually controlled from the panel."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Panel state, storage counts and ephemeral write_token; source is not monitored",
+        "responses": {
+          "200": {
+            "description": "Panel state, storage counts and ephemeral write_token; source is not monitored"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "413": {
+            "description": "Session exceeds 10000 records"
+          },
+          "422": {
+            "description": "Timeline or interval unsupported"
+          },
+          "500": {
+            "description": "Server failure; inspect service journal"
+          }
+        }
+      }
+    },
+    "/api/map": {
+      "get": {
+        "summary": "Reference geometry, documented devices and hashes",
+        "responses": {
+          "200": {
+            "description": "Reference geometry, documented devices and hashes"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "413": {
+            "description": "Session exceeds 10000 records"
+          },
+          "422": {
+            "description": "Timeline or interval unsupported"
+          },
+          "500": {
+            "description": "Server failure; inspect service journal"
+          }
+        }
+      }
+    },
+    "/api/points": {
+      "get": {
+        "summary": "Saved reference points",
+        "responses": {
+          "200": {
+            "description": "Saved reference points"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "413": {
+            "description": "Session exceeds 10000 records"
+          },
+          "422": {
+            "description": "Timeline or interval unsupported"
+          },
+          "500": {
+            "description": "Server failure; inspect service journal"
+          }
+        }
+      },
+      "post": {
+        "summary": "Append point",
+        "security": [
+          {
+            "PanelToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Point"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved identifier"
+          },
+          "400": {
+            "description": "Invalid values or reference"
+          },
+          "403": {
+            "description": "Token missing/expired or foreign origin"
+          },
+          "404": {
+            "description": "Session not found"
+          },
+          "409": {
+            "description": "Identifier exists"
+          },
+          "413": {
+            "description": "Body or record limit exceeded"
+          },
+          "415": {
+            "description": "JSON required"
+          }
+        }
+      }
+    },
+    "/api/routes": {
+      "get": {
+        "summary": "Ordered reference routes and point snapshots",
+        "responses": {
+          "200": {
+            "description": "Ordered reference routes and point snapshots"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "413": {
+            "description": "Session exceeds 10000 records"
+          },
+          "422": {
+            "description": "Timeline or interval unsupported"
+          },
+          "500": {
+            "description": "Server failure; inspect service journal"
+          }
+        }
+      },
+      "post": {
+        "summary": "Append route",
+        "security": [
+          {
+            "PanelToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Route"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved identifier"
+          },
+          "400": {
+            "description": "Invalid values or reference"
+          },
+          "403": {
+            "description": "Token missing/expired or foreign origin"
+          },
+          "404": {
+            "description": "Session not found"
+          },
+          "409": {
+            "description": "Identifier exists"
+          },
+          "413": {
+            "description": "Body or record limit exceeded"
+          },
+          "415": {
+            "description": "JSON required"
+          }
+        }
+      }
+    },
+    "/api/sessions": {
+      "get": {
+        "summary": "History page, 100 sessions plus total/offset",
+        "responses": {
+          "200": {
+            "description": "History page, 100 sessions plus total/offset"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "413": {
+            "description": "Session exceeds 10000 records"
+          },
+          "422": {
+            "description": "Timeline or interval unsupported"
+          },
+          "500": {
+            "description": "Server failure; inspect service journal"
+          }
+        },
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ]
+      }
+    },
+    "/api/sessions/{id}": {
+      "get": {
+        "summary": "Session metadata and labels; original map unavailable",
+        "responses": {
+          "200": {
+            "description": "Session metadata and labels; original map unavailable"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "413": {
+            "description": "Session exceeds 10000 records"
+          },
+          "422": {
+            "description": "Timeline or interval unsupported"
+          },
+          "500": {
+            "description": "Server failure; inspect service journal"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/sessions/{id}/measurements": {
+      "get": {
+        "summary": "Valid/invalid samples, amplitude metrics, cadence and gap summary",
+        "responses": {
+          "200": {
+            "description": "Valid/invalid samples, amplitude metrics, cadence and gap summary"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "413": {
+            "description": "Session exceeds 10000 records"
+          },
+          "422": {
+            "description": "Timeline or interval unsupported"
+          },
+          "500": {
+            "description": "Server failure; inspect service journal"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/sessions/{id}/export": {
+      "get": {
+        "summary": "Download raw hex records, metadata and annotation provenance",
+        "responses": {
+          "200": {
+            "description": "Download raw hex records, metadata and annotation provenance"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "413": {
+            "description": "Session exceeds 10000 records"
+          },
+          "422": {
+            "description": "Timeline or interval unsupported"
+          },
+          "500": {
+            "description": "Server failure; inspect service journal"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/sessions/{id}/annotations": {
+      "post": {
+        "summary": "Append annotation",
+        "security": [
+          {
+            "PanelToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Annotation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved identifier"
+          },
+          "400": {
+            "description": "Invalid values or reference"
+          },
+          "403": {
+            "description": "Token missing/expired or foreign origin"
+          },
+          "404": {
+            "description": "Session not found"
+          },
+          "409": {
+            "description": "Identifier exists"
+          },
+          "413": {
+            "description": "Body or record limit exceeded"
+          },
+          "415": {
+            "description": "JSON required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/captures": {
+      "post": {
+        "summary": "Start a bounded manual CSI recording on the Pi",
+        "security": [
+          {
+            "PanelToken": []
+          }
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CaptureRequest"}}}},
+        "responses": {"201": {"description": "New session identifier"}, "400": {"description": "Invalid duration or interval"}, "403": {"description": "Token missing/expired or foreign origin"}, "409": {"description": "Another capture is active"}, "507": {"description": "History storage limit reached"}}
+      }
+    },
+    "/api/captures/{id}": {
+      "get": {"summary": "Live status and replay samples for an active or finished capture", "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}], "responses": {"200": {"description": "Capture status and samples"}, "404": {"description": "Session not found"}}}
+    },
+    "/api/captures/{id}/{action}": {
+      "post": {"summary": "Pause, resume or stop a manual capture", "security": [{"PanelToken": []}], "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "action", "in": "path", "required": true, "schema": {"type": "string", "enum": ["pause", "resume", "stop"]}}], "responses": {"200": {"description": "Action accepted"}, "403": {"description": "Token missing/expired or foreign origin"}, "409": {"description": "Action is not valid for current capture state"}}}
+    },
+    "/api/sessions/{id}/delete": {
+      "post": {"summary": "Delete a session, its raw records and annotations", "security": [{"PanelToken": []}], "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}], "responses": {"201": {"description": "Session deleted"}, "403": {"description": "Token missing/expired or foreign origin"}, "404": {"description": "Session not found"}, "409": {"description": "Active capture must be stopped first"}}}
+    }
+  },
+  "components": {
+    "schemas": {
+      "CaptureRequest": {
+        "type": "object",
+        "properties": {
+          "seconds": {"type": "integer", "minimum": 5, "maximum": 1800, "default": 60},
+          "interval_ms": {"type": "integer", "enum": [100, 200, 500], "default": 100}
+        }
+      },
+      "Point": {
+        "type": "object",
+        "required": [
+          "label",
+          "x",
+          "y"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "region": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "R01",
+              "R02",
+              "R03",
+              "R04",
+              "R05",
+              "R06",
+              "R07",
+              "R08"
+            ]
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      },
+      "Route": {
+        "type": "object",
+        "required": [
+          "label",
+          "points"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "points": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 64,
+            "items": {
+              "type": "string"
+            }
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "Annotation": {
+        "type": "object",
+        "required": [
+          "start_s",
+          "end_s",
+          "activity"
+        ],
+        "properties": {
+          "start_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "activity": {
+            "type": "string",
+            "enum": [
+              "still",
+              "arm movement",
+              "walking",
+              "empty room",
+              "uncertain"
+            ]
+          },
+          "point_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "planned"
+            ],
+            "default": "observed"
+          },
+          "timing_uncertainty_s": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 3600
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "PanelToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Panel-Token",
+        "description": "Ephemeral cross-origin write protection; not user authentication."
+      }
+    }
+  }
+}

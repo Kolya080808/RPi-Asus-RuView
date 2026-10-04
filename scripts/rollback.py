@@ -9,6 +9,7 @@ import base64
 import getpass
 import hashlib
 import json
+import logging
 import re
 import shlex
 from pathlib import Path
@@ -118,6 +119,8 @@ def pi(apply):
             deployed = manifest()
             if deployed:
                 processes = run(c, 'ps -eo args')
+                if re.search(r'^.*python3 /home/pi/ruview-lab/web_panel.py', processes, re.M):
+                    raise RuntimeError('Panel is using collector files. Use --panel-only for panel updates; full lab removal requires a separate service-removal plan.')
                 if re.search(r'^python3 /home/pi/ruview-lab/recorder.py capture', processes, re.M):
                     raise RuntimeError('Bounded capture is active; wait up to 60 seconds and retry.')
                 for item in deployed['pi_files']:
@@ -165,7 +168,14 @@ def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--check', action='store_true')
     mode.add_argument('--apply', action='store_true')
+    parser.add_argument('--panel-only', action='store_true',
+                        help='Restore the last panel update; preserve router access and all history')
     args = parser.parse_args()
+    if args.panel_only:
+        from deploy_panel import rollback_panel
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s %(message)s')
+        rollback_panel(args.apply)
+        return
     print('APPLY rollback' if args.apply else 'READ-ONLY rollback inspection')
     failures = []
     for name, action in [('ASUS', router), ('Pi', pi)]:

@@ -1,7 +1,9 @@
-# Next steps: map, timed annotations, and CSI replay
+# Next steps: moving-object localization, map, and CSI replay
 
-Draft for discussion, recorded 2026-09-30. The map-first direction is agreed;
-the detailed implementation below is proposed, not already delivered.
+Updated 2026-10-04 after inspecting the Pi. The map-first direction is agreed.
+The first usable sensing version must estimate the position of a moving object; a
+three-dimensional human skeleton is the ultimate capability priority. The detailed
+implementation below is proposed, not already delivered.
 
 ## Current checkpoint
 
@@ -9,12 +11,52 @@ the detailed implementation below is proposed, not already delivered.
 - The collector supports bounded 5–60 second sessions on the documented Pi setup.
 - The decoder handles the observed ASUS profile; motion was demonstrated in a
   limited experiment. General motion accuracy and location inference are unverified.
-- There is no map editor, web API, live panel, timed route annotation, or trained
-  location model yet. A new session must not inherit earlier experiment labels.
+- The Pi had a bootstrap panel and API absent from the local checkout. The new
+  [panel iteration](PANEL.md) adds a responsive map/reference workspace, ordered
+  routes, session library, real-signal replay/export, timed activity labels,
+  and manually controlled bounded capture with live CSI polling. Geometry
+  editing, timed route acquisition and a trained location model are not
+  implemented. Capture is still manual; there is no always-on recording.
+  A new session must not inherit earlier experiment labels.
 
-## First deliverable
+## Immediate follow-up after panel review
 
-A local panel where the user can select a point on the apartment map, record a
+1. Collect user feedback on the map, layout, reference-point and replay workflows.
+2. Add reference/annotation correction with revision history and actual map
+   snapshots; current hashes identify sources but historical capture layouts
+   remain unknown. Confirm room names and a physical map length.
+3. Agree the exact log retention period and cleanup/export policy, then complete
+   the bounded collector/timing work below before enabling recording in the panel.
+4. Continue controlled labeled experiments and evaluate localization independently.
+5. After CSI access from at least two repeaters is demonstrated, add coordinated
+   collection: start either source independently or both in one session, preserve
+   per-source receive/device times and source identity, and show synchronized
+   signal traces side by side. The panel should support one graph, several CSI
+   graphs, all available graphs, and a map-only view of reference/predicted points.
+   This is the prerequisite experiment for understanding whether triangulation
+   and a point on the map are feasible; device placement alone is not evidence
+   of triangulable paths.
+6. Add bounded 30-minute recording sessions with a real-time CSI view. Keep the
+   live trace and storage segmented into inspectable 30-minute windows, retain
+   raw records, gaps and source availability, and allow later replay of each
+   window with CSI-only, map-only, or combined views. A future live map may show
+   a moving-object estimate only after that estimate is validated against
+   separately recorded reference points; a quiet graph must not be treated as an
+   empty room.
+7. Define and implement automatic cleanup for the Pi history and diagnostics:
+   choose the retention period, show the projected space that will be reclaimed,
+   support export/archive before deletion, never delete an active session, and
+   keep the cleanup auditable and reversible where possible. Manual deletion is
+   already available in the panel; automatic cleanup must not remove raw CSI
+   silently or use the database size limit as its only policy.
+
+The remaining sections are the broader sensing roadmap, not a claim that all
+recording, synchronization and localization requirements are delivered.
+
+## First usable sensing deliverable
+
+A position estimate for a moving object over time, evaluated against independently
+recorded reference positions. A local panel should let the user select a point on the apartment map, record a
 short experiment, attach timed activity labels, and replay that same session
 with the map and CSI changes aligned. A first experiment can use one fixed
 position with alternating stillness and arm movement; routes follow once the
@@ -52,7 +94,11 @@ preserves usable records, and a disconnected source is shown as unavailable.
 
 ### 3. Connect the panel and API
 
-The panel and scripts should use the same API. Proposed operations:
+The panel and scripts should use the same API. The current panel already exposes
+the first read/write API version (`/api/map`, `/api/points`, `/api/routes`,
+`/api/sessions`, `/api/sessions/{id}/measurements`, annotations, raw export,
+manual capture control and session deletion). Automatic cleanup and retention
+policy remain to be defined. Proposed operations:
 
 | Resource | Operations |
 |---|---|
@@ -112,9 +158,11 @@ known path on the map. Device placement does not establish a working sensor.
 
 The map supplies reference geometry and labels. It does not by itself improve
 RF measurements or establish that a person's exact position can be recovered.
-Skeleton reconstruction remains a longer-term research objective. Triangulation,
-firmware changes, hardware purchases, and permanent background capture are outside
-this immediate proposal.
+Three-dimensional skeleton reconstruction is the ultimate capability priority and
+depends on first validating sensing and moving-object localization. Coordinated
+multi-repeater collection, synchronized multi-graph replay, triangulation, firmware
+changes, hardware purchases, and permanent background capture are later stages;
+the 30-minute bounded workflow must be validated before any always-on mode.
 
 ## Open questions for the next iteration
 
@@ -124,7 +172,8 @@ this immediate proposal.
 - Is the estimated router height consistent with a physical measurement?
 - How will action timing be verified: confirmations, recorded cues, or optional
   calibration video? What timing error is acceptable for the intended task?
-- What retention/export policy is needed before moving beyond bounded sessions?
+- What exact retention period within the several-week log-retention requirement and
+  what cleanup/export policy should be implemented before moving beyond bounded sessions?
 
 These are items to resolve during implementation and experiments, not reasons
 to postpone the initial map annotation workflow.

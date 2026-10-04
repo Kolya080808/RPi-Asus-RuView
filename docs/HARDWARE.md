@@ -1,5 +1,10 @@
 # Hardware and verified state
 
+On 2026-10-04, SSH access to the Pi was verified using the existing lab key.
+An enabled `ruview-lab-panel.service` was already serving a bootstrap interface
+on port 80. The panel update preserves that configuration; see [PANEL.md](PANEL.md).
+No new router or repeater capability checks were performed in this UI task.
+
 Physical placement was documented from the user's map and description on
 September 30, 2026: GT-AX11000 in R08 on a cabinet at approximately 3 m;
 RP-AX56 in R07 and RP-AX58 in R02 at floor level near PCs; TP-Link in R02

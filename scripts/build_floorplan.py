@@ -110,9 +110,26 @@ def main():
         a,b,c = top[:,0],top[:,1],top[:,2]
         area = abs((b[:,0]-a[:,0])*(c[:,1]-a[:,1])-(b[:,1]-a[:,1])*(c[:,0]-a[:,0]))/2
         centroid = np.average(top.mean(axis=1),axis=0,weights=area)
+        # Polycam captured a curved boundary for R01 although the 3D room is
+        # rectangular. Use its bounding rectangle on the experiment map.
+        if o['name'] in ('Floor_Other_3', 'Floor_Other_1', 'Floor_Bedroom_1'):
+            lo_room, hi_room = project(o['vertices']).min(axis=0), project(o['vertices']).max(axis=0)
+            # The long curved scan seams are shared boundaries, not room
+            # outlines. Keep adjacent rooms on a common straight seam.
+            if o['name'] == 'Floor_Other_1':
+                hi_room[0] = -1.73986
+            if o['name'] == 'Floor_Bedroom_1':
+                lo_room[0], hi_room[0] = -4.66, 3.23832
+            top = np.array([[lo_room, [hi_room[0], lo_room[1]], hi_room,
+                             [lo_room[0], hi_room[1]]]], dtype=float)
+            centroid = top[0].mean(axis=0)
+            area = np.array([(hi_room[0]-lo_room[0])*(hi_room[1]-lo_room[1])])
+            correction = 'axis-aligned rectangular footprint; curved Polycam boundary treated as scan artifact'
+        else:
+            correction = None
         rooms.append({'id':f'R{index:02}', 'source_name':o['name'],
                       'label_position_m':centroid.tolist(), 'scan_area_m2':float(area.sum()),
-                      'floor_triangles_m':top.round(5).tolist()})
+                      'floor_triangles_m':top.round(5).tolist(), **({'geometry_correction': correction} if correction else {})})
     metadata = {'source_archive':'3dmodelhome.zip','source_member':member,'glb_sha256':digest,
                 'units':'meters (GLB scale; not independently verified)',
                 'coordinate_system':{'x':'GLB x','y':'-GLB z','height':'GLB y','north':'unknown'},

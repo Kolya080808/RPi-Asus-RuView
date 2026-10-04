@@ -1,5 +1,55 @@
 # Experiment rollback
 
+## Panel update (2026-10-04)
+
+The panel and an enabled `ruview-lab-panel.service` were discovered already
+running on the Pi. The update preserves that service configuration and all
+recordings. It does not remove the earlier bootstrap installation.
+
+Use the narrow panel rollback, not the original whole-lab rollback:
+
+```powershell
+python scripts/rollback.py --panel-only --check
+python scripts/rollback.py --panel-only --apply
+```
+
+`scripts/deploy_panel.py --prepare` records the nine exact target paths, original
+bytes/modes/hashes, replacement hashes, service unit hash/enablement/active state,
+SQLite counts/integrity and a raw-record digest in `deployment.json.panel_updates`.
+Backups live in ignored `recordings/panel-deploy-OPERATION_ID/`. Keep both the
+manifest and these local backups; do not commit them. Preparation changes no
+remote files. Run the rollback check before applying the prepared deployment.
+
+Files relative to `/home/pi/ruview-lab`: `web_panel.py`, `panel_signal.py`,
+`live_signal.py`, `web/index.html`, `web/app.css`, `web/app.js`,
+`docs/API.openapi.json`. Uploads use tracked sibling `.panel-upload` files and
+atomic rename. Only the known service is stopped/restarted. The service unit,
+enablement, collector, router credentials, maps, and router settings are unchanged.
+
+Rollback checks every target and backup before any modification. It rejects
+unrecognized content, changed service settings, simultaneous captures and
+unowned panel processes. It restores replaced files with original permissions
+and removes only the new manifest-listed files with matching hashes. It supports
+a mix of original and fully uploaded files after an interrupted deployment.
+An unknown or partially uploaded staging file requires inspection; it is not
+silently deleted. Errors stop the operation with a traceback. If an update
+fails after stopping the service, inspect with `--panel-only --check` and then
+apply the narrow rollback; do not blindly restart mixed files.
+
+The database recovery copy is taken after stopping the panel. Automatic rollback
+never restores this copy: it preserves any subsequently added points, routes,
+labels and raw recordings. The restored bootstrap can read the unchanged schema,
+but may display v2 provenance envelopes as plain notes. Source/device hashes are
+references, not a historical geometry archive. Python bytecode caches may remain
+as harmless generated artifacts; no recursive cleanup is performed.
+
+The old full-lab command is not a panel-uninstall command and refuses Pi file
+removal while the panel is running. The historical notes below describe the
+earlier collector-only installation; their "no service" statement predates the
+discovered bootstrap. See [PANEL.md](PANEL.md) for operation and limitations.
+
+## Earlier collector-only rollback
+
 The direct-PC live viewer (`scripts/live_motion.py`) installs no remote files
 and does not change persistent settings. Its temporary CSI peer and owned
 collector are cleaned up on Stop or bounded completion, followed by a read-only

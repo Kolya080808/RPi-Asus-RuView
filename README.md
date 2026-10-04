@@ -1,8 +1,13 @@
-# ASUS CSI sensing lab
+# ASUS Wi-Fi radio sensing
 
-An experimental system for collecting Channel State Information from an ASUS GT-AX11000
-and storing data on a Raspberry Pi Zero 2 W. This repository documents the starting
-point, captures, decoder, motion detector, and project limitations.
+The goal is to replace a conventional surveillance system with one that observes the
+environment through Wi-Fi radio signals, using ASUS routers and repeaters. This
+repository contains the current prototype and research: collecting Channel State
+Information (CSI) from an ASUS GT-AX11000, storing it on a Raspberry Pi Zero 2 W,
+decoding captures, and testing motion and position-related signal changes. These are
+development steps toward the replacement system, not the project's end goal.
+The ultimate capability priority is a three-dimensional human skeleton; the first
+usable version should at least estimate the position of a moving object.
 
 ## Current results
 
@@ -24,6 +29,10 @@ Device versions and capabilities are documented in
 [github.com/ruvnet/RuView](https://github.com/ruvnet/RuView).
 
 ## Contents
+
+- `src/web_panel.py` and `web/` — local Pi map, manual bounded CSI capture,
+  live/replay session controls and annotation workspace; see
+  [docs/PANEL.md](docs/PANEL.md).
 
 - `maps/home/` — apartment plans, source-linked geometry, and annotated device positions.
 - `docs/HOME-MAP.md` — confirmed placement, map limitations, and project decisions.
@@ -69,7 +78,10 @@ python3 /home/pi/ruview-lab/motion.py SESSION_ID
 ```
 
 The session automatically disables `csimon` and removes the temporary monitored peer.
-Autostart is not enabled. History is stored in SQLite on the Pi; automatic deletion is not implemented yet.
+Capture autostart is not enabled. The separate panel already runs as an enabled
+service on port 80; it does not collect CSI. History is stored in SQLite on the
+Pi; automatic deletion is not implemented yet. The requirement is to retain
+diagnostic logs for several weeks and then delete them, while preserving raw CSI history.
 
 ## Rollback
 

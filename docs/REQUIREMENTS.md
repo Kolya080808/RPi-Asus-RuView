@@ -1,15 +1,26 @@
 # Requirements and current limitations
 
-User requirements: a human skeleton reflecting actual movement, RuView features,
-and a script to roll back all device changes. The Pi may serve only as a web server.
-The Pi is currently in the bedroom with two repeaters; it can be relocated.
+Core objective: replace a conventional surveillance system with a system that
+observes the environment through Wi-Fi radio signals, using ASUS routers and
+repeaters. The ultimate priority is a three-dimensional human skeleton. The first
+practical version must at least estimate the position of a moving object. CSI
+collection, decoding, experiments, and the current motion indicator are steps toward
+that system, not the project's end goal.
+
+Desired capabilities include a human skeleton reflecting actual movement and relevant
+RuView features; these remain targets to validate, not demonstrated capabilities.
+A script to roll back device changes is required. The Pi may serve only as a web
+server. The Pi is currently in the bedroom with two repeaters; it can be relocated.
 
 Do not treat an animated template, simulation, or camera output as evidence of
 Wi-Fi pose reconstruction. Validation requires matched CSI measurements and reference
 movements; also evaluate an empty room and a disconnected source.
 A camera is allowed for calibration/training: a webcam and a phone camera are available.
 Preference: run everything on the Pi Zero 2 W; an always-on PC is undesirable.
-Recording and history playback are required. Retention duration and video recording are undecided.
+Recording and history playback are required. Keep all diagnostic logs for several
+weeks and then delete them; the exact retention period and cleanup implementation
+remain to be specified. This log policy does not authorize deleting raw CSI history.
+Video recording is undecided.
 
 Confirmed: the stock GT-AX11000 csimon provides records, 16 in 8 seconds,
 with no ACK failures/overflows. Working hypothesis: a 96-byte header + 224 bytes of I/Q.

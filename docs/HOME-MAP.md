@@ -30,6 +30,13 @@ the source origin. North is unknown. The exported floor extent is approximately
 9.35 by 9.70 m, a bounding rectangle rather than an apartment area measurement.
 Scale follows the GLB meter convention and has not been physically verified.
 
+R01 has a documented geometry correction in the generated `floorplan.json`:
+the Polycam floor mesh contains a curved scan boundary, while the corresponding
+room in the 3D model is treated as rectangular like the other rooms. The panel
+renders the corrected rectangular footprint and retains the original GLB as the
+source for future review; this is a map representation decision, not a claim
+that the scan itself was edited.
+
 R01–R08 identify exported floor regions. Their actual room names have not been
 confirmed; automatic names such as Bedroom are not treated as ground truth.
 The plan shows wall sections at GLB height 1 m, projected doors/windows, and

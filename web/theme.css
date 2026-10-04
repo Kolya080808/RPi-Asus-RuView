@@ -1,0 +1,9 @@
+:root[data-theme="dark"]{color-scheme:dark;color:#dce8df;background:#141a17;--green:#8cc7a4;--muted:#9eafa3;--line:#303c35;--paper:#1c2520;--accent:#26382d}
+:root[data-theme="dark"] body{background:#141a17}
+:root[data-theme="dark"] .sidebar,:root[data-theme="dark"] .topbar{background:#18201b;border-color:var(--line)}
+:root[data-theme="dark"] .card,:root[data-theme="dark"] .stat,:root[data-theme="dark"] .recent-session,:root[data-theme="dark"] button,:root[data-theme="dark"] .button{background:#1c2520;color:#dce8df;border-color:#39483e}
+:root[data-theme="dark"] .nav.active,:root[data-theme="dark"] .segmented .selected,:root[data-theme="dark"] .session-item.active{background:#294235;color:#c4e4cc}
+:root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea{background:#121814;color:#dce8df;border-color:#405047}
+:root[data-theme="dark"] .map-stage{background-color:#172019;background-image:radial-gradient(#71867533 .7px,transparent .7px)}
+:root[data-theme="dark"] .room-shape{fill:#26382d}:root[data-theme="dark"] .room-border{stroke:#78927c}:root[data-theme="dark"] .room-label{fill:#a5bba9}
+:root[data-theme="dark"] .map-caption{background:#172019e8}:root[data-theme="dark"] .note{background:#26352b;border-color:#3c5242;color:#b4c9b4}:root[data-theme="dark"] .muted-tag{background:#29372e}:root[data-theme="dark"] .amber{background:#443a25;color:#e4c987}
