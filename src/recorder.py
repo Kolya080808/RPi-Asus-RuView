@@ -30,7 +30,7 @@ def database():
     return c
 
 
-def capture(seconds, interval):
+def capture(seconds, interval, session_id=None, point_id=None):
     # Bound resource use. Rotation/deletion is intentionally not automatic yet.
     if sum(p.stat().st_size for p in ROOT.glob('history.sqlite3*')) > 256 * 1024**2:
         raise RuntimeError('History reached 256 MiB; export/archive it before recording more.')
@@ -61,13 +61,13 @@ wl -i eth6 csimon state
                '-o', 'ConnectTimeout=8', '-o', 'ServerAliveInterval=5',
                '-o', 'ServerAliveCountMax=2', 'admin@192.168.50.1',
                '/bin/sh -c '+shlex.quote(script)]
-    session = str(uuid.uuid4())
+    session = session_id or str(uuid.uuid4())
     c = database()
     started = time.time()
     meta = {'router':'192.168.50.1','interface':'eth6','peer':PEER,
             'seconds':seconds,'interval_ms':interval,'decoder':PROFILE,
             'clock':'Pi session wall clock; record timer unit/offset provisional',
-            'ground_truth':None, 'pose':None}
+            'ground_truth':None, 'pose':None, 'point_id':point_id}
     c.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?)',
               (session,started,None,'running',json.dumps(meta),'')); c.commit()
     try:
@@ -109,11 +109,13 @@ def main():
     cap = sub.add_parser('capture')
     cap.add_argument('--seconds',type=int,choices=range(5,61),default=20)
     cap.add_argument('--interval-ms',type=int,choices=[100,200,500],default=500)
+    cap.add_argument('--session-id')
+    cap.add_argument('--point-id')
     sub.add_parser('history')
     export = sub.add_parser('export'); export.add_argument('session')
     args = parser.parse_args()
     if args.cmd == 'capture':
-        capture(args.seconds,args.interval_ms)
+        capture(args.seconds,args.interval_ms,args.session_id,args.point_id)
     else:
         c = database()
         if args.cmd == 'history':

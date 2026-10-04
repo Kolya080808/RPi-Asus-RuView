@@ -23,6 +23,16 @@ floor regions, ceilings, furniture, and appliances.
 regenerating the base plan does not overwrite those annotations. A future
 consumer must load both and check the matching GLB hashes.
 
+The panel uses the plot rectangle from the generated image rather than
+stretching map bounds over the entire PNG. This keeps device markers aligned
+with the map axes and is required for any phone or desktop client rendering
+the image.
+
+Hovering a device marker shows its model, region, height, and placement notes.
+The information card is positioned relative to the browser viewport and
+rendered above the map and other panels, so long placement text is not clipped
+by the map container.
+
 ## Coordinate convention and accuracy
 
 Plan x = GLB x; plan y = -GLB z; vertical height = GLB y. The plan retains
@@ -87,9 +97,10 @@ and actual room names remain undocumented.
    against separately stored reference annotations. Room/zone recognition is
    the proposed first evaluation target; precise tracking is not established.
 
-No new CSI capture, deployment, model training, web panel, or API was completed
-during the mapping work. No synchronized route dataset exists yet. The user's
-report that other occupants had left applied to the scanning opportunity;
-future sessions must record their own occupancy conditions.
+The local metadata-only web panel and shared HTTP API are now deployed on the
+Raspberry Pi. They support map/device display, experiment points and routes,
+read-only session history, and timed reference metadata. CSI capture from the
+panel/API is deliberately disabled until retention, export, and cleanup are
+defined. No synchronized route dataset or location model exists yet.
 
 See [NEXT-STEPS.md](NEXT-STEPS.md) for the proposed implementation and experiment plan.

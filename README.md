@@ -83,6 +83,38 @@ service on port 80; it does not collect CSI. History is stored in SQLite on the
 Pi; automatic deletion is not implemented yet. The requirement is to retain
 diagnostic logs for several weeks and then delete them, while preserving raw CSI history.
 
+## Local panel on the Raspberry Pi
+
+The first local panel is a standard-library HTTP service. It displays the
+existing apartment map and device placements, lets the user save experiment
+points and routes, and stores metadata in the Pi history database. Capture
+control is intentionally disabled for now so the Pi cannot fill its storage
+before a retention/export policy is defined. The shared client contract for a
+phone web app and PC program is documented in [docs/API.md](docs/API.md) and
+[docs/API.openapi.json](docs/API.openapi.json). It does not expose the panel
+to the Internet and does not change the ASUS router configuration.
+
+After the Pi is reachable over SSH, deploy it from this repository:
+
+```powershell
+python .\scripts\deploy_panel.py
+```
+
+The service listens on port 80, so the panel is available at
+`http://raspberrypi.local/` when the Pi's hostname and local mDNS service
+resolve that name. HTTPS is intentionally not enabled yet; the panel is
+designed for the trusted home LAN and does not provide Internet access control.
+The deployment script uses the documented Pi address `192.168.50.100` by
+default; use `--host raspberrypi.local` if that name already resolves over SSH.
+
+The current implementation status is documented in
+[docs/API.md](docs/API.md), [docs/NEXT-STEPS.md](docs/NEXT-STEPS.md), and
+[docs/HANDOFF.md](docs/HANDOFF.md). The shared API and panel are implemented;
+CSI capture control through them is intentionally disabled while storage
+retention and export rules are being designed.
+Device markers use the source annotation pixels, and hovering a marker shows
+its model, region, height, and placement notes in an unclipped top-level card.
+
 ## Rollback
 
 Check without making changes:
