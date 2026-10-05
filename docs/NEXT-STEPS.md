@@ -63,8 +63,9 @@ implementation below is proposed, not already delivered.
   A new session must not inherit earlier experiment labels.
 
 ## Current execution order
-
-1. **Explain the RP-AX58 restart.** Continue offline analysis of saved logs,
+1. **Maybe** redo the next-steps (this) file. It is too big, and needs to be redone.
+   Also some other problems, such as non-next steps things are here.
+2. **Explain the RP-AX58 restart.** Continue offline analysis of saved logs,
    process history, firmware compatibility and the probe timeline. The available
    evidence does not identify `csimon`, the temporary `csimond`, their
    interaction, or another cause. Improve disconnect-resilient diagnostics and
@@ -74,7 +75,7 @@ implementation below is proposed, not already delivered.
    one change at a time, defines an immediate stop condition, and verifies
    recovery. Do not remove or disable an unknown process based on the current
    hypothesis.
-2. **Verify CSI acquisition from each repeater.** After step 1 closes its gate,
+3. **Verify CSI acquisition from each repeater.** After step 1 closes its gate,
    test RP-AX58 and RP-AX56 separately with a bounded, reversible procedure and
    verified rollback. Preserve raw output and per-device format/timing evidence.
    Classify each as supported or blocked. If only one works, use that one. If
@@ -83,7 +84,7 @@ implementation below is proposed, not already delivered.
    or a separately evaluated Pi-based CSI source. Keep the confirmed
    GT-AX11000 source as the working baseline; do not represent an unverified
    source as available or infer triangulation from device placement.
-3. **Add source selection and multi-source manual recording to the panel.** For
+4. **Add source selection and multi-source manual recording to the panel.** For
    each recording, let the user choose any single verified source, a subset, or
    all verified sources. Build the choices from the authoritative device/source
    registry and fixed map placements (currently the project map/device
@@ -95,39 +96,39 @@ implementation below is proposed, not already delivered.
    timing uncertainty. Unverified devices may be shown as unavailable, but must
    not be selectable as data sources. This enables comparison; it does not by
    itself prove triangulation or localization.
-4. **Add password login on the Pi panel.** Implement and verify local user
+5. **Add password/OAuth(like passkey or hardware keys like fido ones) login on the Pi panel.** Implement and verify local user
    authentication before longer experiment work, and before any server tunnel
    can make the panel reachable outside the home. Protect panel reads and API
    writes; include secure password storage, session handling, recovery and
    revocation, and defenses against repeated login attempts.
-5. **Make capture and reference data reliable for experiments.** Preserve
+6. **Make capture and reference data reliable for experiments.** Preserve
    complete raw records, validate the bounded live ring over a 30-minute run,
    handle pause timing and active-segment countdown correctly, and validate
    long-session replay. Add versioned map/reference corrections and actual map
    snapshots; confirm room names and one physical map length. Define the exact
    retention period and an auditable export/cleanup policy. Automatic cleanup
    must never silently delete raw CSI or an active session. See [PANEL.md](PANEL.md).
-6. **Collect a small repeatable labeled dataset** across selected fixed points,
+7. **Collect a small repeatable labeled dataset** across selected fixed points,
    stillness, arm movement, walking, stops, empty-room intervals and cross-room
    motion. Preserve uncertainty and changed device/furniture conditions. Keep
    whole later sessions out of model tuning.
-7. **Evaluate localization independently.** Start with held-out room/zone
+8. **Evaluate localization independently.** Start with held-out room/zone
    estimates and report confusion, false/missed motion, delay and insufficient
    data. Proceed to continuous position only when the evidence supports it.
-8. **Validate a moving-object point on the map** against independently recorded
+9. **Implement and validate a moving-object point on the map** against independently recorded
    reference positions. This is the first usable sensing deliverable and the
    gate for the next two milestones.
-9. **Design the tunnel implementation and cryptography** after point tracking.
-10. **Implement the tunnel** between the Pi and server.
-11. **Add the tunnel functions to the panel.** Include a control to refuse
+10. **Design the tunnel implementation and cryptography** after point tracking.
+11. **Implement the tunnel** between the Pi and server.
+12. **Add the tunnel functions to the panel.** Include a control to refuse
     Internet access while leaving the tunnel connected. Direct access to the Pi
-    from the home LAN remains available.
-12. **Launch the tunnel and enable Internet access** after steps 9–11. Require
+    from the home LAN **always, even with the Internet access** remains available.
+13. **Launch the tunnel and enable Internet access** after steps 9–11. Require
     the Pi panel login from step 4.
-13. **Implement and validate 3D skeleton reconstruction** after moving-point
+14. **Implement and validate 3D skeleton reconstruction** after moving-point
    tracking. Treat it as a separate capability with its own evidence and quality
    criteria; a motion score or point estimate is not pose recognition.
-14. **Rewrite the full system in C++ and prepare its installers** after reviewing
+15. **Rewrite the full system in C++ and prepare its installers** after reviewing
     the Python implementation, fixing the bugs found, and making any useful
     small improvements. Then migrate the whole implementation when the user
     considers it ready. This includes low-level collection and decoding,
@@ -139,8 +140,8 @@ implementation below is proposed, not already delivered.
     behavior through parity/regression checks and provide upgrade, recovery,
     uninstall and rollback procedures. The user's
     [DJI-Link repository](https://github.com/Kolya080808/DJI-Link) is a reference
-    for the PC application and packaging approach only, not a requirement to
-    copy its implementation or architecture wholesale.
+    for the PC packaging approach only, not a requirement to
+    copy its implementation or architecture wholesale as it is another project.
 
 ## Stage 2: verify each repeater's CSI source
 
