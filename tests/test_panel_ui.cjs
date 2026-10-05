@@ -50,3 +50,11 @@ test('live cursor appends deltas and honors server window resets',async()=>{
   assert.equal(urls[1],'/api/captures/current/live?after=0');
   await h.run('pollCapture()');assert.equal(h.run('state.capture.samples.length'),1);assert.equal(h.run('state.capture.next_seq'),999);
 });
+
+test('Swagger deep links stay inside the API workspace across direct loads',()=>{
+  const h=harness();
+  assert.equal(h.run("pageFromHash('#api-docs').name"),'api-docs');
+  assert.equal(h.run("pageFromHash('#/Sessions%20and%20replay/get_api_sessions').name"),'api-docs');
+  assert.equal(h.run("pageFromHash('#/Sessions%20and%20replay/get_api_sessions').preserve"),true);
+  assert.equal(h.run("pageFromHash('#sessions').name"),'sessions');
+});

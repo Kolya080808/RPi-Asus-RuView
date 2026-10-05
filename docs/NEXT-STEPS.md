@@ -1,6 +1,41 @@
 # Next steps: moving-object localization, map, and CSI replay
 
-Updated 2026-10-05 after the user accepted the live graph and deletion workflow. The map-first direction is agreed.
+Updated 2026-10-05: the user set the work order to incident analysis, bounded
+repeater CSI verification, then user-selectable multi-source capture in the
+panel. The map remains the reference workspace.
+
+Updated 2026-10-05 after review of the user's research in
+[`REPEATER-CSI-RESEARCH.md`](REPEATER-CSI-RESEARCH.md). Repeater `csimon` and
+Netlink observations do not prove usable CSI export. The proposed Pi collection
+path and a second GT-AX11000 backhaul link are separate, unverified architectures.
+Do not repeat the AX58 capture probe; see the documented incident and safeguards.
+
+**Current gate:** RP-AX58 rebooted during the first feasibility probe. All repeater
+capture execution is disabled pending incident/compatibility analysis. See
+`EXPERIMENTS.md`; the next task is explaining the failure from saved evidence,
+not another live probe. Password access to both nodes is now verified.
+
+Offline review found no captured pre-reset failure trace and no verified
+collector/driver compatibility contract. A local synthetic test confirmed that
+the former buffered reader could lose diagnostic output on timeout. Next:
+research exact-firmware compatibility from authoritative documentation/offline
+artifacts and design disconnect-resilient diagnostics for review. Do not treat
+that research as authorization to repeat a disruptive live experiment.
+
+The prior probe temporarily uploaded and ran a stock GT-AX11000 `csimond` binary
+beside `csimon`; its temporary path was absent after reboot. The reboot coincided
+with the run, but evidence cannot isolate `csimond`, `csimon`, their interaction,
+or another cause. There is no persistent repeater collector to remove now. The
+idea that removing one process would have prevented the restart is unverified.
+
+AX56 read-only research is now recorded in `HARDWARE.md` and `EXPERIMENTS.md`:
+CSI registration is confirmed, but export and format compatibility are unverified.
+Its checked interfaces are upstream clients (`Managed`), and its chip/driver
+differs from AX58. Prioritize exact-platform documentation/source research;
+in parallel planning, consider a second peer link measured at the existing
+GT-AX11000 source. Do not call that alternative an AX56 CSI receiver or assume
+either path is ready for a live capture. Repeater probes remain gated on step 1
+of the execution order below.
 The first usable sensing version must estimate the position of a moving object; a
 three-dimensional human skeleton is the ultimate capability priority. The detailed
 implementation below is proposed, not already delivered.
@@ -13,7 +48,13 @@ implementation below is proposed, not already delivered.
   full-session replay above 10,000 records still need validation/work.
 - The decoder handles the observed ASUS profile; motion was demonstrated in a
   limited experiment. General motion accuracy and location inference are unverified.
-- The Pi had a bootstrap panel and API absent from the local checkout. The new
+- The readable API reference exists at [`API.md`](API.md), the machine-readable
+  contract is [`API.openapi.json`](API.openapi.json), and the workspace embeds a
+  styled, interactive OpenAPI reference at `/#api-docs`. “Try it out” sends real
+  requests to the Pi; writes require its temporary token and may start or delete
+  sessions. The sidebar exposes it as `02: API`. `/api/docs` is a compatibility
+  redirect. Keep the link discoverable from the workspace and README. The Pi had
+  a bootstrap panel and API absent from the local checkout. The new
   [panel iteration](PANEL.md) adds a responsive map/reference workspace, ordered
   routes, session library, real-signal replay/export, timed activity labels,
   and manually controlled bounded capture with live CSI polling. Geometry
@@ -21,40 +62,135 @@ implementation below is proposed, not already delivered.
   implemented. Capture is still manual; there is no always-on recording.
   A new session must not inherit earlier experiment labels.
 
-## Immediate follow-up after panel review
+## Current execution order
 
-1. The user accepted the live graph and separate deletion controls on October 5.
-   Next collector work: preserve complete raw records and validate the bounded
-   live ring over a full 30-minute run,
-   handle pause timing explicitly, and update remaining time during
-   an active segment. See the October 5 verification in [PANEL.md](PANEL.md).
-2. Add reference/annotation correction with revision history and actual map
-   snapshots; current hashes identify sources but historical capture layouts
-   remain unknown. Confirm room names and a physical map length.
-3. Agree the exact log retention period and cleanup/export policy, then complete
-   the bounded collector/timing work below before expanding manual recording.
-4. Continue controlled labeled experiments and evaluate localization independently.
-5. After CSI access from at least two repeaters is demonstrated, add coordinated
-   collection: start either source independently or both in one session, preserve
-   per-source receive/device times and source identity, and show synchronized
-   signal traces side by side. The panel should support one graph, several CSI
-   graphs, all available graphs, and a map-only view of reference/predicted points.
-   This is the prerequisite experiment for understanding whether triangulation
-   and a point on the map are feasible; device placement alone is not evidence
-   of triangulable paths.
-6. Validate the implemented 30-minute capture bound and incremental live view,
-   then add inspectable storage/replay windows for long sessions. Retain
-   raw records, gaps and source availability, and allow later replay of each
-   window with CSI-only, map-only, or combined views. A future live map may show
-   a moving-object estimate only after that estimate is validated against
-   separately recorded reference points; a quiet graph must not be treated as an
-   empty room.
-7. Define and implement automatic cleanup for the Pi history and diagnostics:
-   choose the retention period, show the projected space that will be reclaimed,
-   support export/archive before deletion, never delete an active session, and
-   keep the cleanup auditable and reversible where possible. Manual deletion is
-   already available in the panel; automatic cleanup must not remove raw CSI
-   silently or use the database size limit as its only policy.
+1. **Explain the RP-AX58 restart.** Continue offline analysis of saved logs,
+   process history, firmware compatibility and the probe timeline. The available
+   evidence does not identify `csimon`, the temporary `csimond`, their
+   interaction, or another cause. Improve disconnect-resilient diagnostics and
+   record either a specific, testable explanation or the remaining evidence gap.
+   If the original cause cannot be established, close this gate only with a
+   reviewed bounded-test plan that records initial state, limits the probe to
+   one change at a time, defines an immediate stop condition, and verifies
+   recovery. Do not remove or disable an unknown process based on the current
+   hypothesis.
+2. **Verify CSI acquisition from each repeater.** After step 1 closes its gate,
+   test RP-AX58 and RP-AX56 separately with a bounded, reversible procedure and
+   verified rollback. Preserve raw output and per-device format/timing evidence.
+   Classify each as supported or blocked. If only one works, use that one. If
+   neither works, stop repeating the same probe: document the blocker and choose
+   the next concrete experiment from a supported second peer link on GT-AX11000
+   or a separately evaluated Pi-based CSI source. Keep the confirmed
+   GT-AX11000 source as the working baseline; do not represent an unverified
+   source as available or infer triangulation from device placement.
+3. **Add source selection and multi-source manual recording to the panel.** For
+   each recording, let the user choose any single verified source, a subset, or
+   all verified sources. Build the choices from the authoritative device/source
+   registry and fixed map placements (currently the project map/device
+   configuration; use the database if that becomes its authoritative store),
+   with stable source IDs and readable device names. Do not hard-code a list of
+   three choices. Record source selection, identity, placement/map revision,
+   status, raw data, gaps, and per-source timing. Show selected signals together
+   during a route or other manual test and support aligned replay with visible
+   timing uncertainty. Unverified devices may be shown as unavailable, but must
+   not be selectable as data sources. This enables comparison; it does not by
+   itself prove triangulation or localization.
+4. **Add password login on the Pi panel.** Implement and verify local user
+   authentication before longer experiment work, and before any server tunnel
+   can make the panel reachable outside the home. Protect panel reads and API
+   writes; include secure password storage, session handling, recovery and
+   revocation, and defenses against repeated login attempts.
+5. **Make capture and reference data reliable for experiments.** Preserve
+   complete raw records, validate the bounded live ring over a 30-minute run,
+   handle pause timing and active-segment countdown correctly, and validate
+   long-session replay. Add versioned map/reference corrections and actual map
+   snapshots; confirm room names and one physical map length. Define the exact
+   retention period and an auditable export/cleanup policy. Automatic cleanup
+   must never silently delete raw CSI or an active session. See [PANEL.md](PANEL.md).
+6. **Collect a small repeatable labeled dataset** across selected fixed points,
+   stillness, arm movement, walking, stops, empty-room intervals and cross-room
+   motion. Preserve uncertainty and changed device/furniture conditions. Keep
+   whole later sessions out of model tuning.
+7. **Evaluate localization independently.** Start with held-out room/zone
+   estimates and report confusion, false/missed motion, delay and insufficient
+   data. Proceed to continuous position only when the evidence supports it.
+8. **Validate a moving-object point on the map** against independently recorded
+   reference positions. This is the first usable sensing deliverable and the
+   gate for the next two milestones.
+9. **Design the tunnel implementation and cryptography** after point tracking.
+10. **Implement the tunnel** between the Pi and server.
+11. **Add the tunnel functions to the panel.** Include a control to refuse
+    Internet access while leaving the tunnel connected. Direct access to the Pi
+    from the home LAN remains available.
+12. **Launch the tunnel and enable Internet access** after steps 9–11. Require
+    the Pi panel login from step 4.
+13. **Implement and validate 3D skeleton reconstruction** after moving-point
+   tracking. Treat it as a separate capability with its own evidence and quality
+   criteria; a motion score or point estimate is not pose recognition.
+14. **Rewrite the full system in C++ and prepare its installers** after reviewing
+    the Python implementation, fixing the bugs found, and making any useful
+    small improvements. Then migrate the whole implementation when the user
+    considers it ready. This includes low-level collection and decoding,
+    processing, Pi/server services and API, and the native PC application that
+    consumes the API. Target Windows, macOS and Linux for the PC client. Make
+    installation packages for the Pi, server and PC; do not create a native
+    phone application or phone installer. Phone access stays in the browser and
+    the panel must be responsive and usable on a phone. Preserve formats and
+    behavior through parity/regression checks and provide upgrade, recovery,
+    uninstall and rollback procedures. The user's
+    [DJI-Link repository](https://github.com/Kolya080808/DJI-Link) is a reference
+    for the PC application and packaging approach only, not a requirement to
+    copy its implementation or architecture wholesale.
+
+## Stage 2: verify each repeater's CSI source
+
+The October 5 work identified advertised CSI Monitor support and a reboot during
+the AX58 probe. The current assessment and safe follow-up are in
+[`REPEATER-CSI-RESEARCH.md`](REPEATER-CSI-RESEARCH.md). Live capture remains
+blocked until the incident gate in step 1 is closed. Then use this bounded
+procedure independently for each node.
+
+Check RP-AX58 and RP-AX56 separately. The September 29 inventory already records
+their addresses, firmware and interfaces; map placement is approximate. Both
+advertised `csimon`, but no standalone `csimond` was found and neither has a
+verified capture. This is the starting evidence, not proof of usable CSI.
+
+October 5 checkpoint: Pi access succeeded; both repeaters rejected the lab RSA
+key but accepted the supplied administrator password. Authenticated read-only
+inspection succeeded. The first AX58 probe coincided with a reboot and produced
+no saved CSI. Access is no longer the blocker: incident analysis is the current
+gate, and capture execution is disabled. See `HARDWARE.md` and `EXPERIMENTS.md`.
+
+1. Confirm Pi availability with the user before connecting. Use existing access
+   credentials and pinned host keys; do not install keys or change SSH settings
+   to bypass an access problem.
+2. Inspect current state without changes: device/firmware identity, relevant
+   radio interfaces and associated peer identities, monitor state, existing
+   collectors, and available userspace CSI facilities. Establish which MAC
+   belongs to which radio/link; management IP and map placement alone do not
+   identify the measured path.
+3. Decide the extraction method from that evidence. Do not assume the main
+   router's binary, Netlink protocol or decoder also works on either repeater.
+   Before any temporary upload, process or monitor change, save exact initial
+   state in the ignored deployment manifest, extend `scripts/rollback.py`,
+   document restoration in `ROLLBACK.md`, and pass the rollback plan check.
+4. Run one bounded 5–10-second probe at a time where supported. Preserve the
+   complete available raw output and diagnostics, source/interface/peer identity,
+   capture parameters and timing. Verify cleanup against the recorded initial
+   state immediately afterward. No firmware change, permanent setting, service
+   installation or always-on collection belongs to this stage.
+5. Repeat successful probes. Report received records, lengths, freshness,
+   observed cadence, errors and any measurable loss; mark unknown loss explicitly.
+   Validate the format independently for each source before decoding or adding
+   it to the panel. A working command or nonempty output is insufficient.
+
+Done when each repeater has either repeatable raw CSI acquisition with verified
+cleanup and documented format limits, or an evidence-backed blocking condition
+and a concrete next experiment. If both work, proceed to coordinated short
+captures and measure synchronization uncertainty before localization trials.
+If only one or neither works, assess available main-router peer links and record
+the revised experiment scope. Multiple sources do not by themselves establish
+triangulation or recoverable human coordinates.
 
 The remaining sections are the broader sensing roadmap, not a claim that all
 recording, synchronization and localization requirements are delivered.
@@ -68,7 +204,30 @@ with the map and CSI changes aligned. A first experiment can use one fixed
 position with alternating stillness and arm movement; routes follow once the
 timing and saving work reliably.
 
-### 1. Make the existing map usable for experiments
+### 1. Select verified CSI sources for a manual recording
+
+Implement the source selector only after repeater capability has been classified
+in stage 2. Populate it from the project's authoritative device/source registry
+and fixed map placement, with stable source IDs and user-readable names. The
+current authoritative placement is the project map/device configuration, not a
+separate database; if that changes, read from the new authoritative store.
+Allow a manual session to select one source, any subset, or all verified sources.
+Availability follows verified acquisition support, rather than the presence of a
+device in the map. An unverified device can be labelled unavailable but cannot
+produce a selectable capture source.
+
+Persist the selected source set and map/device revision with the session. During
+a route or other test, show the selected CSI streams together and retain separate
+raw records, receive/device times, gaps and errors for each source. Replay them
+on a shared timeline while exposing clock uncertainty and missing data. Preserve
+single-source and map-only views. Treat the feature as an experiment for source
+comparison; multi-source capture alone does not validate triangulation.
+
+Done when a user can choose any supported combination for a bounded manual
+session, inspect each source's status and trace, and reopen the session with the
+same source identities and map placement.
+
+### 2. Make the existing map usable for experiments
 
 - Load map geometry and device placements together, retaining their source hashes.
 - Allow the user to name rooms, place experiment points, and draw planned routes.
@@ -81,7 +240,7 @@ timing and saving work reliably.
 Done when a point or route can be saved, reopened, and referenced by a session
 in the same coordinate system.
 
-### 2. Add session timing and the minimum collector fixes
+### 3. Add session timing and the minimum collector fixes
 
 - Use elapsed time instead of fixed frame counts for baseline and smoothing.
   The current motion analyzer assumes 10 Hz while capture also allows 200/500 ms.
@@ -98,7 +257,7 @@ in the same coordinate system.
 Done when different capture intervals have correct time windows, interruption
 preserves usable records, and a disconnected source is shown as unavailable.
 
-### 3. Connect the panel and API
+### 4. Connect the panel and API
 
 The panel and scripts should use the same API. The current panel already exposes
 the first read/write API version (`/api/map`, `/api/points`, `/api/routes`,
@@ -118,7 +277,8 @@ Show source/device identity, connection state, last valid sample age, actual
 sample rate, gaps, decode errors, raw signal metrics, motion score/threshold,
 capture state, and history. Do not label a motion score as a probability or
 equate no motion with an empty room. API writes that control recording require
-local access control; no public deployment is proposed.
+local access control. Any remote-access feature is a separate milestone after
+validated moving-point tracking; see the gated server configurator below.
 
 Each annotation should retain session ID, map revision, point/route coordinates,
 activity, start/end time, time basis, author/source, timing uncertainty, and
@@ -131,7 +291,7 @@ so future processing does not require repeating every experiment.
 Done when a saved session can be reopened with its original map, device layout,
 reference labels, and signal trace, and exported through the API.
 
-### 4. Collect a small repeatable dataset
+### 5. Collect a small repeatable dataset
 
 Start with points in R08, R07, and R02 after the user selects their exact locations.
 Use separate bounded sessions and repeat each condition:
@@ -149,7 +309,7 @@ frames from one recording must not be split randomly into train and test sets.
 Done when recordings and labels can be replayed and independently checked,
 including transitions and uncertain intervals.
 
-### 5. Evaluate simple location estimates before expanding scope
+### 6. Evaluate simple location estimates before expanding scope
 
 First compare room/zone classification against simple baselines on held-out
 sessions. Report confusion between zones, false motion events per hour, missed
@@ -157,18 +317,60 @@ motion, detection delay, and the fraction of time with insufficient data.
 If testing continuous positions later, report distance errors and uncertainty.
 The runtime predictor must not receive the test's reference route or cue sequence.
 
+Use the earlier repeater feasibility results when choosing the sensing sources.
 If observations do not distinguish zones reliably, investigate additional
-supported peer links on the ASUS and then repeater CSI access as separate
-experiments. Identify the current monitored peer before treating its link as a
+supported peer links on the ASUS or revisit the documented repeater blockers.
+Identify the current monitored peer before treating its link as a
 known path on the map. Device placement does not establish a working sensor.
+
+## After point tracking: server tunnel steps before skeleton work
+
+After a moving object's estimated point is displayed on the map and validated
+against independently recorded reference positions, complete these steps before
+beginning three-dimensional skeleton reconstruction:
+
+1. Design the tunnel implementation and cryptography.
+2. Implement the tunnel between the Pi and server.
+3. Add the tunnel functions to the panel, including a control that refuses
+   Internet access while leaving the tunnel connected. Direct access to the Pi
+   from the home LAN remains available.
+4. Launch the tunnel and enable Internet access, using the Pi panel login.
+
+Done when Internet access can be enabled or refused from the panel without
+restarting the tunnel, direct home-LAN access remains available, and the Pi
+panel login protects Internet access.
 
 The map supplies reference geometry and labels. It does not by itself improve
 RF measurements or establish that a person's exact position can be recovered.
 Three-dimensional skeleton reconstruction is the ultimate capability priority and
-depends on first validating sensing and moving-object localization. Coordinated
-multi-repeater collection, synchronized multi-graph replay, triangulation, firmware
-changes, hardware purchases, and permanent background capture are later stages;
+depends on first validating sensing and moving-object localization. Set up server
+access after point tracking and before skeleton work.
+Offline repeater compatibility research comes before any newly reviewed live
+collection. Multi-source capture and synchronized replay are stage 3; triangulation,
+firmware changes, hardware purchases, and permanent background capture require
+later evidence and review;
 the 30-minute bounded workflow must be validated before any always-on mode.
+
+## Stage 4: add password login to the Pi panel
+
+Implement this stage after the multi-source panel selector and before the longer
+data-collection/localization stages. It must be complete before configuring the
+server tunnel after point tracking. The current panel has no user login. Keep
+direct panel/API access within the home LAN available after login is added.
+
+Start with a local username-and-password login. Store only a suitably slow,
+salted password hash; use protected sessions, CSRF defenses for writes, account
+recovery and revocation, and controls that limit repeated failed attempts.
+Passkeys/security keys can be considered as a later additional login method.
+Keep the panel's `X-Panel-Token` separate: it is not user authentication. Do not
+send project data, device credentials, captures, or source records to an identity
+provider.
+
+Done when explicitly enrolled household users can authenticate, a lost
+credential can be revoked and recovered safely, and unauthenticated requests
+cannot read panel data or perform API actions. Verify locally and on the
+authorized Pi before proceeding to the public server tunnel; record the access
+toggle and a tested rollback.
 
 ## Open questions for the next iteration
 

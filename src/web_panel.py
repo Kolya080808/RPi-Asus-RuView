@@ -698,6 +698,12 @@ class Handler(BaseHTTPRequestHandler):
             files = {'/': STATIC/'index.html', '/index.html': STATIC/'index.html',
                      '/app.css': STATIC/'app.css', '/theme.css': STATIC/'theme.css',
                      '/app.js': STATIC/'app.js',
+                     '/api/docs': STATIC/'api-docs.html',
+                     '/api-docs.css': STATIC/'api-docs.css',
+                     '/api-docs.js': STATIC/'api-docs.js',
+                     '/swagger-ui.css': STATIC/'swagger-ui.css',
+                     '/swagger-ui-bundle.js': STATIC/'swagger-ui-bundle.js',
+                     '/swagger-ui-standalone-preset.js': STATIC/'swagger-ui-standalone-preset.js',
                      '/api/openapi.json': ROOT/'docs/API.openapi.json',
                      '/maps/home/floorplan-furnished.png': MAP_DIR/'floorplan-furnished.png'}
             file = files.get(path)

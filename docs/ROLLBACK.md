@@ -1,5 +1,62 @@
 # Experiment rollback
 
+## Bounded repeater probes (October 5, 2026)
+
+**Incident: capture is now disabled in code for both repeaters.** Operation
+`99256b673931` coincided with a confirmed RP-AX58 reboot. The capture command
+fails before connection/upload; inspection and narrow rollback remain available.
+The details below record the historical attempted scope, not instructions to
+repeat it. Do not run `--prepare` or `--capture` while the incident is unresolved.
+See `EXPERIMENTS.md` for evidence and remaining uncertainty.
+New preparation also stops before connecting while an unresolved incident exists
+in the manifest. A plan marked restored requires an idle monitor on subsequent
+checks/apply; it cannot take ownership of later monitoring, even with the same peer.
+
+`scripts/repeater_probe.py --prepare ax58` (or `ax56`) records the initial
+disabled monitor, empty peer list, associated upstream peer, processes and Netlink
+listeners in ignored `deployment.json.repeater_probes`. `--interface eth2` selects
+the other radio; default is `eth1`. Preparation makes no remote changes.
+Before the incident, the historical sequence was `--prepare`, rollback `--check`,
+then `--capture`. Capture is now disabled; do not repeat that sequence.
+
+The historical attempt uploaded the locally retained GT-AX11000 `csimond.bin` to
+one temporary `/tmp/ruview-csimond-OPERATION_ID` path. It was stock for the main
+router but had not been verified for the repeater. No `csimond` package or service
+was installed persistently. The file was absent after AX58 reboot; no current
+repeater-side collector file needs removal. The built-in CSIMON kernel component
+is part of the firmware and was not installed by the probe. The attempted
+collector used Netlink 23 while a single upstream peer was monitored at 500 ms
+for eight seconds. Whether the collector, monitor, their interaction or another
+event caused the reboot is unknown.
+
+The intended shell cleanup would disable the monitor, delete its peer and stop
+the exact child process. Because the node rebooted and the SSH stream timed out,
+completion of those traps was not verified. No NVRAM, access keys, firmware,
+services, channel settings or Pi files were modified. Device counters and login
+logs are observations and are not erased.
+
+For operation `99256b673931`, read-only inspection after reboot found the exact
+temporary path absent, monitors disabled, peer lists empty and no collector.
+The manifest records `restored` for that verified configuration and separately
+an unresolved reboot incident. This does **not** mean the shell trap completed
+or the probe was safe/successful. Raw capture output is empty; diagnostic
+snapshots and saved device logs are in ignored
+`recordings/repeater-inspection-20261005/`. No rollback deletion was necessary.
+
+After the bounded run, the tool checks restoration and deletes only the temporary
+file matching its recorded checksum. Full available terminal output is kept locally
+in ignored `recordings/repeater-OPERATION_ID/capture.txt`; this preserves the stock
+utility's printed output, not a guarantee of complete kernel payloads. There is
+no automatic raw-record deletion. Log retention remains pending the user's choice.
+
+For interruption recovery, wait for the bounded shell to finish, then run
+`python scripts/rollback.py --repeater-only --check`, followed by `--apply`.
+This scope uses only the latest recorded repeater operation. It refuses an active
+collector, unknown peer configuration, unexplained enabled monitor, or modified
+temporary file. A failed or partial upload requires inspection rather than blind
+deletion. SSH loss or a hung device can prevent trap verification; report that
+condition and reconnect before claiming restoration. All earlier history remains.
+
 ## Panel update (2026-10-04)
 
 The panel and an enabled `ruview-lab-panel.service` were discovered already
@@ -13,17 +70,17 @@ python scripts/rollback.py --panel-only --check
 python scripts/rollback.py --panel-only --apply
 ```
 
-`scripts/deploy_panel.py --prepare` records the ten exact target paths, original
+`scripts/deploy_panel.py --prepare` records the exact target paths, original
 bytes/modes/hashes, replacement hashes, service unit hash/enablement/active state,
 SQLite counts/integrity and a raw-record digest in `deployment.json.panel_updates`.
 Backups live in ignored `recordings/panel-deploy-OPERATION_ID/`. Keep both the
 manifest and these local backups; do not commit them. Preparation changes no
 remote files. Run the rollback check before applying the prepared deployment.
 
-Files relative to `/home/pi/ruview-lab`: `web_panel.py`, `panel_signal.py`,
-`live_signal.py`, `decoder.py`, `web/index.html`, `web/app.css`,
-`web/theme.css`, `web/app.js`, `maps/home/floorplan.json`, `docs/API.openapi.json`. Uploads use tracked sibling `.panel-upload` files and
-atomic rename. Only the known service is stopped/restarted. The service unit,
+Files relative to `/home/pi/ruview-lab` include the panel modules, workspace
+assets, browser API documentation, locally bundled Swagger UI assets and license,
+map source, and OpenAPI contract. Uploads use tracked sibling `.panel-upload`
+files and atomic rename. Only the known service is stopped/restarted. The service unit,
 enablement, collector, router credentials, maps, and router settings are unchanged.
 
 Rollback checks every target and backup before any modification. It rejects
@@ -42,6 +99,46 @@ labels and raw recordings. The restored bootstrap can read the unchanged schema,
 but may display v2 provenance envelopes as plain notes. Source/device hashes are
 references, not a historical geometry archive. Python bytecode caches may remain
 as harmless generated artifacts; no recursive cleanup is performed.
+
+### Swagger UI API reference update (2026-10-05)
+
+Operation `20261005T180439Z-f02d7e` deployed 17 panel, documentation and
+Swagger UI files. The only service action was a stop/start of the existing
+`ruview-lab-panel.service`; database schema, rows, raw CSI, service settings,
+and router state were preserved. Rollback inspection passed before and after
+deployment. Original files and the history recovery copy are under the ignored
+`recordings/panel-deploy-20261005T180439Z-f02d7e/` directory; exact hashes and
+service/database baselines are in ignored `deployment.json.panel_updates`.
+
+The embedded workspace iterations are operations `20261005T182058Z-b87df7`,
+`20261005T182459Z-1ea6df`, `20261005T183004Z-5260ff`, and
+`20261005T183337Z-e75028`. Each prepared an exact backup for the same 17 panel
+files, passed the panel rollback check before apply, stopped/restarted only the existing panel
+service, and passed the check again after apply. The theme operation adds dark
+mode overrides; a later operation corrects OpenAPI response codes/schemas and
+the last preserves Swagger's direct operation links inside the workspace. The
+latest exact
+baseline, file hashes, service state and database/raw-history comparison are in
+`deployment.json`; the latest backup is in the ignored
+`recordings/panel-deploy-20261005T183337Z-e75028/` directory. To restore the
+previous panel files while preserving later session data, run:
+
+```powershell
+python scripts/rollback.py --panel-only --check
+python scripts/rollback.py --panel-only --apply
+python scripts/rollback.py --panel-only --check
+```
+
+No capture was active during deployment, and no capture, API write, or router /
+repeater operation was used for browser verification. Rollback refuses if a
+capture is active or paused; stop it through the panel before attempting file
+restoration.
+
+An initial operation, `20261005T180209Z-d4259d`, was rolled back after SFTP
+reported that the nested remote `web/swagger-ui/` directory did not exist.
+That exact rollback passed and restarted the original service before a corrected
+flat-file deployment was prepared. Its backups remain under
+`recordings/panel-deploy-20261005T180209Z-d4259d/` for audit/recovery.
 
 The old full-lab command is not a panel-uninstall command and refuses Pi file
 removal while the panel is running. The historical notes below describe the

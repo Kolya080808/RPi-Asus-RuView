@@ -171,7 +171,16 @@ def main():
     parser.add_argument('--panel-only', action='store_true',
                         help='Check/restore the exact last panel file update and service state; '
                              'reject active or paused captures and preserve all history')
+    parser.add_argument('--repeater-only', action='store_true',
+                        help='Check/restore the latest bounded repeater probe only')
     args = parser.parse_args()
+    if args.panel_only and args.repeater_only:
+        parser.error('Choose only one narrow rollback scope')
+    if args.repeater_only:
+        from repeater_probe import rollback_repeater
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s %(message)s')
+        rollback_repeater(args.apply)
+        return
     if args.panel_only:
         from deploy_panel import rollback_panel
         logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s %(message)s')

@@ -37,6 +37,9 @@ Device versions and capabilities are documented in
 - `maps/home/` — apartment plans, source-linked geometry, and annotated device positions.
 - `docs/HOME-MAP.md` — confirmed placement, map limitations, and project decisions.
 - `docs/NEXT-STEPS.md` — proposed map annotation, API, recording, and evaluation workflow.
+- `docs/API.md` — readable API reference; `docs/API.openapi.json` — machine-readable OpenAPI contract.
+- `/#api-docs` — API reference embedded in the workspace with locally bundled Swagger UI 5.33.1. “Try it out” sends real requests to the Pi; writes may change local data and require the temporary API token. `/api/docs` redirects here.
+- `docs/REPEATER-CSI-RESEARCH.md` — reviewed findings and limits for repeater CSI acquisition options.
 - `src/` — decoder, Pi collector, and conservative motion indicator.
 - `scripts/` — device rollback and analysis of saved captures.
 - `docs/RESEARCH.md` — the complete original research report, without abridgment.
@@ -93,7 +96,8 @@ samples every 100 ms after each response and displays the latest 60 seconds.
 Separate delete controls target the current recording and a library selection.
 Automatic retention and always-on capture remain unimplemented. The contract for a
 phone web app and PC program is documented in [docs/API.md](docs/API.md) and
-[docs/API.openapi.json](docs/API.openapi.json). It does not expose the panel
+[docs/API.openapi.json](docs/API.openapi.json); the deployed panel also serves a
+browsable reference at `/#api-docs` within the workspace. It does not expose the panel
 to the Internet. Recording temporarily enables the documented ASUS CSI monitor;
 segment cleanup disables it and removes the temporary peer. Persistent router
 settings are unchanged.

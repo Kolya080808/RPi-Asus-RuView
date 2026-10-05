@@ -2,13 +2,23 @@
 
 This document describes the API implemented by `src/web_panel.py`. The
 machine-readable contract is served at `GET /api/openapi.json` and is deployed
-with the panel.
+with the panel. The workspace embeds a locally served Swagger UI reference at
+`/#api-docs`, showing parameters, request body fields, schemas and documented
+HTTP responses. “Try it out” sends actual requests to this Pi; write operations
+require its temporary token and may change or delete local data. Swagger UI
+5.33.1 is bundled locally in `web/` with its Apache-2.0 license; no CDN or
+online spec validator is used. The old `/api/docs` URL redirects to the embedded
+workspace section.
 
 The API is intended for the trusted home LAN. It has no user authentication,
 TLS, or Internet access control. Do not port-forward the panel or expose port
 80 outside the trusted network. The API can control bounded CSI recording and
 delete sessions, so clients must treat the write token as a capability rather
 than as an identity system.
+
+Keep external access disabled until the panel's user-authentication milestone
+is complete and verified; the `X-Panel-Token` is not a substitute. The planned
+order and acceptance criteria are in [NEXT-STEPS.md](NEXT-STEPS.md).
 
 ## Transport and common rules
 
@@ -55,8 +65,9 @@ must not be interpreted as presence, position, pose, or skeleton output.
 | POST | `/api/captures/{id}/stop` | Stop an active capture and clean up the router monitor |
 
 Static resources are served at `/`, `/index.html`, `/app.js`, `/app.css`,
-`/theme.css`, `/maps/home/floorplan-furnished.png`, and
-`/api/openapi.json`.
+`/theme.css`, `/api/docs` (legacy redirect), `/api-docs.js`, `/api-docs.css`, `/swagger-ui.css`,
+`/swagger-ui-bundle.js`, `/swagger-ui-standalone-preset.js`,
+`/maps/home/floorplan-furnished.png`, and `/api/openapi.json`.
 
 ## Health and map
 

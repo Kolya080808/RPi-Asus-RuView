@@ -10,3 +10,4 @@
 .stat small,.empty,.reference-item small,.session-item small,.recent-session small,footer{color:#74816b}
 
 .session-actions{display:flex;gap:8px;flex-wrap:wrap}.session-actions button:disabled{opacity:.4}
+.api-workspace-label{margin-top:24px}.api-nav{text-decoration:none;color:inherit}

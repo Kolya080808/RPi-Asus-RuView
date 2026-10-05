@@ -81,7 +81,12 @@ corrections, room names, and versioned geometry editing are follow-up work.
 
 ## API and access
 
-See [API.openapi.json](API.openapi.json) and `/api/openapi.json`.
+See [API.openapi.json](API.openapi.json), the raw `/api/openapi.json` contract,
+and the embedded Swagger UI at `/#api-docs`. Both links are available from the workspace.
+Swagger UI assets are bundled locally in `web/` so the documentation works without a
+third-party CDN. “Try it out” submits real requests to this Pi; writes require
+the temporary API token, and some operations can start a capture or delete a
+session. The legacy `/api/docs` address redirects into the workspace.
 The API is for the trusted home LAN, with no public hosting or user login.
 Writes require the current `write_token` returned by `/api/health`, sent as
 `X-Panel-Token`, plus JSON content type. Browser Origin must match the panel.
@@ -120,7 +125,8 @@ python scripts/rollback.py --panel-only --check
 
 Preparation reads remote state and stores exact file backups and an operation
 entry in the ignored `deployment.json`. Application stops only the known existing
-panel service, takes a local history copy, uploads the planned panel/map files,
+panel service, takes a local history copy, uploads the planned panel, map and
+documentation files,
 verifies hashes, and restarts that same service. Record counts and a digest over
 all raw records must remain unchanged. See [ROLLBACK.md](ROLLBACK.md).
 
@@ -283,3 +289,48 @@ This verifies live delivery/rendering in short tests, not 30-minute endurance,
 RF acquisition-to-screen latency, or localization accuracy. Full replay retains
 its 10,000-record limit; the live ring no longer depends on it. Existing timer-reset,
 raw-tail storage and pause-timeline limitations are unchanged.
+
+## Initial standalone Swagger UI deployment (2026-10-05, superseded)
+
+The panel now serves Swagger UI at `http://192.168.50.100/api/docs`. The home
+workspace sidebar has a separate `02: API` section linking to it. Swagger UI
+5.33.1 and its Apache-2.0 license are bundled locally in `web/`; that initial
+standalone page did not use a CDN or online validator. Its separate-page design
+was replaced by the embedded workspace view below.
+
+Verified deployment operation `20261005T180439Z-f02d7e` replaced 17 exact files.
+The initial attempt `20261005T180209Z-d4259d` was rolled back after the Pi lacked
+the planned nested asset directory; no database or raw history change occurred.
+The final deployment targets the existing `web/` directory and passed rollback
+inspection before and after apply. The service is active, API version is v2,
+SQLite integrity is `ok`, and the raw-record digest is unchanged. Browser
+verification from the Pi home page found the `02` link, rendered 16 Swagger
+operations, and confirmed that no “Try it out” button is present. All page,
+asset and contract requests returned HTTP 200. Backups and the manifest entry
+remain in ignored `recordings/panel-deploy-20261005T180439Z-f02d7e/` and
+`deployment.json`; no capture was started.
+
+## Embedded API reference update (2026-10-05)
+
+The current reference is part of the panel at `http://192.168.50.100/#api-docs`.
+Its operation groups come from OpenAPI tags. Local bundled Swagger UI loads only
+when the section is opened, inherits the workspace's light/dark theme, and has
+“Try it out” enabled. The page warns that these controls send real Pi requests,
+that writes need the ephemeral `X-Panel-Token`, and that some operations affect
+captures or stored sessions. No API operation was submitted during verification.
+The previous `/api/docs` route remains as a compatibility redirect.
+
+The integrated-page deployment is `20261005T182058Z-b87df7`; theme styling is
+`20261005T182459Z-1ea6df`; the final OpenAPI response correction is
+`20261005T183004Z-5260ff`; the Swagger deep-link routing fix is
+`20261005T183337Z-e75028`. Each uploaded 17 exact files to the existing panel
+directory and restarted only the existing service. All applied file-only
+operations passed preflight and post-deployment rollback inspection. The final
+deployment reports API v2 active, SQLite integrity `ok`,
+seven sessions and 1,881 records unchanged, and an unchanged raw-history digest.
+Browser verification confirmed the embedded route, all 16 operations in four
+groups, the `02: API` sidebar entry, direct operation deep links, and the
+`/api/docs` compatibility redirect.
+No capture, delete, or router/repeater action was performed. Exact backups and
+state are retained in ignored `recordings/panel-deploy-20261005T182459Z-1ea6df/`
+and `deployment.json`.

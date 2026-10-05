@@ -1,5 +1,89 @@
 # Project handoff
 
+## User research integrated: repeater CSI and Pi architecture — October 5, 2026
+
+The user supplied a research draft named `deep-research-report.md`. Its claims
+were reviewed and rewritten as `docs/REPEATER-CSI-RESEARCH.md`; this is a
+reviewed synthesis, not a verbatim move. The root file is no longer present in
+the working tree. The review narrows claims about Netlink 23 and main-router capture of backhaul frames,
+records the Pi as proposed collector/processor pending proof of an export path,
+and documents the AX58 reboot as causal uncertainty. README now links both the
+readable API reference and this research report. The authorized test/device
+boundaries requested by the user are in `AGENTS.md`. No new device capture or
+commit/push was performed for the API presentation work below.
+
+## Embedded API documentation deployed to Pi — October 5, 2026
+
+The reference is integrated into the workspace at
+`http://192.168.50.100/#api-docs`, under the `02: API` sidebar section. It serves
+locally bundled Swagger UI 5.33.1 against the tagged OpenAPI contract. “Try it
+out” is enabled and sends actual requests; no request was executed during
+verification. The old `/api/docs` URL redirects into the workspace. Final Pi
+operation `20261005T183337Z-e75028` passed deployment verification and rollback
+inspection: API v2 active, seven sessions and 1,881 records unchanged, SQLite
+integrity `ok`, and the raw-history digest unchanged. Browser verification found
+all 16 operations in four groups and confirmed light/dark-aware styling. OpenAPI
+responses were corrected against the handler implementation, and direct
+operation links remain in the API workspace route. API and rollback details are
+in `PANEL.md` and `ROLLBACK.md`. No capture or
+router/repeater change was made; no commit or push was created.
+
+## Latest follow-up: AX56 inspected without capture — October 5, 2026
+
+The user postponed committing and requested separate AX56 research. Read-only
+inspection confirmed its distinct chip/driver, client-mode upstream links and
+registered CSI subsystem; uptime increased and monitor state stayed disabled.
+No acquisition utility or supported export contract was found in the checked
+device paths and ASUS support material. See `HARDWARE.md` for technical inventory
+and `EXPERIMENTS.md` for evidence, external sources and limits. No uploads,
+monitor changes, captures, commit or push occurred. Capture remains blocked.
+The next research options are exact-platform acquisition documentation/source
+and a separately planned extra peer link on the validated main-router receiver.
+
+## Active checkpoint: RP-AX58 reboot incident — October 5, 2026
+
+Password access to both ASUS repeaters is verified. One attempted AX58 CSI probe
+coincided with a confirmed reboot and the user's streaming interruption. No CSI
+was saved; no AX56 capture was attempted. The exact failure stage/cause is unknown.
+`EXPERIMENTS.md` records the timing, independent main-router observations, reader
+buffering limitation and evidence locations. Both repeater capture paths are now
+disabled in `scripts/repeater_probe.py`; retain read-only inspection and narrow
+`rollback.py --repeater-only` support. Configuration restoration was verified
+after reboot, not through confirmed trap completion. Do not repeat the live probe.
+At the time this checkpoint was written, next work was offline incident/compatibility
+analysis. The subsequent research review is summarized above and documented in
+`REPEATER-CSI-RESEARCH.md`.
+Earlier access-blocker entries below are historical and superseded by this check.
+
+Offline follow-up completed: the saved AX58 log has a gap from 19:07:27 to reboot;
+main-router events place the first recorded disconnect at 19:10:51. ELF metadata
+matches ARM32 but cannot prove firmware compatibility. A synthetic local Paramiko
+test confirmed that partial diagnostics can remain unwritten on timeout. Exact
+cause remains unresolved; see the expanded `EXPERIMENTS.md` assessment. New plan
+preparation is blocked while the incident is unresolved, and restored operations
+cannot disable a subsequently enabled monitor. No remote connections were made
+during this follow-up.
+
+## Planning and repeater access: October 5, 2026
+
+The user authorized trying repeater CSI acquisition and prioritized short
+feasibility probes before long collector runs. `NEXT-STEPS.md` now describes
+per-device evidence, bounded captures and rollback gates. `AGENTS.md` records
+the preferred answer length, with flexible paragraph/list structure.
+
+Pi access was confirmed by the user and verified with the existing pinned key.
+Both repeater addresses answered unauthenticated SSH handshakes. Trusted host
+entries were not found in the checked local/Pi files; the existing repeater login
+method is unresolved. Observed, unverified fingerprints are in `HARDWARE.md`.
+The user subsequently clarified that they only used the main router's AiMesh UI.
+Existing lab RSA-key authentication as `admin` was rejected by both nodes;
+the main-router password hypothesis remains untested. See the follow-up in
+`HARDWARE.md`. A local interactive password login is the next access step. No remote
+configuration/files were changed, no CSI captured and no rollback applied;
+`deployment.json` and `scripts/rollback.py` remain unchanged until a concrete
+remote change can be planned from verified initial state. Local documentation
+validation: `git diff --check` passed; no code tests were needed or run.
+
 ## Current checkpoint: October 5, 2026 — user accepted live refresh
 
 The user accepted the live graph and separate current/library deletion controls.

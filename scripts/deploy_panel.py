@@ -24,6 +24,12 @@ FILES = {'src/web_panel.py': 'web_panel.py', 'src/panel_signal.py': 'panel_signa
          'src/live_signal.py': 'live_signal.py', 'web/index.html': 'web/index.html',
          'src/decoder.py': 'decoder.py',
          'web/app.css': 'web/app.css', 'web/theme.css': 'web/theme.css', 'web/app.js': 'web/app.js',
+         'web/api-docs.html': 'web/api-docs.html', 'web/api-docs.css': 'web/api-docs.css',
+         'web/api-docs.js': 'web/api-docs.js',
+         'web/swagger-ui-bundle.js': 'web/swagger-ui-bundle.js',
+         'web/swagger-ui-standalone-preset.js': 'web/swagger-ui-standalone-preset.js',
+         'web/swagger-ui.css': 'web/swagger-ui.css',
+         'web/swagger-ui-LICENSE.txt': 'web/swagger-ui-LICENSE.txt',
          'maps/home/floorplan.json': 'maps/home/floorplan.json',
          'docs/API.openapi.json': 'docs/API.openapi.json'}
 LOGGER = logging.getLogger('ruview.deploy')

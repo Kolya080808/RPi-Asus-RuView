@@ -16,24 +16,22 @@
         "summary": "Panel state, storage counts and ephemeral write_token; source is not monitored",
         "responses": {
           "200": {
-            "description": "Panel state, storage counts and ephemeral write_token; source is not monitored"
-          },
-          "400": {
-            "description": "Invalid request"
-          },
-          "404": {
-            "description": "Not found"
-          },
-          "413": {
-            "description": "Session exceeds 10000 records"
-          },
-          "422": {
-            "description": "Timeline or interval unsupported"
+            "description": "Current local panel state."
           },
           "500": {
-            "description": "Server failure; inspect service journal"
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "tags": [
+          "System"
+        ]
       }
     },
     "/api/map": {
@@ -41,24 +39,22 @@
         "summary": "Reference geometry, documented devices and hashes",
         "responses": {
           "200": {
-            "description": "Reference geometry, documented devices and hashes"
-          },
-          "400": {
-            "description": "Invalid request"
-          },
-          "404": {
-            "description": "Not found"
-          },
-          "413": {
-            "description": "Session exceeds 10000 records"
-          },
-          "422": {
-            "description": "Timeline or interval unsupported"
+            "description": "Floorplan, documented devices, and source hashes."
           },
           "500": {
-            "description": "Server failure; inspect service journal"
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "tags": [
+          "Map and references"
+        ]
       }
     },
     "/api/points": {
@@ -66,24 +62,32 @@
         "summary": "Saved reference points",
         "responses": {
           "200": {
-            "description": "Saved reference points"
+            "description": "Saved reference data."
           },
           "400": {
-            "description": "Invalid request"
-          },
-          "404": {
-            "description": "Not found"
-          },
-          "413": {
-            "description": "Session exceeds 10000 records"
-          },
-          "422": {
-            "description": "Timeline or interval unsupported"
+            "description": "Stored metadata could not be decoded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server failure; inspect service journal"
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "tags": [
+          "Map and references"
+        ]
       },
       "post": {
         "summary": "Append point",
@@ -104,27 +108,72 @@
         },
         "responses": {
           "201": {
-            "description": "Saved identifier"
+            "description": "Reference item saved."
           },
           "400": {
-            "description": "Invalid values or reference"
+            "description": "Invalid fields, coordinates, or reference.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Token missing/expired or foreign origin"
-          },
-          "404": {
-            "description": "Session not found"
+            "description": "Token missing/expired or request origin not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Identifier exists"
+            "description": "Identifier already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "413": {
-            "description": "Body or record limit exceeded"
+            "description": "Request body exceeds the size limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "415": {
-            "description": "JSON required"
+            "description": "JSON request body required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "tags": [
+          "Map and references"
+        ]
       }
     },
     "/api/routes": {
@@ -132,24 +181,32 @@
         "summary": "Ordered reference routes and point snapshots",
         "responses": {
           "200": {
-            "description": "Ordered reference routes and point snapshots"
+            "description": "Saved reference data."
           },
           "400": {
-            "description": "Invalid request"
-          },
-          "404": {
-            "description": "Not found"
-          },
-          "413": {
-            "description": "Session exceeds 10000 records"
-          },
-          "422": {
-            "description": "Timeline or interval unsupported"
+            "description": "Stored metadata could not be decoded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server failure; inspect service journal"
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "tags": [
+          "Map and references"
+        ]
       },
       "post": {
         "summary": "Append route",
@@ -170,27 +227,72 @@
         },
         "responses": {
           "201": {
-            "description": "Saved identifier"
+            "description": "Reference item saved."
           },
           "400": {
-            "description": "Invalid values or reference"
+            "description": "Invalid fields, coordinates, or reference.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Token missing/expired or foreign origin"
-          },
-          "404": {
-            "description": "Session not found"
+            "description": "Token missing/expired or request origin not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Identifier exists"
+            "description": "Identifier already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "413": {
-            "description": "Body or record limit exceeded"
+            "description": "Request body exceeds the size limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "415": {
-            "description": "JSON required"
+            "description": "JSON request body required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "tags": [
+          "Map and references"
+        ]
       }
     },
     "/api/sessions": {
@@ -198,22 +300,27 @@
         "summary": "History page, 100 sessions plus total/offset",
         "responses": {
           "200": {
-            "description": "History page, 100 sessions plus total/offset"
+            "description": "A page of sessions and the total count."
           },
           "400": {
-            "description": "Invalid request"
-          },
-          "404": {
-            "description": "Not found"
-          },
-          "413": {
-            "description": "Session exceeds 10000 records"
-          },
-          "422": {
-            "description": "Timeline or interval unsupported"
+            "description": "Invalid offset or stored session metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server failure; inspect service journal"
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -226,6 +333,9 @@
               "default": 0
             }
           }
+        ],
+        "tags": [
+          "Sessions and replay"
         ]
       }
     },
@@ -234,22 +344,37 @@
         "summary": "Session metadata and labels; original map unavailable",
         "responses": {
           "200": {
-            "description": "Session metadata and labels; original map unavailable"
+            "description": "Session metadata and annotations."
           },
           "400": {
-            "description": "Invalid request"
+            "description": "Stored session metadata could not be decoded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Not found"
-          },
-          "413": {
-            "description": "Session exceeds 10000 records"
-          },
-          "422": {
-            "description": "Timeline or interval unsupported"
+            "description": "Session not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server failure; inspect service journal"
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -261,6 +386,9 @@
               "type": "string"
             }
           }
+        ],
+        "tags": [
+          "Sessions and replay"
         ]
       }
     },
@@ -269,22 +397,57 @@
         "summary": "Valid/invalid samples, amplitude metrics, cadence and gap summary",
         "responses": {
           "200": {
-            "description": "Valid/invalid samples, amplitude metrics, cadence and gap summary"
+            "description": "Decoded measurement samples and signal summary."
           },
           "400": {
-            "description": "Invalid request"
+            "description": "Stored session metadata could not be decoded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Not found"
+            "description": "Session not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "413": {
-            "description": "Session exceeds 10000 records"
+            "description": "Session exceeds the 10,000-record replay limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Timeline or interval unsupported"
+            "description": "Unsupported interval or measurement data cannot be decoded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server failure; inspect service journal"
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -296,6 +459,9 @@
               "type": "string"
             }
           }
+        ],
+        "tags": [
+          "Sessions and replay"
         ]
       }
     },
@@ -304,22 +470,47 @@
         "summary": "Download raw hex records, metadata and annotation provenance",
         "responses": {
           "200": {
-            "description": "Download raw hex records, metadata and annotation provenance"
+            "description": "Session metadata, annotations, and raw records as a downloadable JSON file."
           },
           "400": {
-            "description": "Invalid request"
+            "description": "Stored session metadata could not be decoded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Not found"
+            "description": "Session not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "413": {
-            "description": "Session exceeds 10000 records"
-          },
-          "422": {
-            "description": "Timeline or interval unsupported"
+            "description": "Export exceeds the 10,000-record limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server failure; inspect service journal"
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -331,6 +522,9 @@
               "type": "string"
             }
           }
+        ],
+        "tags": [
+          "Sessions and replay"
         ]
       }
     },
@@ -354,25 +548,87 @@
         },
         "responses": {
           "201": {
-            "description": "Saved identifier"
+            "description": "Annotation saved."
           },
           "400": {
-            "description": "Invalid values or reference"
+            "description": "Invalid annotation or reference.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Token missing/expired or foreign origin"
+            "description": "Token missing/expired or request origin not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Session not found"
+            "description": "Session not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Identifier exists"
+            "description": "Identifier conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "413": {
-            "description": "Body or record limit exceeded"
+            "description": "Request body or replay exceeds the limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "415": {
-            "description": "JSON required"
+            "description": "JSON request body required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Session timeline or measurement interval unsupported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -384,6 +640,9 @@
               "type": "string"
             }
           }
+        ],
+        "tags": [
+          "Sessions and replay"
         ]
       }
     },
@@ -407,21 +666,82 @@
         },
         "responses": {
           "201": {
-            "description": "New session identifier"
+            "description": "Bounded recording started; response contains the session identifier."
           },
           "400": {
-            "description": "Invalid duration or interval"
+            "description": "Invalid recording duration or interval.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Token missing/expired or foreign origin"
+            "description": "Token missing/expired or request origin not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Another capture is active"
+            "description": "Another capture is active.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request body exceeds the size limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "JSON request body required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "507": {
-            "description": "History storage limit reached"
+            "description": "History storage limit reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "tags": [
+          "Capture control"
+        ]
       }
     },
     "/api/captures/{id}": {
@@ -439,12 +759,42 @@
         ],
         "responses": {
           "200": {
-            "description": "Stable id, session, paused, stopping, remaining_s and samples; signal_error is present when replay cannot be decoded without hiding capture controls."
+            "description": "Capture lifecycle and replay snapshot; signal errors are included without hiding capture controls."
+          },
+          "400": {
+            "description": "Stored session metadata could not be decoded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Session not found"
+            "description": "Session not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "tags": [
+          "Capture control"
+        ]
       }
     },
     "/api/captures/{id}/{action}": {
@@ -479,16 +829,83 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Action accepted"
+          "201": {
+            "description": "Capture action accepted."
+          },
+          "400": {
+            "description": "Malformed or invalid JSON request body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Token missing/expired or foreign origin"
+            "description": "Token missing/expired or request origin not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Action route not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Action is not valid for current capture state"
+            "description": "No active capture or action is invalid for its current state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request body exceeds the size limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "JSON request body required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "tags": [
+          "Capture control"
+        ]
       }
     },
     "/api/sessions/{id}/delete": {
@@ -511,19 +928,83 @@
         ],
         "responses": {
           "201": {
-            "description": "Session deleted"
+            "description": "Session deleted."
+          },
+          "400": {
+            "description": "Stored session metadata could not be decoded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Token missing/expired or foreign origin"
+            "description": "Token missing/expired or request origin not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Session not found"
+            "description": "Session not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Pause or stop the capture first, or retry after its worker has finished stopping"
+            "description": "Stop the capture first or retry while shutdown completes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request body exceeds the size limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "JSON request body required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
-        "description": "Paused or already stopping captures are stopped and joined for up to 12 seconds before deletion. A running capture is rejected. If the worker remains alive, all session data are retained."
+        "description": "Paused or already stopping captures are stopped and joined for up to 12 seconds before deletion. A running capture is rejected. If the worker remains alive, all session data are retained.",
+        "tags": [
+          "Sessions and replay"
+        ]
       }
     },
     "/api/captures/{id}/live": {
@@ -552,10 +1033,40 @@
           "200": {
             "description": "Capture lifecycle, new samples, next_seq, reset, last_sample_age_s and signal_error; at most 600 points. reset replaces the client window."
           },
+          "400": {
+            "description": "Stored session metadata could not be decoded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
-            "description": "Session not found"
+            "description": "Session not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server or local storage failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "tags": [
+          "Capture control"
+        ]
       }
     }
   },
@@ -702,6 +1213,18 @@
             "maxLength": 2000
           }
         }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Human-readable error message."
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -712,5 +1235,23 @@
         "description": "Ephemeral cross-origin write protection; not user authentication."
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "System",
+      "description": "Panel health and local service state."
+    },
+    {
+      "name": "Map and references",
+      "description": "Floorplan metadata and user supplied reference points and routes."
+    },
+    {
+      "name": "Sessions and replay",
+      "description": "Saved session metadata, decoded measurements, exports and labels."
+    },
+    {
+      "name": "Capture control",
+      "description": "Bounded manual capture lifecycle and incremental live samples."
+    }
+  ]
 }
