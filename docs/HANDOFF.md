@@ -1,5 +1,36 @@
 # Project handoff
 
+## Current checkpoint: October 5, 2026 — user accepted live refresh
+
+The user accepted the live graph and separate current/library deletion controls.
+The deployed version is operation `20261005T104835Z-2915cd`. It uses a 600-point
+live cache and cursor-based updates with a target 100 ms client interval, instead
+of repeatedly decoding the entire history. The measured browser median update
+interval was 0.115 s; the first line appeared after 1.538 s. These short-run
+observations are not an end-to-end latency or endurance guarantee.
+
+27 Python and 6 JavaScript tests passed in the implementation turn. Deployment
+hashes, preserved history and before/after rollback inspections passed. Ten Pi
+sessions remained after verification, including the three retained test captures
+from this chat. This is the last verified count, not a live inventory.
+
+Current operation, evidence and limitations: [PANEL.md](PANEL.md). Next work:
+[NEXT-STEPS.md](NEXT-STEPS.md). Exact local backups and restore scope:
+[ROLLBACK.md](ROLLBACK.md). No new sensing capability or location estimate is claimed.
+
+The dated entries below describe earlier checkpoints and their counts.
+
+## Update: October 5, 2026 — capture polling and deletion
+
+Fixed capture identity loss after the first poll, restored live polling after page
+reload, and separated current-capture deletion from library-selection deletion.
+Paused deletion stops and joins the worker first; failed joins retain history.
+Deployed operation `20261005T102745Z-8897cc` with exact backups and successful
+rollback checks. A real 30-second capture produced 299 valid CSI prefixes and a
+growing browser graph; its raw data remain as the eighth Pi session. Original
+history is retained. Tests, evidence and remaining collector limitations are in
+[PANEL.md](PANEL.md#capture-controls-fix-2026-10-05). No new sensing claim is made.
+
 ## Update: October 4, 2026 — panel iteration
 
 Read-only Pi inspection found an existing bootstrap panel on port 80, served by
@@ -11,7 +42,7 @@ local backups before work. Existing user edits in this checkout were preserved.
 The new local panel implementation is documented in [PANEL.md](PANEL.md):
 reference map/points/routes, device inventory, session filtering, causal signal
 replay, timed reference labels and raw export. No new sensing capability is
-claimed; capture controls remain disabled. Database layouts and raw records are
+claimed; later October 4 updates enabled manual bounded capture. Database layouts and raw records are
 preserved. Original capture map layouts are unknown. Deployment and rollback
 use the existing service with the exact scope in [ROLLBACK.md](ROLLBACK.md).
 

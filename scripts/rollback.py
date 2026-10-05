@@ -169,7 +169,8 @@ def main():
     mode.add_argument('--check', action='store_true')
     mode.add_argument('--apply', action='store_true')
     parser.add_argument('--panel-only', action='store_true',
-                        help='Restore the last panel update; preserve router access and all history')
+                        help='Check/restore the exact last panel file update and service state; '
+                             'reject active or paused captures and preserve all history')
     args = parser.parse_args()
     if args.panel_only:
         from deploy_panel import rollback_panel

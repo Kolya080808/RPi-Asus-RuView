@@ -79,7 +79,7 @@ python3 /home/pi/ruview-lab/motion.py SESSION_ID
 
 The session automatically disables `csimon` and removes the temporary monitored peer.
 Capture autostart is not enabled. The separate panel already runs as an enabled
-service on port 80; it does not collect CSI. History is stored in SQLite on the
+service on port 80; collection starts only on an explicit recording request. History is stored in SQLite on the
 Pi; automatic deletion is not implemented yet. The requirement is to retain
 diagnostic logs for several weeks and then delete them, while preserving raw CSI history.
 
@@ -87,17 +87,23 @@ diagnostic logs for several weeks and then delete them, while preserving raw CSI
 
 The first local panel is a standard-library HTTP service. It displays the
 existing apartment map and device placements, lets the user save experiment
-points and routes, and stores metadata in the Pi history database. Capture
-control is intentionally disabled for now so the Pi cannot fill its storage
-before a retention/export policy is defined. The shared client contract for a
+points and routes, and stores metadata in the Pi history database. Manual capture
+is bounded to 5–1,800 seconds with a storage guard. The live chart requests new
+samples every 100 ms after each response and displays the latest 60 seconds.
+Separate delete controls target the current recording and a library selection.
+Automatic retention and always-on capture remain unimplemented. The contract for a
 phone web app and PC program is documented in [docs/API.md](docs/API.md) and
 [docs/API.openapi.json](docs/API.openapi.json). It does not expose the panel
-to the Internet and does not change the ASUS router configuration.
+to the Internet. Recording temporarily enables the documented ASUS CSI monitor;
+segment cleanup disables it and removes the temporary peer. Persistent router
+settings are unchanged.
 
 After the Pi is reachable over SSH, deploy it from this repository:
 
 ```powershell
-python .\scripts\deploy_panel.py
+python .\scripts\deploy_panel.py --prepare
+python .\scripts\rollback.py --panel-only --check
+python .\scripts\deploy_panel.py --apply
 ```
 
 The service listens on port 80, so the panel is available at
@@ -105,32 +111,33 @@ The service listens on port 80, so the panel is available at
 resolve that name. HTTPS is intentionally not enabled yet; the panel is
 designed for the trusted home LAN and does not provide Internet access control.
 The deployment script uses the documented Pi address `192.168.50.100` by
-default; use `--host raspberrypi.local` if that name already resolves over SSH.
+default with the existing pinned host key.
 
 The current implementation status is documented in
 [docs/API.md](docs/API.md), [docs/NEXT-STEPS.md](docs/NEXT-STEPS.md), and
 [docs/HANDOFF.md](docs/HANDOFF.md). The shared API and panel are implemented;
-CSI capture control through them is intentionally disabled while storage
-retention and export rules are being designed.
-Device markers use the source annotation pixels, and hovering a marker shows
-its model, region, height, and placement notes in an unclipped top-level card.
+manual capture and separate current/library session deletion are available;
+automatic retention is still being designed.
+Device markers use documented map coordinates; selecting one shows its model,
+region, height, and placement notes in the inspector.
 
 ## Rollback
 
-Check without making changes:
+For the latest panel update, inspect the exact restore plan without changes:
 
 ```powershell
-python .\scripts\rollback.py --check
+python .\scripts\rollback.py --panel-only --check
 ```
 
 Apply rollback:
 
 ```powershell
-python .\scripts\rollback.py --apply
+python .\scripts\rollback.py --panel-only --apply
 ```
 
-The script removes only known experimental keys and files with matching
-hashes. A complete device snapshot was not taken before the experiment; see
+Panel rollback restores only manifest-listed files and the existing service state;
+it preserves recordings and device access. Stop any active or paused recording
+first. The separate full-lab rollback has a broader scope, including access keys; see
 [docs/ROLLBACK.md](docs/ROLLBACK.md) for details.
 
 ## License and external components

@@ -13,7 +13,7 @@ python scripts/rollback.py --panel-only --check
 python scripts/rollback.py --panel-only --apply
 ```
 
-`scripts/deploy_panel.py --prepare` records the nine exact target paths, original
+`scripts/deploy_panel.py --prepare` records the ten exact target paths, original
 bytes/modes/hashes, replacement hashes, service unit hash/enablement/active state,
 SQLite counts/integrity and a raw-record digest in `deployment.json.panel_updates`.
 Backups live in ignored `recordings/panel-deploy-OPERATION_ID/`. Keep both the
@@ -21,8 +21,8 @@ manifest and these local backups; do not commit them. Preparation changes no
 remote files. Run the rollback check before applying the prepared deployment.
 
 Files relative to `/home/pi/ruview-lab`: `web_panel.py`, `panel_signal.py`,
-`live_signal.py`, `web/index.html`, `web/app.css`, `web/app.js`,
-`docs/API.openapi.json`. Uploads use tracked sibling `.panel-upload` files and
+`live_signal.py`, `decoder.py`, `web/index.html`, `web/app.css`,
+`web/theme.css`, `web/app.js`, `maps/home/floorplan.json`, `docs/API.openapi.json`. Uploads use tracked sibling `.panel-upload` files and
 atomic rename. Only the known service is stopped/restarted. The service unit,
 enablement, collector, router credentials, maps, and router settings are unchanged.
 
@@ -102,3 +102,32 @@ Before subsequent changes, record the initial state and add a rollback action
 and a result check to this toolkit. The current version
 covers only the changes already listed; it is not a universal
 rollback for any future installations.
+
+## Capture UI update (2026-10-05)
+
+Use the same `--panel-only --check` / `--panel-only --apply` operations for this
+update. The latest manifest entry and its local backups define the exact prior
+files, modes, service state and database digest. No schema migration is required.
+Preflight now also rejects an active or paused panel capture reported by health,
+not just a separate recorder process. Stop recording before deployment/rollback.
+Rollback preserves later recordings and does not undo explicit session deletion.
+
+Verified operation: `20261005T102745Z-8897cc`; backups are in
+`recordings/panel-deploy-20261005T102745Z-8897cc/`. A subsequent 30-second UI
+verification session is retained. Its router before/after inspection is saved
+under `verification_capture` in the same ignored manifest entry: monitor disabled,
+empty peer list and no collector process after bounded completion. No permanent
+router setting or new service was introduced by verification.
+
+### Incremental live refresh follow-up
+
+The live refresh update uses the same ten-file manifest preparation and narrow
+panel rollback. The new cache is process memory only (600 points); database schema,
+raw history and service configuration are unchanged. Stop an active capture before
+rollback. Restoring the previous files removes the incremental endpoint and returns
+to the previous client polling behavior; no data migration or cleanup is required.
+
+Verified live-update operation: `20261005T104835Z-2915cd`, backups in
+`recordings/panel-deploy-20261005T104835Z-2915cd/`. Both rollback checks passed.
+The manifest records before/after router inspections for the two retained live
+verification captures. These captures are not removed by panel-file rollback.

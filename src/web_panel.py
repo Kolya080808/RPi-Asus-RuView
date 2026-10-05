@@ -1,5 +1,6 @@
 """Local map, metadata and read-only CSI replay panel; Python standard library."""
 import argparse
+from collections import deque
 from contextlib import closing
 import datetime as dt
 import hashlib
@@ -22,7 +23,7 @@ from urllib.parse import urlparse, parse_qs
 import uuid
 
 from panel_signal import measurements
-from live_signal import LiveParser
+from live_signal import LiveParser, LiveSignal
 from decoder import decode, PROFILE
 
 SRC = Path(__file__).resolve().parent
@@ -39,6 +40,7 @@ CAPTURE_MAX_SECONDS = 1800
 CAPTURE_INTERVALS = (100, 200, 500)
 CAPTURE_LOCK = threading.RLock()
 ACTIVE_CAPTURE = None
+LATEST_CAPTURE = None
 
 
 class RequestError(ValueError):
@@ -125,6 +127,11 @@ class CaptureJob:
         self.resume_event.set()
         self.pause_requested = False
         self.process = None
+        self.live_lock = threading.Lock()
+        self.live_signal = LiveSignal(interval=interval / 1000, smoothing=1.0)
+        self.live_samples = deque(maxlen=600)
+        self.live_error = None
+        self.last_received = None
         self.thread = threading.Thread(target=self.run, name='panel-capture', daemon=True)
 
     def start(self):
@@ -181,6 +188,25 @@ class CaptureJob:
         with closing(db()) as connection, connection:
             connection.execute('INSERT INTO records VALUES (?,?,?,?)',
                                (self.session, seq, raw, json.dumps(decoded)))
+        # Decode/filter each arriving record once, never the whole history per frame.
+        with self.live_lock:
+            try:
+                point = self.live_signal.add(raw)
+                self.live_samples.append({**point, 'seq': seq, 'valid': True})
+                self.last_received = time.monotonic()
+            except ValueError as exc:
+                self.live_error = str(exc)
+                self.live_samples.append({'seq': seq, 'valid': False, 'seconds': None})
+
+    def live_payload(self, after):
+        with self.live_lock:
+            samples = list(self.live_samples)
+            reset = after < 0 or bool(samples and after < samples[0]['seq'] - 1)
+            return {'samples': samples if reset else [p for p in samples if p['seq'] > after],
+                    'reset': reset, 'next_seq': samples[-1]['seq'] if samples else -1,
+                    'last_sample_age_s': None if self.last_received is None else
+                    round(time.monotonic() - self.last_received, 3),
+                    'signal_error': self.live_error}
 
     def run(self):
         seq = 0
@@ -250,11 +276,36 @@ class CaptureJob:
                     ACTIVE_CAPTURE = None
 
 
-def capture_snapshot(connection, session):
+def capture_snapshot(connection, session, live_after=None):
     value = get_session(connection, session)
-    result = {'session': value, 'annotations': annotations(connection, session)}
-    if value['records']:
-        result.update(replay(connection, value))
+    result = {'id': session, 'session': value, 'annotations': annotations(connection, session),
+              'paused': value['status'] == 'paused', 'stopping': False,
+              'remaining_s': None, 'samples': []}
+    with CAPTURE_LOCK:
+        job = ACTIVE_CAPTURE
+        if job is not None and job.session == session and job.thread.is_alive():
+            result.update(paused=job.pause_requested, stopping=job.stop_requested.is_set(),
+                          remaining_s=max(0, round(job.remaining, 1)))
+    if live_after is not None:
+        with CAPTURE_LOCK:
+            cached = LATEST_CAPTURE
+        if cached is not None and cached.session == session:
+            result.update(cached.live_payload(live_after))
+        else:
+            # Server restart: bounded recovery window, never an unbounded replay.
+            rows = connection.execute('SELECT seq,raw FROM records WHERE session=? '
+                                      'ORDER BY seq DESC LIMIT 600', (session,)).fetchall()
+            try:
+                result.update(measurements(list(reversed(rows)), value['metadata'].get('interval_ms', 100)))
+            except ValueError as exc:
+                result['signal_error'] = str(exc)
+            result.update(reset=True, next_seq=rows[0][0] if rows else -1, last_sample_age_s=None)
+    elif value['records']:
+        try:
+            result.update(replay(connection, value))
+        except RequestError as exc:
+            # Signal errors must not hide the identity or lifecycle controls.
+            result['signal_error'] = str(exc)
     return result
 
 
@@ -264,7 +315,7 @@ def start_capture(body):
     if interval not in CAPTURE_INTERVALS:
         raise RequestError('interval_ms must be 100, 200 or 500')
     with CAPTURE_LOCK:
-        global ACTIVE_CAPTURE
+        global ACTIVE_CAPTURE, LATEST_CAPTURE
         if ACTIVE_CAPTURE is not None and ACTIVE_CAPTURE.thread.is_alive():
             raise RequestError('A capture is already active', 409)
         if sum(p.stat().st_size for p in HISTORY.parent.glob('history.sqlite3*')) > 256 * 1024**2:
@@ -279,14 +330,25 @@ def start_capture(body):
             connection.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?)',
                                (sid, time.time(), None, 'running', json.dumps(meta), ''))
         ACTIVE_CAPTURE = CaptureJob(sid, seconds, interval)
+        LATEST_CAPTURE = ACTIVE_CAPTURE
         ACTIVE_CAPTURE.start()
         return sid
 
 
 def delete_session(connection, sid):
     with CAPTURE_LOCK:
-        if ACTIVE_CAPTURE is not None and ACTIVE_CAPTURE.session == sid and ACTIVE_CAPTURE.thread.is_alive():
-            raise RequestError('Stop the active capture before deleting its session', 409)
+        job = ACTIVE_CAPTURE
+        if job is not None and job.session == sid and job.thread.is_alive():
+            if not job.pause_requested and not job.stop_requested.is_set():
+                raise RequestError('Pause or stop the active capture before deleting its session', 409)
+            job.request_stop()
+        else:
+            job = None
+    # Never hold CAPTURE_LOCK while joining: the worker needs it to finish.
+    if job is not None:
+        job.thread.join(timeout=12)
+        if job.thread.is_alive():
+            raise RequestError('Capture is still stopping; session retained. Retry deletion shortly.', 409)
     if connection.execute('SELECT 1 FROM sessions WHERE id=?', (sid,)).fetchone() is None:
         raise RequestError('Unknown session', 404)
     connection.execute('DELETE FROM session_annotations WHERE session=?', (sid,))
@@ -609,6 +671,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({'sessions': [session_value(row) for row in connection.execute(
                 SESSION_SELECT + ' ORDER BY s.started DESC LIMIT 100 OFFSET ?', (offset,))],
                 'total': connection.execute('SELECT count(*) FROM sessions').fetchone()[0], 'offset': offset})
+        elif re.fullmatch(r'/api/captures/[^/]+/live', path):
+            sid = path.split('/')[3]
+            params = parse_qs(urlparse(self.path).query)
+            after = int(number(params.get('after', [-1])[0], 'after', -1, 1000000000))
+            self.send_json(capture_snapshot(connection, sid, live_after=after))
         elif re.fullmatch(r'/api/captures/[^/]+', path):
             sid = path.split('/')[3]
             self.send_json(capture_snapshot(connection, sid))

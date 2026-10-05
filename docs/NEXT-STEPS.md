@@ -1,6 +1,6 @@
 # Next steps: moving-object localization, map, and CSI replay
 
-Updated 2026-10-04 after inspecting the Pi. The map-first direction is agreed.
+Updated 2026-10-05 after the user accepted the live graph and deletion workflow. The map-first direction is agreed.
 The first usable sensing version must estimate the position of a moving object; a
 three-dimensional human skeleton is the ultimate capability priority. The detailed
 implementation below is proposed, not already delivered.
@@ -8,7 +8,9 @@ implementation below is proposed, not already delivered.
 ## Current checkpoint
 
 - [Apartment map and device placement](HOME-MAP.md) are documented.
-- The collector supports bounded 5–60 second sessions on the documented Pi setup.
+- The recorder CLI supports 5–60 seconds; manual panel capture accepts 5–1,800
+  seconds. The incremental live ring is implemented; 30-minute endurance and
+  full-session replay above 10,000 records still need validation/work.
 - The decoder handles the observed ASUS profile; motion was demonstrated in a
   limited experiment. General motion accuracy and location inference are unverified.
 - The Pi had a bootstrap panel and API absent from the local checkout. The new
@@ -21,12 +23,16 @@ implementation below is proposed, not already delivered.
 
 ## Immediate follow-up after panel review
 
-1. Collect user feedback on the map, layout, reference-point and replay workflows.
+1. The user accepted the live graph and separate deletion controls on October 5.
+   Next collector work: preserve complete raw records and validate the bounded
+   live ring over a full 30-minute run,
+   handle pause timing explicitly, and update remaining time during
+   an active segment. See the October 5 verification in [PANEL.md](PANEL.md).
 2. Add reference/annotation correction with revision history and actual map
    snapshots; current hashes identify sources but historical capture layouts
    remain unknown. Confirm room names and a physical map length.
 3. Agree the exact log retention period and cleanup/export policy, then complete
-   the bounded collector/timing work below before enabling recording in the panel.
+   the bounded collector/timing work below before expanding manual recording.
 4. Continue controlled labeled experiments and evaluate localization independently.
 5. After CSI access from at least two repeaters is demonstrated, add coordinated
    collection: start either source independently or both in one session, preserve
@@ -36,8 +42,8 @@ implementation below is proposed, not already delivered.
    This is the prerequisite experiment for understanding whether triangulation
    and a point on the map are feasible; device placement alone is not evidence
    of triangulable paths.
-6. Add bounded 30-minute recording sessions with a real-time CSI view. Keep the
-   live trace and storage segmented into inspectable 30-minute windows, retain
+6. Validate the implemented 30-minute capture bound and incremental live view,
+   then add inspectable storage/replay windows for long sessions. Retain
    raw records, gaps and source availability, and allow later replay of each
    window with CSI-only, map-only, or combined views. A future live map may show
    a moving-object estimate only after that estimate is validated against

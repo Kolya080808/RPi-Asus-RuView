@@ -9,6 +9,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import Mock, patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 import web_panel as panel
@@ -123,6 +124,84 @@ class APITests(unittest.TestCase):
     def test_session_delete_removes_records_and_annotations(self):
         self.assertEqual(self.request('/api/sessions/test-session/delete',{})[0],201)
         self.assertEqual(self.request('/api/sessions/test-session')[0],404)
+
+    def test_capture_snapshot_keeps_identity_and_signal(self):
+        for sid in ('empty-session', 'test-session'):
+            status, snapshot = self.request('/api/captures/' + sid)
+            self.assertEqual(status, 200)
+            self.assertEqual(snapshot['id'], sid)
+            self.assertEqual(snapshot['session']['id'], sid)
+            self.assertIn('samples', snapshot)
+            self.assertFalse(snapshot['paused'])
+        self.assertEqual(len(snapshot['samples']), 21)
+
+    def test_live_cursor_incremental_no_history_replay(self):
+        job = panel.CaptureJob('empty-session', 60, 100)
+        with patch.object(panel, 'LATEST_CAPTURE', job):
+            for seq in range(5):
+                job._append(raw(seq * 100000), seq)
+            with patch.object(panel, 'replay', side_effect=AssertionError('Full replay called')):
+                status, first = self.request('/api/captures/empty-session/live?after=-1')
+                self.assertEqual(status, 200)
+                self.assertTrue(first['reset'])
+                self.assertEqual(first['next_seq'], 4)
+                self.assertEqual(len(first['samples']), 5)
+                job._append(raw(500000, True), 5)
+                update = self.request('/api/captures/empty-session/live?after=4')[1]
+                self.assertFalse(update['reset'])
+                self.assertEqual([p['seq'] for p in update['samples']], [5])
+                self.assertGreater(update['samples'][0]['smooth'], 0)
+                self.assertLess(update['last_sample_age_s'], 2)
+                self.assertEqual(self.request('/api/captures/empty-session/live?after=5')[1]['samples'], [])
+        self.assertEqual(self.request('/api/captures/empty-session/live?after=bad')[0], 400)
+
+    def test_live_window_bounded_and_stale_cursor_reset(self):
+        job = panel.CaptureJob('test-session', 1800, 100)
+        with job.live_lock:
+            for seq in range(11000):
+                job.live_samples.append({'seq': seq, 'valid': True, 'seconds': seq / 10, 'smooth': 0})
+        with patch.object(panel, 'LATEST_CAPTURE', job):
+            result = self.request('/api/captures/test-session/live?after=0')[1]
+            self.assertTrue(result['reset'])
+            self.assertEqual(len(result['samples']), 600)
+            self.assertEqual(result['next_seq'], 10999)
+            self.assertEqual(result['samples'][0]['seq'], 10400)
+        # A restart recovers a bounded window from disk without a cached job.
+        with patch.object(panel, 'LATEST_CAPTURE', None):
+            result = self.request('/api/captures/test-session/live')[1]
+            self.assertTrue(result['reset'])
+            self.assertEqual(len(result['samples']), 21)
+
+    def test_capture_signal_error_does_not_hide_controls(self):
+        with closing(panel.db()) as c, c:
+            c.execute('UPDATE records SET raw=? WHERE session=? AND seq=2',
+                      (raw(0), 'test-session'))
+        status, snapshot = self.request('/api/captures/test-session')
+        self.assertEqual(status, 200)
+        self.assertEqual(snapshot['id'], 'test-session')
+        self.assertIn('timer', snapshot['signal_error'])
+        self.assertEqual(self.request('/api/sessions/test-session/measurements')[0], 422)
+
+    def test_delete_running_rejected_paused_and_stopping_joined(self):
+        job = Mock(session='test-session', pause_requested=False, remaining=20)
+        job.thread.is_alive.return_value = True
+        job.stop_requested.is_set.return_value = False
+        with patch.object(panel, 'ACTIVE_CAPTURE', job):
+            self.assertEqual(self.request('/api/sessions/test-session/delete', {})[0], 409)
+            job.request_stop.assert_not_called()
+            job.pause_requested = True
+            snapshot = self.request('/api/captures/test-session')[1]
+            self.assertTrue(snapshot['paused'])
+            self.assertEqual(snapshot['remaining_s'], 20)
+            # Failed bounded join retains all data.
+            self.assertEqual(self.request('/api/sessions/test-session/delete', {})[0], 409)
+            self.assertEqual(self.request('/api/sessions/test-session')[1]['session']['records'], 21)
+            job.pause_requested = False
+            job.stop_requested.is_set.return_value = True
+            job.thread.join.side_effect = lambda **kw: setattr(job.thread.is_alive, 'return_value', False)
+            self.assertEqual(self.request('/api/sessions/test-session/delete', {})[0], 201)
+            job.thread.join.assert_called_with(timeout=12)
+        self.assertEqual(self.request('/api/sessions/test-session')[0], 404)
 
 
 if __name__=='__main__':unittest.main()

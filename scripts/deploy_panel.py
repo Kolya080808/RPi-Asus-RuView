@@ -123,6 +123,8 @@ print(json.dumps({'captures':captures,'panels':panels}))'''
         raise RuntimeError('A capture is active; wait until it finishes')
     if set(processes['panels']) - {state['MainPID']}:
         raise RuntimeError('An unowned panel process is active')
+    if state['ActiveState'] == 'active' and health(client).get('active_capture'):
+        raise RuntimeError('A panel capture is active or paused; stop it before deployment or rollback')
     return state
 
 

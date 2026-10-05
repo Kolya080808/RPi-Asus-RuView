@@ -8,3 +8,5 @@
 /* Secondary text remains readable on the pale workspace surfaces. */
 .capture-card{margin-bottom:22px}.capture-controls{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:16px 22px;border-bottom:1px solid #edf0e9}.capture-controls label{margin:0;font-size:11px}.capture-controls input,.capture-controls select{width:auto;padding:8px}.capture-controls input{max-width:100px}.capture-controls button{font-size:11px;padding:8px 10px}.capture-controls button:disabled{opacity:.4}.capture-card .note{margin:14px 22px}.capture-card #live-signal-chart{display:block;width:100%;height:150px;padding:0 22px 16px}.capture-card #live-signal-chart path{fill:none;stroke:#3f7652;stroke-width:2}.capture-card #live-signal-chart line{stroke:#e9eee3;stroke-dasharray:3 4}
 .stat small,.empty,.reference-item small,.session-item small,.recent-session small,footer{color:#74816b}
+
+.session-actions{display:flex;gap:8px;flex-wrap:wrap}.session-actions button:disabled{opacity:.4}

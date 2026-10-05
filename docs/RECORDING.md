@@ -14,9 +14,10 @@ python3 /home/pi/ruview-lab/motion.py SESSION_ID
 
 The collector connects directly from the Pi to the ASUS using a dedicated key.
 A PC is not needed to acquire or save data. Python uses only the standard library.
-Operation is limited to a single session of 5–60 seconds. After the session, the monitor
+The recorder CLI is limited to a single session of 5–60 seconds. After the session, the monitor
 is disabled and the temporary peer entry is removed. Capture has no service or
-autostart. The separate web panel is an existing enabled service and does not capture.
+autostart. The separate web panel is an existing enabled service; its manual
+capture path supports 5–1,800 seconds, with no automatic recording on startup.
 
 History: /home/pi/ruview-lab/history.sqlite3. It contains raw records, provisional
 decoding results, session start/end times, parameters,
@@ -28,7 +29,15 @@ is recorded as an event in the `motion_samples` and `motion_events` tables. This
 indicates motion across the entire scene. It does not produce a skeleton, body parts, or heart rate.
 There are no video recordings or computed skeletons yet. History is accessible
 through the CLI and the local [panel](PANEL.md), which provides replay, raw export
-and reference activity labels. Recording from the panel remains disabled.
+and reference activity labels. The panel provides Start/Pause/Resume/Stop and
+separate current/library deletion controls. Its incremental live graph uses the
+same causal filter as the desktop viewer; see [PANEL.md](PANEL.md) for measured
+refresh intervals and limitations.
+
+The panel currently stores 320-byte CSI prefixes through `LiveParser`; unlike
+the recorder CLI, it does not preserve the full printed 2,048-byte tail or complete
+capture diagnostics. Existing records are retained unchanged. Full raw-stream and
+diagnostic retention remain collector work, not a delivered panel capability.
 
 The requirement is to retain all diagnostic logs for several weeks and then delete
 them. The exact number of weeks and automatic cleanup policy are not implemented yet;

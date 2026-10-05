@@ -395,18 +395,168 @@
             "PanelToken": []
           }
         ],
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CaptureRequest"}}}},
-        "responses": {"201": {"description": "New session identifier"}, "400": {"description": "Invalid duration or interval"}, "403": {"description": "Token missing/expired or foreign origin"}, "409": {"description": "Another capture is active"}, "507": {"description": "History storage limit reached"}}
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptureRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "New session identifier"
+          },
+          "400": {
+            "description": "Invalid duration or interval"
+          },
+          "403": {
+            "description": "Token missing/expired or foreign origin"
+          },
+          "409": {
+            "description": "Another capture is active"
+          },
+          "507": {
+            "description": "History storage limit reached"
+          }
+        }
       }
     },
     "/api/captures/{id}": {
-      "get": {"summary": "Live status and replay samples for an active or finished capture", "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}], "responses": {"200": {"description": "Capture status and samples"}, "404": {"description": "Session not found"}}}
+      "get": {
+        "summary": "Live status and replay samples for an active or finished capture",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stable id, session, paused, stopping, remaining_s and samples; signal_error is present when replay cannot be decoded without hiding capture controls."
+          },
+          "404": {
+            "description": "Session not found"
+          }
+        }
+      }
     },
     "/api/captures/{id}/{action}": {
-      "post": {"summary": "Pause, resume or stop a manual capture", "security": [{"PanelToken": []}], "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}, {"name": "action", "in": "path", "required": true, "schema": {"type": "string", "enum": ["pause", "resume", "stop"]}}], "responses": {"200": {"description": "Action accepted"}, "403": {"description": "Token missing/expired or foreign origin"}, "409": {"description": "Action is not valid for current capture state"}}}
+      "post": {
+        "summary": "Pause, resume or stop a manual capture",
+        "security": [
+          {
+            "PanelToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pause",
+                "resume",
+                "stop"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action accepted"
+          },
+          "403": {
+            "description": "Token missing/expired or foreign origin"
+          },
+          "409": {
+            "description": "Action is not valid for current capture state"
+          }
+        }
+      }
     },
     "/api/sessions/{id}/delete": {
-      "post": {"summary": "Delete a session, its raw records and annotations", "security": [{"PanelToken": []}], "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}], "responses": {"201": {"description": "Session deleted"}, "403": {"description": "Token missing/expired or foreign origin"}, "404": {"description": "Session not found"}, "409": {"description": "Active capture must be stopped first"}}}
+      "post": {
+        "summary": "Delete a session, its raw records and annotations",
+        "security": [
+          {
+            "PanelToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Session deleted"
+          },
+          "403": {
+            "description": "Token missing/expired or foreign origin"
+          },
+          "404": {
+            "description": "Session not found"
+          },
+          "409": {
+            "description": "Pause or stop the capture first, or retry after its worker has finished stopping"
+          }
+        },
+        "description": "Paused or already stopping captures are stopped and joined for up to 12 seconds before deletion. A running capture is rejected. If the worker remains alive, all session data are retained."
+      }
+    },
+    "/api/captures/{id}/live": {
+      "get": {
+        "summary": "Incremental live signal window, processed once on arrival",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": -1,
+              "default": -1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Capture lifecycle, new samples, next_seq, reset, last_sample_age_s and signal_error; at most 600 points. reset replaces the client window."
+          },
+          "404": {
+            "description": "Session not found"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -414,8 +564,21 @@
       "CaptureRequest": {
         "type": "object",
         "properties": {
-          "seconds": {"type": "integer", "minimum": 5, "maximum": 1800, "default": 60},
-          "interval_ms": {"type": "integer", "enum": [100, 200, 500], "default": 100}
+          "seconds": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 1800,
+            "default": 60
+          },
+          "interval_ms": {
+            "type": "integer",
+            "enum": [
+              100,
+              200,
+              500
+            ],
+            "default": 100
+          }
         }
       },
       "Point": {

@@ -97,10 +97,11 @@ and actual room names remain undocumented.
    against separately stored reference annotations. Room/zone recognition is
    the proposed first evaluation target; precise tracking is not established.
 
-The local metadata-only web panel and shared HTTP API are now deployed on the
-Raspberry Pi. They support map/device display, experiment points and routes,
-read-only session history, and timed reference metadata. CSI capture from the
-panel/API is deliberately disabled until retention, export, and cleanup are
-defined. No synchronized route dataset or location model exists yet.
+The local web panel and shared HTTP API are deployed on the Raspberry Pi.
+They support map/device display, experiment points and routes, session replay,
+timed reference metadata, and manual bounded CSI capture with an incremental
+live graph. Current and library sessions have separate delete controls. Automatic
+retention and always-on capture are not implemented. No synchronized route dataset
+or location model exists yet. See [PANEL.md](PANEL.md) for the current workflow.
 
 See [NEXT-STEPS.md](NEXT-STEPS.md) for the proposed implementation and experiment plan.

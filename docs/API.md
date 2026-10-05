@@ -49,6 +49,7 @@ must not be interpreted as presence, position, pose, or skeleton output.
 | POST | `/api/sessions/{id}/delete` | Delete a stopped session, its records, and annotations |
 | POST | `/api/captures` | Start one bounded manual CSI capture |
 | GET | `/api/captures/{id}` | Session snapshot and replay for a capture |
+| GET | `/api/captures/{id}/live?after=N` | Incremental live samples and lifecycle state |
 | POST | `/api/captures/{id}/pause` | Pause an active capture safely |
 | POST | `/api/captures/{id}/resume` | Resume a paused capture |
 | POST | `/api/captures/{id}/stop` | Stop an active capture and clean up the router monitor |
@@ -205,6 +206,11 @@ is paused, stopped, or fails.
 Pause, resume, and stop use the action endpoints listed above and return the
 session ID and action. Invalid state transitions return `409`. The capture
 status is also visible through `/api/health` and the session/capture endpoints.
+Capture snapshots include a stable `id`, `session`, `paused`, `stopping`,
+`remaining_s` (nullable), and `samples` (empty before data arrive). A replay
+error returns `signal_error` alongside lifecycle state, so a timer reset or
+replay limit cannot hide pause/stop/delete controls. The measurements endpoint
+still returns its original error for an unusable timeline.
 
 The storage guard rejects a new capture with `507` when history files exceed
 256 MiB. Automatic retention and cleanup are not implemented; bounded capture
@@ -213,6 +219,26 @@ must not be confused with continuous observation.
 ## Deleting sessions
 
 `POST /api/sessions/{id}/delete` removes the session annotations, raw records,
-and session row. It cannot delete an active capture; stop it first. This is a
+and session row. A running capture must be paused or stopped first. For a paused
+or already stopping capture, deletion requests stop and waits up to 12 seconds
+for its worker to finish. If it remains alive, the API returns 409 and preserves
+the session for retry. This is a
 destructive operation and requires the write token. Raw CSI should be exported
 before deletion when the session may be useful for later validation.
+
+## Incremental live signal
+
+`GET /api/captures/{id}/live?after=-1` returns lifecycle fields plus the latest
+600 compact signal samples. Pass `next_seq` as `after` on the next request to
+receive only newer points. `reset: true` means replace the local window (initial
+connection, cursor older than the ring, or cache absent after server restart).
+Samples are filtered once when a record is persisted, using the same causal
+`LiveSignal` as the desktop viewer. This path does not replay the entire history
+and is independent of the 10,000-record full-replay limit. The browser requests
+updates 100 ms after each completed response; only one request is in flight.
+This is a target refresh interval, not an end-to-end latency guarantee.
+`last_sample_age_s` is time since the last valid record was processed on the Pi,
+not RF acquisition age. A running capture with no valid sample processed for over two seconds shows
+NO NEW DATA; before the first sample the graph shows a waiting message.
+The most recent capture keeps a bounded in-memory cache after completion. Other
+sessions recover a bounded 600-record window from disk; full replay is unchanged.

@@ -14,7 +14,8 @@ Its sources were recovered before implementing this version.
   the 3D model; curved scan-boundary artifacts and internal triangulation seams
   are not shown as room walls. The scan itself and device positions are not edited.
 - **Manual capture, sessions & replay:** bounded Pi recording from the panel,
-  live CSI graph, pause/resume/stop controls, deletion of any selected session,
+  live CSI graph, pause/resume/stop controls, separate deletion of the current
+  capture and the session selected in the library,
   paginated history, page-local search/status filters,
   normalized amplitude change and causal 1-second EMA, playback/scrubbing,
   actual cadence, decoding errors and timing gaps, activity intervals and raw export.
@@ -36,7 +37,8 @@ Recording is manual and bounded. The panel can start one capture at a time for
 5–1,800 seconds, stream the observed CSI trace into the session, pause by
 safely stopping the temporary router monitor segment, resume with a new segment,
 stop, and delete a finished session with its raw records and annotations.
-There is still no automatic background capture or claimed live sample age.
+There is no automatic background capture. The live endpoint reports time since
+the Pi processed the last valid record, not RF acquisition age.
 `Panel connected` means the HTTP API responded, not that a CSI source is online.
 Refresh retrieves a new snapshot.
 
@@ -56,8 +58,9 @@ Raw export remains available even if the timeline cannot be reconstructed.
 ## Storage and compatibility
 
 Existing SQLite table layouts are unchanged. GET requests do not update records.
-Metadata writes append points, routes and session annotations; no deletion,
-overwrite, automatic retention, or record migration is introduced.
+Metadata writes append points, routes and session annotations. Explicit session
+deletion removes its records and annotations; there is no automatic retention
+or record migration.
 New metadata uses a `ruview-panel-v2` JSON envelope in the existing `notes`
 column. API responses unwrap human notes into `notes` and provenance into
 `context`. Plain legacy notes remain readable with `context: null`.
@@ -99,6 +102,7 @@ Use a disposable database; do not point UI tests at operational history:
 python src/web_panel.py --port 8080 --history recordings/panel-test.sqlite3
 python -m unittest discover -s tests -v
 python -m compileall -q src scripts tests
+node --test tests/test_panel_ui.cjs
 ```
 
 An absent local database is initialized with the existing schema. No fake
@@ -134,7 +138,8 @@ experiments; there is no automatic cleanup.
   pre-existing parser/signal checks, three capture intervals, invalid inputs,
   API round trips, raw-byte export, annotation validation, cross-origin write
   rejection, pagination and rollback against a disposable remote-filesystem model.
-- `python -m compileall -q src scripts tests`: passed. The generated SVG map
+- `python -m compileall -q src scripts tests
+node --test tests/test_panel_ui.cjs`: passed. The generated SVG map
   artifacts contain formatter trailing whitespace from the floorplan generator;
   this is an existing generated-file limitation, not a runtime error.
 - Browser tests against a separate local history copy: create/reopen two points,
@@ -177,4 +182,104 @@ experiments; there is no automatic cleanup.
   interrupted-session empty state and working device/map navigation.
 
 The private verification report and screenshots are under `recordings/`.
-No new capture, router change, log cleanup or model evaluation was performed.
+The initial map/replay-only verification did not start a capture. Later capture
+checks are listed above; no persistent router settings, log cleanup or model
+evaluation were introduced.
+
+## Capture controls fix (2026-10-05)
+
+The client previously replaced its capture object with a response lacking a
+top-level ID, then requested `/api/captures/undefined`. This broke subsequent
+status updates, the live graph, and deletion of the current recording. Snapshots
+now carry a stable ID and lifecycle flags, and the client also derives identity
+from `session.id`. Polling is serialized, ignores obsolete responses, and
+resumes when an active capture is recovered on page reload. Signal errors remain
+visible without disabling lifecycle controls. Gaps break the live trace.
+
+The upper **Delete session** belongs only to the current capture; it is available
+after Pause or Stop without library selection. The lower **Delete session**, next
+to raw export, belongs only to the library selection. Deletion asks for confirmation.
+A paused capture is stopped and joined before its rows are removed; a timeout
+retains the data. Deleting the selected session clears its replay and labels.
+Node's built-in test runner checks client polling and control regressions without
+adding packages to the Pi. The local browser fixture uses a separate synthetic
+database and does not demonstrate actual RF acquisition.
+
+Verification of this fix:
+
+- `python -m unittest discover -s tests -v`: 25 passed.
+- `node --test tests/test_panel_ui.cjs`: 5 passed. `node --check web/app.js`,
+  `python -m compileall -q src scripts tests`, and `git diff --check` passed.
+- Browser on the disposable local synthetic fixture: Start, growing live path,
+  Pause, reload, Resume, Stop, and current delete availability without a library
+  selection passed. Local HTTP deletion of a paused fixture joined its worker
+  and left zero sessions. Operational history was never used for deletion tests.
+- Operation `20261005T102745Z-8897cc`: all ten file hashes, service state,
+  SQLite integrity and unchanged original history digest passed. Narrow rollback
+  inspection passed before and after deployment; restore was tested on fixtures.
+- Real Pi/browser verification: session `8b3b0071-abd1-4959-b013-304bc192d229`,
+  30-second bound at 100 ms, captured 299 valid records, zero decoder errors and
+  zero detected timing gaps; device-relative duration 29.805493 s, median cadence
+  100.018 ms. A running snapshot showed 166 records; the live SVG grew to 298
+  plotted values and remained visible after completion. No browser console errors.
+  The real pause click was attempted after the bounded capture had already ended;
+  pause/resume/stop transitions for this change were verified on the local fixture.
+- The current delete control was enabled with no library selection. Selecting a
+  different saved session enabled the lower control independently. No Pi session
+  was deleted; all seven original sessions plus the new test session remain.
+- Router read-only inspection before/after: monitor disabled, empty peer list,
+  no csimond process. Transfer counter increased by 300, ACK failures stayed at
+  35, overflow stayed at zero. 299 saved versus 300 transferred is not lossless.
+- Existing panel collection stores only each record's first 320 bytes through
+  LiveParser, unlike the older complete 2,048-byte collector. The summary therefore
+  reports 299 incomplete records even though all useful CSI prefixes decode. This
+  pre-existing raw-tail retention limitation was not changed in the UI fix.
+- Private evidence and screenshots: `recordings/panel-ui-check/`; router baseline
+  and result also reside in the ignored deployment manifest's verification entry.
+
+Remaining limitations: full replay still has a 10,000-record limit; a device timer
+reset or pause exceeding the supported timer jump can make signal replay unavailable
+while controls remain accessible. The remaining-time value is a segment budget,
+not a continuously updated countdown. The follow-up below adds bounded live
+streaming; long-run validation, complete raw-tail retention and verified timing
+across pauses still need collector work.
+
+## Live refresh follow-up (2026-10-05)
+
+The user reported that the preceding graph still appeared in 30-second updates.
+The previous verification proved a growing trace but did not measure frame latency.
+The live browser path now requests incremental samples at a target 100 ms interval,
+matching the desktop viewer refresh target. Processing occurs once per received
+record; a 600-point ring replaces repeated full-history decode and transfer. The
+chart displays the latest 60 seconds and a stale-data warning after two seconds.
+No 30-second refresh timer exists in the client. Actual Pi timing is reported below;
+this change does not guarantee transport latency or alter raw storage, collection
+settings, pause semantics, or the two deletion controls.
+
+Measured verification for operation `20261005T104835Z-2915cd`:
+
+- `python -m unittest discover -s tests -q`: 27 passed; `node --test
+  tests/test_panel_ui.cjs`: 6 passed. Compilation, JS syntax and diff checks passed.
+  New regressions cover cursor deltas, ring overflow, cache recovery, and avoiding
+  full replay on the live endpoint even after 11,000 sequence numbers.
+- Real 30-second/100 ms Pi capture `86324778-b0d3-4238-9703-21310d44c9e2`:
+  first valid API data at 1.669 s after request start; 190 nonempty updates,
+  median update interval 0.135 s, maximum 1.696 s. Median HTTP response 0.0334 s,
+  maximum 1.5946 s. 299 records retained. This includes concurrent browser loading;
+  the 100 ms interval is a refresh target, not a latency guarantee.
+- Independent browser-started capture `7623de1c-d0fa-4bf8-afd7-17304526f081`:
+  a series of 250 read-only SVG observations found the first plotted line after
+  1.538 s and 24 distinct updates, median interval 0.115 s, maximum 0.180 s.
+  Browser Stop completed; 35 records retained. No browser console errors.
+- Both tests retained their raw data. Router state after each: monitoring disabled,
+  empty peer list, no csimond process; ACK failures remained 35, overflows zero.
+  Transfers were 300/36 versus saved records 299/35: capture is not lossless.
+- Before/after update file hashes, service settings, DB integrity and raw-history
+  digest matched. Narrow rollback inspection passed before and after deployment.
+  Original files and history recovery copy are in the manifest's exact backup folder.
+- Private timing series, reports and live screenshot: `recordings/panel-live-latency/`.
+
+This verifies live delivery/rendering in short tests, not 30-minute endurance,
+RF acquisition-to-screen latency, or localization accuracy. Full replay retains
+its 10,000-record limit; the live ring no longer depends on it. Existing timer-reset,
+raw-tail storage and pause-timeline limitations are unchanged.
