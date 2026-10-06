@@ -12,6 +12,7 @@ import math
 import mimetypes
 from pathlib import Path
 import re
+import queue
 import secrets
 import shutil
 import shlex
@@ -38,6 +39,9 @@ LOGGER = logging.getLogger('ruview.panel')
 ACTIVITIES = ('still', 'arm movement', 'walking', 'empty room', 'uncertain')
 CAPTURE_MAX_SECONDS = 1800
 CAPTURE_INTERVALS = (100, 200, 500)
+# The CSI receiver is always GT-AX11000 eth6. This is its associated radio peer,
+# not a collector running on that peer. Do not silently substitute another link.
+CAPTURE_PEER = 'A0:36:BC:16:85:B9'
 CAPTURE_LOCK = threading.RLock()
 ACTIVE_CAPTURE = None
 LATEST_CAPTURE = None
@@ -82,14 +86,19 @@ def router_script(seconds, interval):
     return '''
 set -e
 [ "$(wl -i eth6 csimon state | sed -n 's/CSI Monitor: Enabled: //p')" = 0 ]
+[ -z "$(wl -i eth6 csimon)" ]
 [ -z "$(pidof csimond)" ]
+wl -i eth6 assoclist | grep -qi 'PEER' || {
+ echo 'Capture unavailable: configured peer PEER is not associated on GT-AX11000 eth6.'
+ exit 4
+}
 collector_pid=
 sleeper_pid=
 cleanup() {
  set +e
  if [ -n "$sleeper_pid" ]; then kill "$sleeper_pid" 2>/dev/null; fi
  wl -i eth6 csimon disable
- wl -i eth6 csimon del A0:36:BC:9B:BF:89
+ wl -i eth6 csimon del PEER
  if [ -n "$collector_pid" ]; then kill "$collector_pid" 2>/dev/null || :; wait "$collector_pid" 2>/dev/null; fi
 }
 trap cleanup EXIT
@@ -97,13 +106,14 @@ trap 'exit 130' HUP INT TERM
 csimond 23 64 &
 collector_pid=$!
 sleep 1
-wl -i eth6 csimon add A0:36:BC:9B:BF:89 INTERVAL
+wl -i eth6 csimon add PEER INTERVAL
 wl -i eth6 csimon enable
+echo RUVIEW_CAPTURE_STARTED
 sleep SECONDS &
 sleeper_pid=$!
 wait "$sleeper_pid"
 wl -i eth6 csimon state
-'''.replace('INTERVAL', str(interval)).replace('SECONDS', str(seconds))
+'''.replace('PEER', CAPTURE_PEER).replace('INTERVAL', str(interval)).replace('SECONDS', str(seconds))
 
 
 def router_command(seconds, interval):
@@ -121,11 +131,13 @@ class CaptureJob:
     def __init__(self, session, seconds, interval):
         self.session = session
         self.remaining = float(seconds)
+        self.segment_started = None
         self.interval = interval
         self.stop_requested = threading.Event()
         self.resume_event = threading.Event()
         self.resume_event.set()
         self.pause_requested = False
+        self.pause_ready = False
         self.process = None
         self.live_lock = threading.Lock()
         self.live_signal = LiveSignal(interval=interval / 1000, smoothing=1.0)
@@ -137,25 +149,39 @@ class CaptureJob:
     def start(self):
         self.thread.start()
 
+    def remaining_seconds(self):
+        with CAPTURE_LOCK:
+            elapsed = 0 if self.segment_started is None else time.monotonic() - self.segment_started
+            return max(0, round(self.remaining - elapsed, 1))
+
+    def _freeze_clock(self):
+        with CAPTURE_LOCK:
+            if self.segment_started is not None:
+                self.remaining = max(0, self.remaining - (time.monotonic() - self.segment_started))
+                self.segment_started = None
+
     def request_pause(self):
         with CAPTURE_LOCK:
-            if not self.thread.is_alive() or self.pause_requested:
+            if not self.thread.is_alive() or self.pause_requested or self.stop_requested.is_set():
                 return False
             self.pause_requested = True
+            self._freeze_clock()
             self.resume_event.clear()
             self._interrupt()
             return True
 
     def request_resume(self):
         with CAPTURE_LOCK:
-            if not self.thread.is_alive() or not self.pause_requested:
+            if not self.thread.is_alive() or not self.pause_ready or self.stop_requested.is_set():
                 return False
             self.pause_requested = False
+            self.pause_ready = False
             self.resume_event.set()
             return True
 
     def request_stop(self):
         self.stop_requested.set()
+        self._freeze_clock()
         self.resume_event.set()
         self._interrupt()
         return True
@@ -213,33 +239,85 @@ class CaptureJob:
         with closing(db()) as connection:
             seq = connection.execute('SELECT count(*) FROM records WHERE session=?', (self.session,)).fetchone()[0]
         failure = None
+        reader = None
+        reader_cancel = threading.Event()
         try:
             while self.remaining > 0.25 and not self.stop_requested.is_set():
                 if self.pause_requested:
                     self._set_status('paused')
+                    with CAPTURE_LOCK:
+                        self.pause_ready = True
                     self.resume_event.wait()
                     if self.stop_requested.is_set():
                         break
                     self._set_status('running')
-                segment = max(1, int(min(self.remaining, CAPTURE_MAX_SECONDS)))
+                segment = max(1, math.ceil(min(self.remaining, CAPTURE_MAX_SECONDS)))
                 parser = LiveParser()
                 started = time.monotonic()
                 command = router_command(segment, self.interval)
-                self.process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                                stderr=subprocess.STDOUT)
-                output = []
-                while self.process.poll() is None:
+                with CAPTURE_LOCK:
                     if self.stop_requested.is_set() or self.pause_requested:
+                        continue
+                    self.process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                                    stderr=subprocess.STDOUT)
+                chunks = queue.Queue(maxsize=16)
+                process = self.process
+                reader_cancel.clear()
+                def enqueue(value):
+                    while not reader_cancel.is_set():
+                        try:
+                            chunks.put(value, timeout=.1)
+                            return
+                        except queue.Full:
+                            continue
+                def read_output():
+                    try:
+                        while not reader_cancel.is_set():
+                            chunk = process.stdout.read1(65536)
+                            if not chunk:
+                                break
+                            enqueue(chunk)
+                    except Exception as exc:
+                        enqueue(exc)
+                    finally:
+                        enqueue(None)
+                reader = threading.Thread(target=read_output, name='capture-output', daemon=True)
+                reader.start()
+                output = deque(maxlen=32)
+                interrupted_at = None
+                segment_records = seq
+                control_tail = ''
+                capture_started = False
+                while True:
+                    now = time.monotonic()
+                    if interrupted_at is None and (self.stop_requested.is_set() or self.pause_requested):
+                        interrupted_at = now
                         self._interrupt()
+                    if interrupted_at is None and now - started > segment + 20:
+                        failure = 'Router capture timed out; cleanup requires verification.'
+                        interrupted_at = now
+                        self._interrupt()
+                    if interrupted_at is not None and now - interrupted_at > 10 and process.poll() is None:
+                        process.kill()
+                        failure = 'Router did not acknowledge stop; cleanup requires verification.'
+                    try:
+                        chunk = chunks.get(timeout=.2)
+                    except queue.Empty:
+                        continue
+                    if chunk is None:
                         break
-                    chunk = self.process.stdout.read1(65536)
-                    if chunk:
-                        text = chunk.decode('ascii', errors='replace')
-                        output.append(text)
-                        for raw in parser.feed(text):
-                            self._append(raw, seq); seq += 1
-                    else:
-                        time.sleep(.025)
+                    if isinstance(chunk, Exception):
+                        raise chunk
+                    text = chunk.decode('ascii', errors='replace')
+                    if not capture_started and 'RUVIEW_CAPTURE_STARTED' in control_tail + text:
+                        capture_started = True
+                        with CAPTURE_LOCK:
+                            if not self.pause_requested and not self.stop_requested.is_set():
+                                self.segment_started = time.monotonic()
+                    control_tail = (control_tail + text)[-64:]
+                    output.append(text)
+                    for raw in parser.feed(text):
+                        self._append(raw, seq); seq += 1
                 try:
                     self.process.wait(timeout=10)
                 except subprocess.TimeoutExpired:
@@ -248,28 +326,57 @@ class CaptureJob:
                     self.process.stdout.close()
                 if self.process.stdin is not None:
                     self.process.stdin.close()
+                code = self.process.returncode
                 self.process = None
-                self.remaining -= max(.1, time.monotonic() - started)
+                reader.join(timeout=1)
+                self._freeze_clock()
+                # Keep command diagnostics, not raw CSI hex dumps, in the session log.
+                diagnostic = '\n'.join(line for line in ''.join(output).splitlines()
+                                       if '0x' not in line and 'CSI record:' not in line)[-4000:]
+                if failure:
+                    break
                 if self.stop_requested.is_set():
                     break
                 if self.pause_requested:
                     self._set_status('paused', log='Capture paused; router monitor segment stopped safely.')
                     continue
-                if self.remaining > 0.25:
-                    failure = 'Router capture ended before the requested duration: ' + ''.join(output)[-4000:]
+                if code or seq == segment_records:
+                    failure = f'Router capture failed (exit={code}, records={seq-segment_records}). {diagnostic}'
                     break
-            if self.stop_requested.is_set():
-                self._set_status('stopped', time.time(), 'Stopped from panel; router cleanup requested.')
-            elif failure:
+                if not capture_started or time.monotonic() - started < segment:
+                    failure = 'Router capture ended before the requested duration: ' + diagnostic
+                    break
+                # A successful bounded remote sleep consumed this entire segment.
+                # Do not charge SSH/setup time or start a second tiny segment.
+                self.remaining = 0
+            if failure:
+                LOGGER.error('Capture failed session=%s records=%d reason=%s', self.session, seq, failure)
                 self._set_status('failed', time.time(), failure)
+            elif self.stop_requested.is_set():
+                self._set_status('stopped', time.time(), 'Stopped from panel; router cleanup requested.')
             else:
                 self._set_status('captured', time.time())
         except Exception as exc:
             failure = str(exc)
             LOGGER.exception('Panel capture failed session=%s', self.session)
+            reader_cancel.set()
             self._interrupt()
+            if self.process is not None:
+                try:
+                    self.process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    self.process.kill()
+                    self.process.wait()
+                finally:
+                    self.process.stdin.close()
+                    self.process.stdout.close()
+                    self.process = None
             self._set_status('failed', time.time(), failure)
         finally:
+            reader_cancel.set()
+            if reader is not None:
+                reader.join(timeout=2)
+            self._freeze_clock()
             with CAPTURE_LOCK:
                 global ACTIVE_CAPTURE
                 if ACTIVE_CAPTURE is self:
@@ -285,7 +392,10 @@ def capture_snapshot(connection, session, live_after=None):
         job = ACTIVE_CAPTURE
         if job is not None and job.session == session and job.thread.is_alive():
             result.update(paused=job.pause_requested, stopping=job.stop_requested.is_set(),
-                          remaining_s=max(0, round(job.remaining, 1)))
+                          pausing=job.pause_requested and not job.pause_ready,
+                          remaining_s=job.remaining_seconds())
+    if value['status'] == 'failed':
+        result['capture_error'] = connection.execute('SELECT log FROM sessions WHERE id=?', (session,)).fetchone()[0]
     if live_after is not None:
         with CAPTURE_LOCK:
             cached = LATEST_CAPTURE
@@ -322,7 +432,7 @@ def start_capture(body):
             raise RequestError('History reached 256 MiB; delete or export sessions before recording', 507)
         sid = str(uuid.uuid4())
         meta = {'router': '192.168.50.1', 'interface': 'eth6',
-                'peer': 'A0:36:BC:9B:BF:89', 'seconds': seconds,
+                'peer': CAPTURE_PEER, 'peer_device': 'RP-AX56 2.4 GHz radio', 'seconds': seconds,
                 'interval_ms': interval, 'decoder': PROFILE,
                 'clock': 'Pi session wall clock; record timer unit/offset provisional',
                 'panel_controlled': True, 'ground_truth': None, 'pose': None}
@@ -363,7 +473,8 @@ def active_capture_payload(connection):
             return None
         session = get_session(connection, job.session)
         return {'session': session, 'paused': job.pause_requested,
-                'remaining_s': max(0, round(job.remaining, 1))}
+                'pausing': job.pause_requested and not job.pause_ready,
+                'remaining_s': job.remaining_seconds()}
 
 
 def map_payload():

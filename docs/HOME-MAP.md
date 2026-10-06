@@ -76,8 +76,9 @@ scan height before using a physical 3D propagation model.
 
 Network addresses and CSI capability observations remain in [HARDWARE.md](HARDWARE.md).
 Placement on the map does not prove CSI capture from a repeater. TP-Link's IP
-address is still unidentified. The monitored peer `A0:36:BC:9B:BF:89` has not
-been conclusively assigned to one of the marked devices in this map workflow.
+address is still unidentified. The historical monitored peer `A0:36:BC:9B:BF:89` was identified on October 6
+as AX58 eth1; the repaired panel uses AX56 eth1 as the main-router radio peer.
+See HARDWARE.md for the observed associations; this does not establish localization.
 The Pi's exact position, antenna orientations, backhaul paths, wall materials,
 and actual room names remain undocumented.
 
@@ -105,3 +106,14 @@ retention and always-on capture are not implemented. No synchronized route datas
 or location model exists yet. See [PANEL.md](PANEL.md) for the current workflow.
 
 See [NEXT-STEPS.md](NEXT-STEPS.md) for the proposed implementation and experiment plan.
+
+## Experiment setup questions (2026-10-06)
+
+- What are the actual names of R01–R08, and which scan features need correction?
+- Where should the first fixed experiment points be placed?
+- Which physical device corresponds to the monitored peer MAC?
+- Is the estimated router height consistent with a physical measurement?
+- How will action timing be verified: confirmations, recorded cues, or optional
+  calibration video? What timing error is acceptable for the intended task?
+- What exact retention period within the several-week log-retention requirement and
+  what cleanup/export policy should be implemented before moving beyond bounded sessions?

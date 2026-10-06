@@ -334,3 +334,78 @@ groups, the `02: API` sidebar entry, direct operation deep links, and the
 No capture, delete, or router/repeater action was performed. Exact backups and
 state are retained in ignored `recordings/panel-deploy-20261005T182459Z-1ea6df/`
 and `deployment.json`.
+
+## Planned experiment workspace requirements
+
+Consolidated from NEXT-STEPS on 2026-10-06; these are acceptance requirements,
+not a claim of implemented functionality.
+
+### 1. Select verified CSI sources for a manual recording
+
+Implement the source selector only after repeater capability has been classified
+in stage 2. Populate it from the project's authoritative device/source registry
+and fixed map placement, with stable source IDs and user-readable names. The
+current authoritative placement is the project map/device configuration, not a
+separate database; if that changes, read from the new authoritative store.
+Allow a manual session to select one source, any subset, or all verified sources.
+Availability follows verified acquisition support, rather than the presence of a
+device in the map. An unverified device can be labelled unavailable but cannot
+produce a selectable capture source.
+
+Persist the selected source set and map/device revision with the session. During
+a route or other test, show the selected CSI streams together and retain separate
+raw records, receive/device times, gaps and errors for each source. Replay them
+on a shared timeline while exposing clock uncertainty and missing data. Preserve
+single-source and map-only views. Treat the feature as an experiment for source
+comparison; multi-source capture alone does not validate triangulation.
+
+Done when a user can choose any supported combination for a bounded manual
+session, inspect each source's status and trace, and reopen the session with the
+same source identities and map placement.
+
+### 2. Make the existing map usable for experiments
+
+- Load map geometry and device placements together, retaining their source hashes.
+- Allow the user to name rooms, place experiment points, and draw planned routes.
+- Preserve the supplied scan and retain corrections as versioned edits.
+- Display device models and approximate heights; record placement changes so
+  captures from different layouts are not silently combined.
+- Confirm one physical length to check scale and mark obvious scan mistakes.
+  Unknown north and approximate furniture do not block initial annotation.
+
+Done when a point or route can be saved, reopened, and referenced by a session
+in the same coordinate system.
+
+### 4. Connect the panel and API
+
+The panel and scripts should use the same API. The current panel already exposes
+the first read/write API version (`/api/map`, `/api/points`, `/api/routes`,
+`/api/sessions`, `/api/sessions/{id}/measurements`, annotations, raw export,
+manual capture control and session deletion). Automatic cleanup and retention
+policy remain to be defined. Proposed operations:
+
+| Resource | Operations |
+|---|---|
+| Maps | Read geometry/devices; save named points and routes |
+| Sessions | Start, stop, list, inspect state and recording configuration |
+| Measurements | Read samples, signal metrics, validity, cadence, and gaps |
+| Annotations | Save/correct position, action, and time interval for a session |
+| Replay/export | Retrieve aligned records, annotations, and map revision |
+
+Show source/device identity, connection state, last valid sample age, actual
+sample rate, gaps, decode errors, raw signal metrics, motion score/threshold,
+capture state, and history. Do not label a motion score as a probability or
+equate no motion with an empty room. API writes that control recording require
+local access control. Any remote-access feature is a separate milestone after
+validated moving-point tracking; see the gated server configurator below.
+
+Each annotation should retain session ID, map revision, point/route coordinates,
+activity, start/end time, time basis, author/source, timing uncertainty, and
+whether it is a planned instruction or an observed action. Interpolated positions
+between confirmed waypoints must be labeled as estimates.
+
+Store reference annotations separately from model predictions. Preserve raw CSI
+so future processing does not require repeating every experiment.
+
+Done when a saved session can be reopened with its original map, device layout,
+reference labels, and signal trace, and exported through the API.

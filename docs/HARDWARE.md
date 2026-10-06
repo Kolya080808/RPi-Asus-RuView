@@ -1,5 +1,21 @@
 # Hardware and verified state
 
+## Main-router capture path: October 6, 2026
+
+Authenticated read-only checks on both ends confirmed that both repeater radios
+are enabled (`wl radio` = 0). AX58 eth1 (2.4 GHz, MAC ending BF:89) is not
+associated; AX58 eth2 (MAC ending BF:8C) is connected to GT-AX11000 eth8 on
+channel 100/80. AX56 eth1 (MAC ending 85:B9) is associated with GT-AX11000 eth6,
+channel 4/20 MHz; AX56 eth2 is also on eth8. Main-router association lists
+independently agree. Enabled radio and active upstream association are different.
+
+The old panel path hard-coded AX58's absent 2.4 GHz peer. The repair retains
+GT-AX11000 eth6 as the only CSI receiver and uses associated AX56 eth1 as its
+radio peer. No collector runs on either repeater and no multi-source panel
+selection is introduced. Session metadata records the new peer; these records
+must not be treated as the same physical link as historical AX58 captures.
+Short acquisition verification is in PANEL.md. No 5 GHz profile is validated.
+
 ## RP-AX56 detailed read-only check: October 5, 2026
 
 Authenticated diagnostics confirmed model RP-AX56, firmware
@@ -91,7 +107,7 @@ were performed through read-only SSH access; no settings were changed.
 | ASUS RP-AX58 | `192.168.50.136` | `3.0.0.4.388_24694-g71d4ea1` | `eth1`, `eth2` | `csimon` advertised; one foreign-collector probe coincided with a reboot and yielded no CSI. Capture disabled pending incident review. |
 | ASUS RP-AX56 | `192.168.50.156` | `3.0.0.4.386_51891-g12b4ca4` | `eth1`, `eth2` | `csimon` advertised and responsive; no collector run and no CSI capture. |
 | TP-Link RE200 AC750 | not established | unknown | unknown | not tested |
-| Raspberry Pi Zero 2 W | `192.168.50.100` | Raspberry Pi OS Lite ARM64 | built-in Wi-Fi not used as a CSI source | local collector, SQLite history, and future web interface |
+| Raspberry Pi Zero 2 W | `192.168.50.100` | Raspberry Pi OS Lite ARM64 | built-in Wi-Fi not used as a CSI source | local collector, SQLite history, and deployed local panel |
 
 An unidentified candidate, `192.168.50.113`, was found in the ARP table
 (`52:AF:97:B7:E3:D5`, ports 80/443/8080 open), but it must not be identified as the RE200

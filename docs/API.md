@@ -218,7 +218,11 @@ Pause, resume, and stop use the action endpoints listed above and return the
 session ID and action. Invalid state transitions return `409`. The capture
 status is also visible through `/api/health` and the session/capture endpoints.
 Capture snapshots include a stable `id`, `session`, `paused`, `stopping`,
-`remaining_s` (nullable), and `samples` (empty before data arrive). A replay
+`remaining_s` (nullable), and `samples` (empty before data arrive). The countdown
+starts when the router reports that CSI monitoring is enabled; SSH/setup time
+is not charged. Pause/stop freezes the budget. This is a Pi monotonic estimate,
+not an RF acquisition timestamp. Failed captures also return `capture_error`
+with command diagnostics; zero records are not reported as a successful capture. A replay
 error returns `signal_error` alongside lifecycle state, so a timer reset or
 replay limit cannot hide pause/stop/delete controls. The measurements endpoint
 still returns its original error for an unusable timeline.

@@ -61,3 +61,24 @@ subcarrier order, and compatibility with the pose model remain hypotheses.
 Pi → ASUS access is currently added to the runtime file /root/.ssh/authorized_keys;
 after an ASUS reboot, the firmware may recreate it from its settings.
 Persistent SSH settings in NVRAM were not changed.
+
+## Planned timing and collector requirements
+
+Moved from NEXT-STEPS on 2026-10-06. Remaining work must be verified separately.
+
+### 3. Add session timing and the minimum collector fixes
+
+- Use elapsed time instead of fixed frame counts for baseline and smoothing.
+  The current motion analyzer assumes 10 Hz while capture also allows 200/500 ms.
+- Parse and persist records as they arrive; retain partial captures on errors.
+- Distinguish received records, valid decoded records, gaps, and an unavailable source.
+- Record Pi monotonic receive times and raw device timer values. SSH buffering
+  means receive time is not automatically acquisition time; measure and expose
+  synchronization uncertainty rather than claiming exact alignment.
+- Add a preparation countdown and a recorded capture-start event. Planned cue
+  time, cue delivery, and the user's actual action/confirmation are different events.
+- Keep bounded recording, single active capture, cleanup, and rollback verification.
+  Save initial remote state and update the deployment manifest before deployment.
+
+Done when different capture intervals have correct time windows, interruption
+preserves usable records, and a disconnected source is shown as unavailable.

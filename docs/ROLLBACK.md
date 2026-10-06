@@ -228,3 +228,22 @@ Verified live-update operation: `20261005T104835Z-2915cd`, backups in
 `recordings/panel-deploy-20261005T104835Z-2915cd/`. Both rollback checks passed.
 The manifest records before/after router inspections for the two retained live
 verification captures. These captures are not removed by panel-file rollback.
+
+## Capture repair, October 6, 2026
+
+The file update uses the existing `--panel-only` prepare/check/apply workflow;
+only manifest-listed panel files and the existing service restart are involved.
+History and service configuration are preserved. The capture receiver remains
+GT-AX11000 eth6; the fixed peer is updated from the disconnected AX58 2.4 GHz
+radio to the associated AX56 2.4 GHz radio, without a repeater collector.
+
+Before verification captures, `deployment.json.panel_capture_verification`
+records the router/interface/peer, idle baseline, temporary `csimond 23 64`
+process and shell-owned sleeper, monitor add/enable and EXIT-trap disable/delete,
+plus each session ID. No router file or persistent setting is changed.
+`python scripts/rollback.py --capture-only --check` verifies no active panel
+capture, disabled eth6 monitor, empty peer list and no csimond. The narrow
+`--capture-only --apply` recovery refuses unknown peers or any running collector;
+use it only for a recorded operation marked as requiring recovery. It never
+removes keys, history, services or unrelated files. Panel-file rollback also
+restores the former peer configuration, which may still be unavailable.

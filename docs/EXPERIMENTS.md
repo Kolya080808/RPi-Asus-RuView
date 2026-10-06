@@ -172,3 +172,39 @@ coordinates and is not a trained room classifier.
 The first session, `c2cd2e65-6601-4b07-be59-2bb2a41773c3`, includes the user's father
 moving in the same room throughout the recording. It is retained as a collection check,
 but is not used to draw conclusions about the user's hand movements.
+
+## Planned localization validation protocol
+
+Moved from NEXT-STEPS on 2026-10-06; no new experiment results are implied.
+
+### 5. Collect a small repeatable dataset
+
+Start with points in R08, R07, and R02 after the user selects their exact locations.
+Use separate bounded sessions and repeat each condition:
+
+- Stillness and arm movement at a fixed point.
+- Walking between marked points, including stops and changes of direction.
+- An empty apartment/room baseline with the user's exit interval labeled.
+- Motion elsewhere in the apartment to test cross-room confusion.
+
+Record other occupants, doors, facing direction, changed furniture/devices, and
+unusual network activity. Vary route order, speed, and stops. Keep whole later
+sessions, preferably from another day, out of threshold/model tuning. Neighboring
+frames from one recording must not be split randomly into train and test sets.
+
+Done when recordings and labels can be replayed and independently checked,
+including transitions and uncertain intervals.
+
+### 6. Evaluate simple location estimates before expanding scope
+
+First compare room/zone classification against simple baselines on held-out
+sessions. Report confusion between zones, false motion events per hour, missed
+motion, detection delay, and the fraction of time with insufficient data.
+If testing continuous positions later, report distance errors and uncertainty.
+The runtime predictor must not receive the test's reference route or cue sequence.
+
+Use the earlier repeater feasibility results when choosing the sensing sources.
+If observations do not distinguish zones reliably, investigate additional
+supported peer links on the ASUS or revisit the documented repeater blockers.
+Identify the current monitored peer before treating its link as a
+known path on the map. Device placement does not establish a working sensor.

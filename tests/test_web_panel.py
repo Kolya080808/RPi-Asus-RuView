@@ -185,6 +185,7 @@ class APITests(unittest.TestCase):
     def test_delete_running_rejected_paused_and_stopping_joined(self):
         job = Mock(session='test-session', pause_requested=False, remaining=20)
         job.thread.is_alive.return_value = True
+        job.remaining_seconds.return_value = 20
         job.stop_requested.is_set.return_value = False
         with patch.object(panel, 'ACTIVE_CAPTURE', job):
             self.assertEqual(self.request('/api/sessions/test-session/delete', {})[0], 409)

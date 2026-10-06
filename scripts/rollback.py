@@ -163,6 +163,49 @@ def pi(apply):
         c.close()
 
 
+def capture_only(apply=False):
+    """Verify/recover only the manifest-listed panel test monitor, never access keys."""
+    from deploy_panel import connect as connect_pi, health, save_manifest
+    deployed = manifest()
+    plan = deployed.get('panel_capture_verification')
+    if not plan or plan.get('router') != '192.168.50.1' or plan.get('interface') != 'eth6':
+        raise RuntimeError('No recognized panel capture verification plan')
+    peer = plan.get('peer', '')
+    if peer not in ('A0:36:BC:9B:BF:89', 'A0:36:BC:16:85:B9'):
+        raise RuntimeError('Unexpected capture peer')
+    if plan.get('initial_enabled') != 0 or plan.get('initial_peers') != [] or plan.get('initial_collectors') != []:
+        raise RuntimeError('Initial capture state was not idle')
+    c = connect_pi()
+    prefix = ('ssh -i /home/pi/ruview-lab/router_key -o BatchMode=yes '
+              '-o StrictHostKeyChecking=yes '
+              '-o UserKnownHostsFile=/home/pi/ruview-lab/router_known_hosts '
+              'admin@192.168.50.1 ')
+    def remote(command):
+        return run(c, prefix + shlex.quote(command))
+    try:
+        if health(c).get('active_capture'):
+            raise RuntimeError('Stop or finish the panel capture before checking cleanup')
+        state = remote('wl -i eth6 csimon state')
+        peers = remote('wl -i eth6 csimon').strip()
+        collectors = remote('pidof csimond || true').strip()
+        enabled = re.search(r'Enabled:\s*([01])\b', state)
+        addresses = set(re.findall(r'(?:[0-9A-F]{2}:){5}[0-9A-F]{2}', peers.upper()))
+        if not enabled or collectors or addresses - {peer} or (peers and not addresses):
+            raise RuntimeError('Unknown monitor/process state; refusing automatic recovery')
+        if enabled.group(1) != '0' or peers:
+            if not apply or not plan.get('sessions') or plan.get('status') != 'recovery_required':
+                raise RuntimeError('Capture monitor is not restored; inspect the recorded session before recovery')
+            remote('wl -i eth6 csimon disable; wl -i eth6 csimon del ' + peer)
+            if not re.search(r'Enabled:\s*0\b', remote('wl -i eth6 csimon state')) or remote('wl -i eth6 csimon').strip():
+                raise RuntimeError('Capture recovery verification failed')
+        if apply and plan.get('status') == 'recovery_required':
+            plan['status'] = 'restored'
+            save_manifest(deployed)
+        print('Capture cleanup verified: GT-AX11000 eth6 disabled, no peers or csimond; keys/history retained.')
+    finally:
+        c.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
@@ -173,9 +216,14 @@ def main():
                              'reject active or paused captures and preserve all history')
     parser.add_argument('--repeater-only', action='store_true',
                         help='Check/restore the latest bounded repeater probe only')
+    parser.add_argument('--capture-only', action='store_true',
+                        help='Verify/recover the exact panel test monitor, preserving keys and recordings')
     args = parser.parse_args()
-    if args.panel_only and args.repeater_only:
+    if sum((args.panel_only, args.repeater_only, args.capture_only)) > 1:
         parser.error('Choose only one narrow rollback scope')
+    if args.capture_only:
+        capture_only(args.apply)
+        return
     if args.repeater_only:
         from repeater_probe import rollback_repeater
         logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s %(message)s')

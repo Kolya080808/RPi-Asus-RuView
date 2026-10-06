@@ -31,13 +31,13 @@ function renderCapture(){
   const c=state.capture,status=c?.session.status,active=['running','paused'].includes(status);
   $('capture-start').disabled=captureBusy||active;
   $('capture-pause').disabled=captureBusy||!active||!!c?.paused||!!c?.stopping;
-  $('capture-resume').disabled=captureBusy||!c?.paused||!!c?.stopping;
+  $('capture-resume').disabled=captureBusy||!c?.paused||!!c?.pausing||!!c?.stopping;
   $('capture-stop').disabled=captureBusy||!active||!!c?.stopping;
   $('capture-delete').disabled=captureBusy||!!deletingSession||!c||(active&&!c.paused&&!c.stopping);
   $('session-delete').disabled=!!deletingSession||!state.session?.status||state.session.status==='running';
-  $('capture-status').textContent=!c?'Ready':c.stopping&&active?'Stopping':c.paused&&active?'Paused':status;
+  $('capture-status').textContent=!c?'Ready':c.stopping&&active?'Stopping':c.pausing&&active?'Pausing':c.paused&&active?'Paused':status;
   $('recording-state').textContent=active?c.stopping?'Recording stopping':c.paused?'Recording paused':'Recording active':'Ready to record';
-  $('capture-message').textContent=c?`Session ${c.session.id.slice(0,8)} · ${c.session.records} records${c.remaining_s==null?'':` · ${c.remaining_s} s remaining`}${c.signal_error?` · Signal unavailable: ${c.signal_error}`:active&&!c.paused&&c.last_sample_age_s>2?' · NO NEW DATA':active&&!c.paused?' · LIVE':''}`:'The recording is stored on the Pi. Pause or stop it before deleting it here.';
+  $('capture-message').textContent=c?`Session ${c.session.id.slice(0,8)} · ${c.session.records} records${c.remaining_s==null?'':` · ${c.remaining_s} s remaining`}${c.capture_error?` · ${c.capture_error}`:c.signal_error?` · Signal unavailable: ${c.signal_error}`:active&&!c.paused&&c.last_sample_age_s>2?' · NO NEW DATA':active&&!c.paused?' · LIVE':''}`:'The recording is stored on the Pi. Pause or stop it before deleting it here.';
   renderLive(c?.samples||[]);
 }
 function scheduleCapture(delay=100){clearTimeout(state.captureTimer);state.captureTimer=setTimeout(()=>{state.captureTimer=null;pollCapture();},delay);}

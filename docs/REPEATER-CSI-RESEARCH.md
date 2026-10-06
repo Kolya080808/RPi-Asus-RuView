@@ -163,3 +163,39 @@ were retained under ignored local `recordings/repeater-inspection-20261005/`.
 The probe's operation manifest and exact post-reboot state are in ignored
 `deployment.json`. These local artifacts are not part of the Git report; where a
 claim depends on them, the text above states the observed result and its limit.
+
+## Deferred acquisition acceptance procedure
+
+Moved from NEXT-STEPS on 2026-10-06. This is a gated design, not authorization
+to repeat the failed probe.
+
+1. Confirm Pi availability with the user before connecting. Use existing access
+   credentials and pinned host keys; do not install keys or change SSH settings
+   to bypass an access problem.
+2. Inspect current state without changes: device/firmware identity, relevant
+   radio interfaces and associated peer identities, monitor state, existing
+   collectors, and available userspace CSI facilities. Establish which MAC
+   belongs to which radio/link; management IP and map placement alone do not
+   identify the measured path.
+3. Decide the extraction method from that evidence. Do not assume the main
+   router's binary, Netlink protocol or decoder also works on either repeater.
+   Before any temporary upload, process or monitor change, save exact initial
+   state in the ignored deployment manifest, extend `scripts/rollback.py`,
+   document restoration in `ROLLBACK.md`, and pass the rollback plan check.
+4. Run one bounded 5–10-second probe at a time where supported. Preserve the
+   complete available raw output and diagnostics, source/interface/peer identity,
+   capture parameters and timing. Verify cleanup against the recorded initial
+   state immediately afterward. No firmware change, permanent setting, service
+   installation or always-on collection belongs to this stage.
+5. Repeat successful probes. Report received records, lengths, freshness,
+   observed cadence, errors and any measurable loss; mark unknown loss explicitly.
+   Validate the format independently for each source before decoding or adding
+   it to the panel. A working command or nonempty output is insufficient.
+
+Done when each repeater has either repeatable raw CSI acquisition with verified
+cleanup and documented format limits, or an evidence-backed blocking condition
+and a concrete next experiment. If both work, proceed to coordinated short
+captures and measure synchronization uncertainty before localization trials.
+If only one or neither works, assess available main-router peer links and record
+the revised experiment scope. Multiple sources do not by themselves establish
+triangulation or recoverable human coordinates.
