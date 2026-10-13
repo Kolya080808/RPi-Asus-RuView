@@ -20,9 +20,14 @@ Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
    A safe replacement acquisition method still requires validation.
    See [repeater research](REPEATER-CSI-RESEARCH.md) and [experiments](EXPERIMENTS.md).
 
-2. **Classify each repeater's CSI acquisition support — next.** Following the
-   user's October 13 direction, start with per-device source/firmware evidence
-   and classify each method as verified or blocked. Plan separate per-source
+2. **Classify each repeater's CSI acquisition support — in progress.** The
+   October 13 offline checkpoint found NIC Netlink export implementations in
+   both exact-release images, with published image hashes verified. Both
+   dispatchers reject ADD_AP command 5; no repeater raw capture is validated.
+   Next inspect ordinary ADD's Managed-mode/peer requirements and the minimal
+   raw forwarder contract against those binaries. The per-method matrix and
+   evidence are in [repeater research](REPEATER-CSI-RESEARCH.md#stage-2-static-source-classification-2026-10-13).
+   Plan separate per-source
    acquisition, raw storage and later processing; initially assess one supported
    link at a time. See [recording design](RECORDING.md#separate-acquisition-and-processing-decision-2026-10-13).
    No new capture is authorized
@@ -31,8 +36,10 @@ Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
    reversible plan; success requires repeatable raw records, per-device
    format/timing evidence and verified cleanup. If blocked, document why and
    choose a separately evaluated GT-AX11000 peer-link or Pi-source experiment.
-   Keep GT-AX11000 as the baseline. Stage 2 has not been executed in this
-   documentation task.
+   Keep GT-AX11000 as the baseline. Durable receipt/storage and decoding belong
+   on Pi/PC; a minimal source-local reader is still needed for local Netlink.
+   Build/test the storage-processing boundary offline before device deployment.
+   This static checkpoint does not complete stage 2 or authorize acquisition.
 
 3. **Add selectable multi-source manual capture.** Offer a single verified source,
    any subset or all verified sources from the authoritative registry/map.

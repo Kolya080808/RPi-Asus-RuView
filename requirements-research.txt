@@ -1,0 +1,9 @@
+# Optional PC-only offline firmware inspection; not deployed to lab devices.
+pyelftools==0.33
+capstone==5.0.6
+ubi-reader==0.8.16
+lzallright==0.2.6
+zstandard==0.25.0
+dissect.squashfs==1.12
+dissect.cstruct==4.7
+dissect.util==3.24

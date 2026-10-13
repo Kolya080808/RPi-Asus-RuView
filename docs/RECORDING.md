@@ -92,6 +92,14 @@ direction and candidate mitigation, not an implemented or validated safety fix.
 The goal is reliable evidence for estimating a moving object's position, with
 the contribution of each radio link measurable independently.
 
+In the stage 2 follow-up, the user reaffirmed that receipt/storage and decoding
+must happen separately from the router. Adopt that as the implementation
+direction, with Pi preferred for normal operation and the PC for development,
+offline analysis and validation. The current GT path already decodes on Pi/PC;
+its remaining coupling is that panel ingestion, decoding and display preparation
+share a capture worker. The new boundary must separate these responsibilities
+and preserve complete raw input before interpretation.
+
 - Keep a bounded acquisition operation and unchanged raw stream per source,
   with stable source/device/interface/peer identity, firmware/profile, session
   and layout revision. Distinct peers at the same receiver are distinct links,
@@ -118,3 +126,41 @@ source-local export path exists, or whether to use a separately verified
 GT-AX11000 peer link or another explicitly evaluated project source. No firmware
 patch, new service, deployment or permanent collection is authorized by this
 design entry. GT-AX11000 remains the only verified receiver profile today.
+
+### Off-router processing boundary for the next implementation
+
+This is a design contract, not a deployed collector:
+
+1. **Source device:** the existing radio/driver produces measurements. If the
+   only interface is local Netlink, a minimal compatible reader receives whole
+   datagrams and forwards them unchanged over the authenticated LAN transport.
+   It does no I/Q decoding, filtering, inference or plotting. It must not choose
+   monitor settings automatically, share diagnostics with binary data, or hide
+   truncation/receive errors. Moving this reader to Pi cannot make a remote
+   kernel's Netlink socket local to Pi.
+2. **Pi acquisition/storage process:** retain separate append-only source
+   streams before invoking any decoder. A versioned envelope must distinguish
+   complete Netlink datagrams from legacy csimond text/payload prefixes, record
+   actual received lengths and transport errors, and bind data to the source,
+   radio/peer, firmware, operation, configuration and layout revision. Keep
+   source receive time and Pi arrival time separate; mark absent clocks and
+   unknown loss explicitly. Preserve all received bytes, including an incomplete
+   final frame, as failed/partial evidence rather than silently dropping it.
+3. **Pi/PC processing worker:** consume committed raw records asynchronously,
+   select an explicitly validated profile, and write derived results separately
+   with decoder/version provenance. Unknown repeater profiles remain raw-only.
+   A decoder failure must not destroy input or cause capture to claim success.
+   A slow consumer uses the saved stream; bounded receiver queues must record
+   overflow/failure rather than backpressure the radio indefinitely.
+4. **Panel/API:** display source health, loss/gap and clock uncertainty, then
+   derived signal results when available. Panel refresh, replay or inference
+   must not be required to drain the source stream. Existing history stays
+   readable; 320-byte prefixes must not be relabeled as full datagrams.
+
+First verify this boundary locally with fragmented input, complete and partial
+records, unsupported profiles, interrupted transport, full storage and a slow
+decoder. Replayed fixture data are not new RF measurements. Then review the
+exact device reader and rollback plan before any source-side execution. No
+new network listener, permanent service, database migration or C++ rewrite is
+introduced by this decision. Static per-device findings and the remaining
+Managed-mode gate are in REPEATER-CSI-RESEARCH.md.

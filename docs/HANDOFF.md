@@ -1,5 +1,30 @@
 # Project handoff
 
+## Stage 2 started: exact-release NIC export evidence — October 13, 2026
+
+PC-only inspection downloaded official AX56/AX58 firmware images and verified
+both published image hashes. Both NIC modules contain CSI Netlink export code;
+AX58 GPL target selection and 25 byte-identical CSI function bodies link the
+previously missing NIC implementation evidence to the release image. Both
+handlers reject command 5, so the shared ADD_AP constant is not a viable
+command substitution. A separate struct-based ELF/A32 check confirmed this
+narrow static finding. Details, caveats and the method matrix are in
+REPEATER-CSI-RESEARCH.md; checks and tool limitations are in EXPERIMENTS.md.
+
+The user reaffirmed off-router receipt/storage and decoding. RECORDING.md now
+defines a minimal source-local forwarder, separate Pi raw storage, asynchronous
+Pi/PC decoding and a downstream panel. This is a design, not a deployed new
+collector. Next: ordinary ADD/Managed-mode contract and offline raw-pipeline
+validation. No repeater record, location estimate, live safety result or
+operational incident resolution is claimed. All device capture blocks and
+deployment state are unchanged; no device connection or commit occurred.
+
+The user requested complete documentation reading after an incomplete initial
+overview. The documentation, including the full decoder report and OpenAPI
+contract, was read in full; AGENTS.md already requires the initial review, so
+no duplicate rule was added. Optional PC-only analysis dependencies are in
+requirements-research.txt. Existing untracked SSH-diagnostic files were preserved.
+
 ## User watchdog report documented; stage 2 is next — October 13, 2026
 
 The user supplied `dhd_watchdog_dos.zip` as their incident analysis and asked to

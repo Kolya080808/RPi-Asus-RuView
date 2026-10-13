@@ -1,5 +1,20 @@
 # Hardware and verified state
 
+## Offline firmware capability checkpoint: October 13, 2026
+
+Official exact-release AX56 and AX58 firmware images passed their published
+SHA-256 checks. Both contain a NIC `wl.ko` with CSI Netlink sender functions;
+neither indexed rootfs contains a standalone `csimond` filename. AX58's GPL
+target selects NIC/impl87, and all 25 CSI function bodies in its supplied
+`wl.o` match the release-image module. Both command dispatchers reject command
+5; the shared AX58 ADD_AP enum is not implemented by these handlers.
+
+These are offline binary findings, not new measurements or checks of installed
+module hashes. Ordinary ADD in Managed mode, interface-to-protocol mapping,
+reader compatibility and reset risk still need validation. Both repeater capture
+paths remain disabled. Full provenance, hashes, independent opcode checks and
+the method matrix are in [REPEATER-CSI-RESEARCH.md](REPEATER-CSI-RESEARCH.md#stage-2-static-source-classification-2026-10-13).
+
 ## Main-router capture path: October 6, 2026
 
 Authenticated read-only checks on both ends confirmed that both repeater radios

@@ -1,5 +1,48 @@
 # Experiments
 
+## Stage 2 exact-release firmware inspection — October 13, 2026
+
+Scope: official public firmware downloads, the existing AX58 GPL archive,
+saved panel report metadata and PC-only static analysis. No device connection,
+monitor change, new capture, firmware execution, deployment or rollback action.
+Per-image/module hashes, source URLs, method classification and limits are in
+REPEATER-CSI-RESEARCH.md under the stage 2 checkpoint. Originals and inspection
+helpers are retained in ignored `recordings/source-classification-20261013/`.
+
+Both official firmware image hashes matched ASUS release descriptions; ZIP
+CRC checks passed. AX56 rootfs traversal indexed 2,366 entries with zero bad
+blocks reported; AX58 traversal indexed 2,521 entries. NIC sender functions
+were found in both release modules. All 25 AX58 CSI function-body hashes match
+the GPL prebuilt object. A second reader using only `struct` confirmed the
+0..4 command dispatcher and -2 default return in each firmware module, separately
+from the pyelftools/Capstone disassembly. This independently checks the narrow
+static ADD_AP rejection, not runtime mode support or safe acquisition.
+
+Tool limitations were retained rather than interpreted as device failures:
+the AX56 whole-container listing hit a non-UBIFS volume, the CLI's Windows path
+handling produced an empty root listing, and its official image has a 20-byte
+erase-block remainder. Explicit volume selection and POSIX inode traversal
+resolved listing. A false AX58 SquashFS magic match was rejected by the
+superblock version check. Linear disassembly stops on inline data in two AX56
+functions; conclusions are limited to verified code regions. No new sensor data
+exists to validate payload decoding, timing, loss, station mode or localization.
+
+The local inspection environment adds only the optional packages pinned in
+requirements-research.txt. Existing application requirements and device software
+are unchanged. The user's follow-up requires off-router receipt/storage and
+decoding; the planned boundary and offline failure scenarios are in RECORDING.md.
+
+Validation after installing the optional inspection dependencies:
+`.venv/Scripts/python.exe -m pip check` reported no broken requirements;
+`.venv/Scripts/python.exe recordings/source-classification-20261013/verify_static.py`
+passed both command-dispatch checks and the 25-function AX58 comparison;
+`.venv/Scripts/python.exe -m unittest discover -s tests -q` passed all 65 tests.
+Expected failure-path logs came from local fixtures, including simulated storage
+and SSH failures; cleanup messages do not represent device operations.
+`git diff --check` passed. No application code changed in this checkpoint.
+Device behavior, full raw acquisition and the proposed processing boundary
+remain untested at runtime.
+
 ## User-supplied DHD watchdog report review — October 13, 2026
 
 Input: `dhd_watchdog_dos.zip`, containing only `F-01-dhd-csimon-watchdog.txt`.

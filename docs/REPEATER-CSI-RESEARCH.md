@@ -1,11 +1,17 @@
 # Repeater CSI research and acquisition options
 
-Updated 2026-10-13 with exact-build GPL evidence and an offline incident review.
+Updated 2026-10-13 with exact-build firmware inspection and initial source classification.
 This document distinguishes measured facts from proposed designs.
 The submitted file was named `deep-research-report.md`; its findings are retained
 here with claims narrowed to the evidence available in the repository.
 
 ## Executive finding
+
+Stage 2 has now started. The [static classification below](#stage-2-static-source-classification-2026-10-13)
+finds NIC-side CSI Netlink export code in both exact-release firmware images,
+but no standalone collector or validated acquisition in the observed Managed
+mode. No device was contacted. The user's separate-acquisition/off-router
+decoding direction is retained in [RECORDING.md](RECORDING.md).
 
 Both RP-AX56 and RP-AX58 advertise `csimon`, and boot diagnostics show the
 Broadcom CSIMON module initializing. This makes repeater-side CSI an avenue to
@@ -390,6 +396,145 @@ were retained under ignored local `recordings/repeater-inspection-20261005/`.
 The probe's operation manifest and exact post-reboot state are in ignored
 `deployment.json`. These local artifacts are not part of the Git report; where a
 claim depends on them, the text above states the observed result and its limit.
+
+## Stage 2 static source classification (2026-10-13)
+
+This checkpoint examines official files on the PC. It does not repeat the
+incident, enable monitoring, establish live compatibility, or clear the capture
+blocks. The user-confirmed incident cause remains attributed as above. The
+question here is which implementation can supply a separate raw stream.
+
+### Exact-release artifacts and extraction
+
+The ASUS RP-AX56 product API returned no drivers for Others (OS 8), Linux 32-bit
+(39), or Linux 64-bit (5). Its OS list did not advertise Others. This bounded
+catalog search found no GPL package; it does not prove that none exists.
+The [official AX56 firmware](https://dlcdnets.asus.com/pub/ASUS/wireless/RP-AX56/FW_RP_AX56_300438651891.zip)
+contains `RP-AX56_3.0.0.4_386_51891-g12b4ca4_pureubi.w`, matching the recorded
+device release and suffix. The
+[official AX58 firmware](https://dlcdnets.asus.com/pub/ASUS/wireless/RP-AX58/FW_RP_AX58_300438824694.zip)
+contains `RP-AX58_3.0.0.4_388_24694-g71d4ea1_nand_squashfs.pkgtb`.
+Both unpacked images matched the SHA-256 published in ASUS release descriptions:
+
+| Artifact | Bytes | SHA-256 |
+|---|---:|---|
+| AX56 firmware image | 47,317,012 | `34e82526187b6c6bd0d81976b05f0999d0c2a38a4fca7a3d446418e7ffc06ef9` |
+| AX58 firmware image | 36,157,344 | `701d40a64c37fc032ff3bb906dc4e02f182f83d80b1b7664dfb5e077724c8542` |
+| AX56 `/lib/modules/4.1.52/extra/wl.ko` | 6,910,228 | `b82ffa419ce4d6910941ca3ed38cac5ded006f698d94a6d223f427fc5847f5ef` |
+| AX58 `/lib/modules/4.19.183/extra/wl.ko` | 9,680,356 | `dabb2f7e716d63f4ffa9163773b7f87c15050cb442d021db528194f0b25e68a8` |
+
+AX56 UBI volumes were separated before inspecting only `rootfs_ubifs`:
+2,366 directory entries, zero bad blocks reported by the UBIFS index walker.
+The official container has a 20-byte remainder beyond whole erase blocks;
+UBI Reader warns about alignment. Its whole-image file lister initially tried
+a non-UBIFS volume and failed. Listing the extracted rootfs through its CLI
+also returned nothing because Windows `PurePath` treated `/` as `\\`.
+The retained helper traverses inode directory entries directly with POSIX paths;
+it does not suppress corrupt-block errors. No firmware files were executed.
+
+AX58 contains a SquashFS 4.0 rootfs at image offset 10,135,456, with
+26,020,498 used bytes and 2,521 directory entries beneath the root. An earlier
+`hsqs` byte match at offset 86,020 fails superblock validation and was not used.
+Neither indexed rootfs contains a filename with `csimon`, or a `dhd.ko` file.
+This excludes a standalone file with that name in these images, not functionality
+embedded in another executable or a different boot-time component.
+
+### NIC implementation and the export contract
+
+Both firmware `wl.ko` files are ARM32 relocatable ELF with symbol tables and
+25 `wlc_csimon_*` functions. Driver strings and kernel vermagic agree with the
+saved device inventory: AX56 `17.10.157.2809 (r801046) 12b4ca4` / 4.1.52;
+AX58 `17.10.188.6401 (r808804)` / 4.19.183. This is a release-artifact match;
+the installed module hashes were not read from either live device.
+
+The AX58 GPL target `targets/96756GW/96756GW.RP-AX58` explicitly selects
+`BRCM_CHIP=6756`, `BUILD_HND_NIC=y`, `BCM_WLIMPL=87`, and leaves
+`BRCM_DRIVER_DHD` unset. Its `router-sysdep/hnd_extra/prebuilt/wl.o` has
+byte-identical bodies for all 25 CSI functions compared with the official
+firmware `wl.ko`; the GPL `wl` executable also matches the firmware copy exactly.
+This closes the earlier *availability of NIC implementation evidence* gap for
+static analysis, although the C source `wlc_csimon.c` remains absent. It does
+not establish every runtime build condition or revise the user's incident finding.
+
+In both firmware modules, ELF relocations connect `wlc_csimon_attach` to
+`__netlink_kernel_create` and `wlc_csimon_wd_timer` to `netlink_broadcast`.
+The examined sender copies `0x800` (2,048) bytes into a buffer of `0x810`
+(2,064) bytes, after a 16-byte header, and broadcasts to group 2. In the
+AX58 attach function, internal radio unit 0 selects protocol 23, unit 1 selects
+22, and the remaining branch selects 24. These are static code observations;
+mapping a Linux interface to the internal unit still requires evidence.
+Do not infer the measured CSI layout, reliable Netlink sequence numbers,
+losslessness, or GT decoder compatibility from these transport constants.
+
+There is also a concrete limit on configuration commands. The AX58 shared
+header declares `CSIMON_CFG_CMD_ADD_AP=5`, but **both examined firmware handlers
+dispatch only values 0 through 4**. Once version/length checks pass, value 5
+takes the default branch and returns -2. Thus, an ADD_AP-based workaround is
+not supported by these binaries. This does not prove that the ordinary ADD
+operation cannot work in Managed mode; its peer lookup and radio-mode
+requirements still need analysis.
+
+The narrow dispatch finding was cross-checked without pyelftools or Capstone:
+a second reader parsed ELF32 sections with Python `struct`, checked the A32
+words `e3530004` (CMP r3,#4), `979ff103` (conditional jump table), decoded the
+default branch displacement, and found `e3e06001` (return value -2).
+AX56 `.text` offsets are `0x202654` and `0x202c00`; AX58 offsets are
+`0x2b5138` and `0x2b5770`. This independently checks a static conclusion, not
+safe runtime acquisition. Linear disassembly stops at inline data in two
+AX56 functions; it is not a complete control-flow audit. The command gate
+precedes that data, and the separate check reads its default target directly.
+
+### Method classification and next gate
+
+| Device/method | Current evidence level | Remaining gate / disposition |
+|---|---|---|
+| AX56 local NIC Netlink reader, raw forwarding to Pi | Export code established in the exact-release image; no live records | Candidate. Establish ordinary ADD semantics in Managed mode, unit/interface mapping, compatible reader ABI, full framing and bounded stop/drop behavior. Keep capture disabled. |
+| AX58 local NIC Netlink reader, raw forwarding to Pi | Export code established; GPL and firmware CSI function bodies agree | Candidate with incident/reset-risk gate. Review the same mode/reader requirements and the applicable failure paths before proposing any live run. |
+| ADD_AP command 5 on either examined module | Static negative result: dispatcher rejects it | Blocked for these binaries; do not try a live command substitution. |
+| Reuse the GT `csimond` binary on a repeater | Architecture/constants alone are insufficient; failed AX58 attempt remains recorded | Not validated; no repeat deployment. A separate reader must be assessed against the actual source profile. |
+| Pi directly opens the repeater's Netlink socket | Netlink is local to the source kernel | Not an acquisition path. A device-side forwarder or a verified existing network export is needed. |
+| GT eth6 receives from AX56 eth1; Pi stores/decodes | Existing receiver baseline, plus saved October 6 short-capture reports | Available baseline for later collector work; this is GT-originated CSI, not AX56-originated CSI. Fresh state and rollback checks are still required before a new run. |
+| Other GT radio/peer links, or Pi's own radio | No validated profile here | Separate future assessment; no automatic substitution. |
+
+The saved October 6 panel reports contain 59/29/11 valid prefixes at requested
+100/200/500 ms respectively, in six-second captures; the first has one timing
+gap. All are incomplete 320-byte stored records. These reports predate this
+task and were read as metadata only; they do not supply repeater-originated CSI
+or prove continuous capture quality.
+
+**Selected continuation:** finish ordinary ADD/peer-mode and reader-contract
+analysis against these identified modules, while preparing the off-router raw
+storage/decoder boundary described in RECORDING.md. Do not spend another live
+probe merely establishing that an exporter exists. A minimal forwarder remains
+source-local; durable storage, profile decoding, signal processing and location
+estimation belong on Pi/PC. No compatible forwarder has been implemented or
+validated by this checkpoint. Classification is in progress, not a completed
+multi-source acquisition milestone.
+
+### Reproduction and retained evidence
+
+Optional PC inspection dependencies are pinned in `requirements-research.txt`;
+they are not runtime requirements and are never deployed by `deploy_panel.py`.
+Sources/API responses, ZIP/image hashes, extracted modules, complete file
+inventories, selected GPL member hashes, disassembly and the independent check
+are under ignored `recordings/source-classification-20261013/`. Keep these
+artifacts locally. `sources.json`, `ax56-firmware.json`, `ax58-firmware.json`,
+`ax58-selection.json`, `elf-csimon-report.json` and
+`static-independent-check.json` identify the evidence used above.
+
+Inspection helpers in that directory read public artifacts only:
+`inspect_sources.py`, `inspect_ax56_rootfs.py`, `inspect_ax58_rootfs.py`,
+`inspect_elf.py`, and `verify_static.py`. Extraction/download helpers preserve
+the downloaded originals; use a new evidence directory rather than overwriting
+an existing acquisition. The independent check can be rerun with:
+
+```powershell
+.venv/Scripts/python.exe recordings/source-classification-20261013/verify_static.py
+```
+
+No router/repeater/Pi file, setting, monitor, process or service was changed;
+`deployment.json` and operational rollback ownership remain unchanged. The
+only environment additions are the optional analysis packages in the PC venv.
 
 ## Deferred acquisition acceptance procedure
 

@@ -1,5 +1,36 @@
 # Experiment rollback
 
+## Offline source classification (2026-10-13)
+
+The current stage only inspected public firmware/GPL files on the PC and
+updated documentation. No device files, processes, monitor settings, services
+or access keys changed. `scripts/rollback.py` and `deployment.json` therefore
+remain unchanged; there is no new remote operation to undo. The existing
+repeater operation is still recorded as restored with an unresolved operational
+incident. Static exporter findings do not clear that safety gate.
+
+Local additions are the optional venv dependencies in `requirements-research.txt`
+and retained evidence/helpers under ignored
+`recordings/source-classification-20261013/`. Device rollback does not uninstall
+PC packages or delete this evidence. No exact pre-install venv snapshot was
+recorded, so an automatic package removal would not be a verified restoration.
+Keep the artifacts for reproduction and do not remove shared dependencies
+merely because they appear in the research requirements.
+
+The planned raw forwarder and separate Pi storage/processing workers are not
+implemented or deployed and are **not covered by the existing rollback plan**.
+Before any such deployment, record exact original files, hashes/modes, owned
+processes and monitor/service state; extend the rollback implementation and
+manifest for that concrete operation, verify the plan before applying changes,
+and verify restoration afterward. Preserve raw records and later history.
+See [RECORDING.md](RECORDING.md#off-router-processing-boundary-for-the-next-implementation).
+
+Local review validation: `.venv/Scripts/python.exe -m unittest discover -s tests
+-p TEST_FILE -q` passed for `test_repeater_probe.py` (9 tests),
+`test_capture_rollback.py` (4), and `test_panel_deployment.py` (5).
+`git diff --check` passed. These use local fixtures; no remote `--check` or
+`--apply` was run, and current device state was not verified.
+
 ## Bounded repeater probes (October 5, 2026)
 
 **Incident: capture is now disabled in code for both repeaters.** Operation
@@ -26,8 +57,12 @@ was installed persistently. The file was absent after AX58 reboot; no current
 repeater-side collector file needs removal. The built-in CSIMON kernel component
 is part of the firmware and was not installed by the probe. The attempted
 collector used Netlink 23 while a single upstream peer was monitored at 500 ms
-for eight seconds. Whether the collector, monitor, their interaction or another
-event caused the reboot is unknown.
+for eight seconds. The initial record left the cause unknown. On October 13,
+the user confirmed the CSI/DHD watchdog cause from their binary analysis;
+that finding is attributed to the user in REPEATER-CSI-RESEARCH.md. The full
+supporting binary evidence has not been independently reviewed here, and a safe
+replacement acquisition method remains unvalidated. This does not clear the
+manifest's operational incident block.
 
 The intended shell cleanup would disable the monitor, delete its peer and stop
 the exact child process. Because the node rebooted and the SSH stream timed out,
@@ -208,7 +243,11 @@ The ASUS password is entered at a hidden prompt. The Pi uses the generated SSH k
 after that key is removed, a subsequent run will require the Pi password. Passwords
 are not stored in files. Python with paramiko must be installed (already available on this PC).
 
-## Recorded changes
+## Recorded changes (historical collector-only baseline)
+
+These entries describe the earlier installation, not a fresh device inventory.
+Later panel/repeater operations and their rollback scopes are documented above
+and below; the manifest defines the exact recorded operation.
 
 * ASUS 192.168.50.1: csimon was temporarily enabled on eth6 for
   A0:36:BC:9B:BF:89 at a 500 ms interval. Before the test, the monitor was disabled and the list was empty.
