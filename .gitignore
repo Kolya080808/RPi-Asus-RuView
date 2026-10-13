@@ -16,6 +16,8 @@ csimond.bin
 # Local recording exports and generated plots
 recordings/
 3dmodelhome.zip
+# User-supplied incident research; preserve locally, summarize in docs.
+dhd_watchdog_dos.zip
 # Local editor/system files
 .DS_Store
 Thumbs.db

@@ -1,7 +1,7 @@
 # Repeater CSI research and acquisition options
 
-Updated 2026-10-05 after review of the user's submitted research and the AX58/AX56
-observations. This document distinguishes measured facts from proposed designs.
+Updated 2026-10-13 with exact-build GPL evidence and an offline incident review.
+This document distinguishes measured facts from proposed designs.
 The submitted file was named `deep-research-report.md`; its findings are retained
 here with claims narrowed to the evidence available in the repository.
 
@@ -71,7 +71,9 @@ The retained executable is a 9,716-byte ARM32 ELF using `/lib/ld-linux.so.3`
 and `libc.so.6`; strings and disassembly show a Netlink socket and `recvmsg()`.
 These static observations explain the broad purpose of the utility, but do not
 document its full message framing, validate its binary against repeater firmware,
-or prove which kernel events it expects. Netlink messages can have protocol-
+or prove which kernel events it expects. The October 12 GPL inspection below
+provides some matching-build interface constants, but no runtime proof.
+Netlink messages can have protocol-
 specific headers and payloads; the generic Linux format is not a substitute for
 the Broadcom CSI contract.
 
@@ -155,6 +157,231 @@ to execute it.
    point experiments and evaluation on held-out sessions. Call triangulation
    feasible only after showing the actual path geometry and independent
    information in the measurements.
+
+## RP-AX58 incident review and exact-build evidence (2026-10-12–13)
+
+Scope: PC-only analysis of operation `99256b673931`, saved October 5 evidence,
+public ASUS downloads, and synthetic SSH failures. No device connection, probe,
+collector execution, firmware installation or remote state change occurred.
+The incident remains unresolved; local restoration is not evidence of safe CSI
+acquisition. `deployment.json` retains `incident.resolved: false`.
+
+### Compatibility findings
+
+The saved device identity is RP-AX58 `3.0.0.4.388_24694-g71d4ea1`, Linux
+4.19.183, ARMv7, Broadcom driver `17.10.188.6401 (r808804)`. The saved boot log
+names GCC 9.2.0 / Buildroot 2019.11.1. The retained GT collector is ARM32 EABI,
+requires `GLIBC_2.4` and `/lib/ld-linux.so.3`, and was built with GCC 5.5.0 /
+Buildroot 2017.11.1. Different compiler versions alone do not prove an ABI fault.
+
+The official [ASUS firmware listing](https://www.asus.com/us/supportonly/rp-ax58/helpdesk_bios/)
+lists release `3.0.0.4.388_24694` dated 2024-12-09. Its notes do not specify CSI
+compatibility. On the [ASUS downloads page](https://www.asus.com/us/supportonly/rp-ax58/helpdesk_download/),
+selecting **Others** (OS ID 8) exposes **Source Code**, version
+`3.0.0.4.388_24694`, dated 2024-12-17. This is a positive source discovery;
+absence from the Windows utility category is not absence of GPL materials.
+
+The [official GPL ZIP](https://dlcdnets.asus.com/pub/ASUS/wireless/RP-AX58/GPL_RP_AX58_300438824694.zip)
+was downloaded to ignored local evidence, never executed. It contains
+`GPL_RP-AX58_3.0.0.4.388.24694-g71d4ea1.tgz`: the suffix agrees with the saved
+device build. ZIP size is 1,730,933,042 bytes; locally computed SHA-256 is
+`a0a34f519cf620ff04189e9fac3bc0e7e6c770a80003a5ba968cddd2d03f691f`.
+The ZIP CRC was checked and all 337,401 tar member entries were indexed without
+installing or unpacking the full tree. The SHA identifies this local download;
+ASUS's returned GPL entry supplied no publisher SHA-256 for comparison.
+
+Within `asuswrt/release/src-rt-5.04axhnd.675x/bcmdrivers/broadcom/net/wl/impl87/`:
+
+- `sys/src/include/bcm_csimon.h` declares CSIMON 1.1.0, maximum ring element
+  2048 bytes, 32 ring elements, radio-specific Netlink IDs 23/22/24 and multicast
+  group constant 2. The CSIMON version agrees with the independently saved
+  boot messages. A constant does not prove that the installed build uses that
+  branch, or which radio/interface maps to it.
+- `sys/components/wlioctl/include/wlioctl.h` (also in `main/`) declares
+  configuration/counter version 1 and a distinct `CSIMON_CFG_CMD_ADD_AP` command.
+  This raises an explicit station-mode versus AP-mode compatibility question;
+  it does not authorize substituting a different command on the live repeater.
+- The shared header describes an extra guard region around the host-memory CSI
+  ring as a workaround for memory corruption under investigation. This is a
+  source-level risk clue, **not** a diagnosis of the AX58 reboot: applicability
+  to its actual driver path and the failure signature are unverified.
+
+The main-router collector's saved disassembly sets the Netlink subscription
+mask to 2 and allocates `0x810` bytes (2048 plus 16). These constants are
+consistent with the header. That is a static consistency check, not validation
+of Netlink framing, receive lengths, ABI loading, radio mode or firmware safety.
+No raw AX58 CSI exists to validate its format or reuse the GT decoder.
+
+A bounded content search examined 3,555 regular `.c`, `.h`, `.mk` and `Makefile*`
+files of at most 2 MiB under `impl87`, yielding 243 matching lines. The full
+archive member index contains only one filename with `csimon` in it: the shared
+header. `main/src/wl/config/wl.mk:3187–3193` conditionally adds `wlc_csimon.c`
+and `BCM_CSIMON_AP`, but that implementation file is absent from this archive.
+`sys/src/dhd/sys/dhd_msgbuf.c:1303–1345` does include a DHD Netlink sender and
+framing code. That is a different driver path; its presence cannot establish
+the missing NIC `wlc_csimon` implementation, active build flags, or safe use of
+ADD/AP commands on this device. This is the concrete remaining source gap.
+
+An offline ELF32 symbol/version-table comparison found all 18 strong imported
+name/version pairs of the retained collector in the combined ARM libc/loader
+exports from the GPL toolchains; all inspected ELF flags were `0x5000200`.
+This preliminary check weakens a simple missing-GLIBC-symbol explanation, but
+the toolchain libraries are not authenticated copies of the installed files
+(even their sizes differ). No external ELF parser cross-check or runtime loader
+test was performed. `elf-static-comparison.json` retains the exact symbol list
+and library filenames; this result does not establish device ABI compatibility.
+
+### Causal assessment
+
+| Explanation | Evidence and limits | What would discriminate it |
+|---|---|---|
+| Monitor/driver failure | Probe and reboot overlap; no saved marker proves monitor enable completed. Shared-header guard comment is not a crash trace. | Applicable driver implementation/build flags and an existing pre-reset trace; no live reproduction. |
+| Collector/subscription interaction | Collector was uploaded; ARM class, some Netlink constants agree. Successful startup/receive and runtime library versions remain unobserved. | Static symbol/ABI and exact driver subscription-path review; matching image artifacts, not execution. |
+| Unsupported station-mode configuration | Saved AX58 radios were Managed; headers distinguish ADD and ADD_AP. Their exact semantics/build support have not been established. | Relevant `wl` parser and driver command-handler implementation for this build. |
+| Watchdog or another software reboot path | Boot log reports SW reset `0x80000000`; this does not identify the initiating component. | Existing watchdog/reset-owner trace from the incident window. |
+| Unrelated reboot | Cannot be ruled out; temporal association alone is not causality. | Independently dated reset request/event or other contemporaneous evidence. |
+
+Uptime-derived boot time around 19:10:55 Moscow and GT association events
+(first deauthentication 19:10:51, reassociation 19:11:23) independently support
+the reboot/disruption. AX58's correctly dated pre-boot log ends at 19:07:27;
+there is no saved per-step record for the probe. The eight-second intended
+capture does not identify which stage was reached before SSH timed out.
+No evidence-supported ranking selects one cause above the others.
+
+### Separately reviewed next-test plan
+
+This plan is a research/diagnostics checkpoint, **not approval to resume CSI
+acquisition**. Capture remains disabled on AX58 and AX56; new preparation stays
+blocked. Do not set the incident resolved merely because this review is written.
+
+**A. PC-only tests and static follow-up (permitted in this task).** Exercise the
+SSH reader with real local SSH channels: small/no-newline stdout and stderr,
+disconnect, missing exec acknowledgement, absent exit status, delayed tail,
+nonzero exit, output cap and disk failure. Verify exact saved bytes, incomplete
+status and no retries. Continue static GPL analysis of station/AP configuration,
+radio-to-Netlink mapping and build selection, concentrating on the missing NIC
+implementation or matching compiled artifacts rather than treating DHD as a
+substitute. A loader/symbol audit
+may use an official matching image offline; do not run its ARM programs.
+
+**B. Optional read-only device inventory (not executed here).** Use only the
+existing pinned AX58 login, one connection, no retries, and one command at a
+time. No Pi is needed. Before execution, review this exact allowlist and confirm
+that fresh inventory would fill a specific remaining evidence gap:
+
+1. `nvram get productid`, `nvram get firmver`, `nvram get buildno`,
+   `nvram get extendno`, `uname -r`, `uname -m` — verify against the saved build;
+   stop on any mismatch before further diagnostics.
+2. `cat /proc/uptime`, `cat /proc/sys/kernel/random/boot_id` — initial state.
+3. `ls -l /lib/ld-linux.so.3 /lib/libc.so.6`,
+   `sha256sum /lib/ld-linux.so.3 /lib/libc.so.6` — identify exact on-device files
+   for comparison with official offline artifacts, without executing them.
+4. `cat /proc/net/netlink` — snapshot existing sockets only, no new Netlink socket.
+5. Repeat uptime and boot ID; require unchanged boot ID and increasing uptime.
+
+Use the journaled reader with a 10-second network-wait budget and 256 KiB total output per command,
+an overall 150-second session limit, and stop at the first nonzero status,
+deadline, incomplete output or disconnect. Preserve the last acknowledged step
+and unknown remote outcome. Do not reconnect automatically, interpret SSH loss
+as proof of reboot, or send recovery commands. Closing SSH does not prove that
+a dispatched remote command has terminated.
+Use a dedicated client: a stalled channel close shuts down its transport
+locally. Budgets do not impose hard real-time bounds on local disk I/O or
+thread scheduling. The 150-second session limit must prevent dispatch of
+another command after expiry; it is not a claim that device cleanup occurred.
+
+There are no uploads, remote temporary files, background processes, `wl` calls,
+CSI controls, collector starts, settings, service changes or log clearing in B.
+Do not use `--prepare`, `--capture` or automatic `rollback --repeater-only` for
+this read-only plan: the latter's inspection calls `wl`. Restoration is closing
+the SSH session; preserve normal device audit logs/counters. If any mutation
+becomes necessary, stop and write a separate exact-file/process/settings plan
+and verified rollback before execution. Existing incident evidence is never
+overwritten or deleted. A fresh inventory cannot reconstruct the lost 2026-10-05
+failure window and cannot by itself establish safe CSI capture.
+
+**C. Acquisition remains blocked.** Require an exact-build compatible reader and
+driver/mode contract, an explicit review of remaining reset risk, and a distinct
+user-reviewed experiment with manifest baseline, rollback implementation and
+preflight verification. Neither the failed eight-second probe nor an add/enable
+variant is part of A or B. Short duration does not bound a driver crash.
+
+Review result and local test results are recorded in `EXPERIMENTS.md`. The
+reviewer is a reasoning check, not an independent measurement of the device.
+All downloaded source, extracted snippets, hashes and public API responses are
+under ignored `recordings/ax58-review-20261012/`; earlier private incident
+evidence remains under `recordings/repeater-inspection-20261005/`.
+
+## User-supplied watchdog report and roadmap decision (2026-10-13)
+
+The user supplied `dhd_watchdog_dos.zip`, described it as their explanation of
+the incident, and requested documentation followed by the next roadmap stage.
+The archive contains one 1,893-byte text report,
+`F-01-dhd-csimon-watchdog.txt`; no executable, `dhd.ko`, full disassembly or
+additional device logs were supplied. The original ZIP is preserved unchanged
+and ignored by Git. ZIP SHA-256:
+`9ab5a388aa4c036057184958c9b19b4f126e1fe79d748868a8b7747d1834e062`;
+report SHA-256:
+`11b0f8c711449e57c758d62f289290f592b3ecc8ab8d1153955cda17bcdd4dc6`.
+
+**Author's explanation.** The report describes GT-AX11000 firmware
+`3.0.0.4.388_24548` and an alleged DHD watchdog-timer defect. Its proposed
+sequence is CSI-ring overflow, return `-0x28`, skipped timer restart, dongle
+trap and emergency reboot, followed by AiMesh-wide disruption. It attributes
+the condition to bitwise `&` instead of logical `&&` and suggests replacing
+that operator and/or explicitly handling the return code. The author labels
+this static RCA, explicitly not dynamically reproduced. Its broader-device
+scope, vulnerability classification and severity estimate are author claims,
+not verified project results. The proposed overload trigger was not executed
+and is not adopted as an experiment or reproduced as operating instructions.
+
+**Initial review of the short report and saved sources, before the user's
+follow-up confirmation.** The checks below concern only the supplied excerpt
+and inspected AX58 GPL files. They do not review or refute the user's additional
+objdump/binary analysis, which was not included in the ZIP.
+
+| Claim | Check and conclusion |
+|---|---|
+| Replacing `&` with `&&` restarts the timer for return `-0x28`. | In the supplied expression, the left operand is `(ret != -40)`. When `ret == -40` it is false: both `false & flag` and `false && flag` are false for every flag value. For Boolean flags 0/1 the two predicates agree for every return value. The operator replacement alone does not fix the described case. A non-Boolean flag could cause other differences, but no such value was supplied. |
+| `-0x28` denotes CSI-ring overflow. | AX58 GPL `impl87/{main,sys}/src/include/bcmutils.h:428` defines `BCME_NODEVICE` as `-40`, meaning device absent. The inspected DHD `dhd_csimon_watchdog()` returns that value under the conditional file-output branch after repeated file-open failures. Netlink-send errors increment drop counters and the function returns `BCME_OK`; the report's overflow-to-`-40` path was not found in this source. This does not prove what a different compiled GT binary does. |
+| The watchdog condition in our source has the erroneous operator. | AX58 GPL `sys/src/dhd/sys/dhd_linux.c:7444–7445` already uses logical `&&` with `csimon_ret != BCME_NODEVICE`. A decompiler may express a Boolean conjunction as a bitwise operation; that alone does not establish an erroneous source operator. The report's GT binary/disassembly is not included for independent verification. |
+| This identifies the October 5 AX58 reset. | The report analyzes GT-AX11000/DHD, while the incident target was RP-AX58 `24694-g71d4ea1`. The active AX58 driver-path/build mapping remains unproven. The saved probe used one peer and a 500 ms interval, unlike the report's proposed overload scenario. There is no saved trap trace or last-step marker connecting the proposed sequence to the incident. |
+| The main router and entire mesh rebooted in this incident. | The contemporaneous GT uptime was approximately 512,349 seconds and AX56 uptime approximately 434,250 seconds. These independent observations support an AX58-local reset with a connectivity/streaming interruption, not a confirmed mesh-wide reboot. A future wider failure remains a separate untested possibility. |
+
+The predicate check was evaluated locally over representative return values
+`-40`, `-1`, `0`, `1` and flags `0`, `1`; all eight cases agreed. The general
+`ret == -40` result also follows directly from Boolean algebra and does not
+depend on hardware. Header definitions and code branches provide a separate
+source-level check. Extracted header hashes and the predicate results are in
+ignored `recordings/user-incident-review-20261013/`. No hardware test, overload,
+firmware patch or driver execution occurred.
+
+**User confirmation and current decision.** Later on October 13, the user
+explicitly confirmed that this is the incident cause and that they proved it
+with objdump and additional tools. The project records the CSI/DHD watchdog
+failure as the **user-confirmed causal finding** and proceeds on that planning
+basis. The assistant has not inspected the full supporting binary analysis;
+the exact operator/return-code interpretation in the short excerpt remains
+unreconciled with the limited checks above. This is an evidence-provenance
+distinction, not a request to reopen the same documentary milestone or repeat
+the incident. No further claim that all nodes actually rebooted is inferred
+from the user confirmation; the saved uptimes remain part of the record.
+
+The user also prefers separate acquisition, both as a proposed mitigation and
+to improve position estimation. The design decision is recorded in
+`RECORDING.md`: separate source streams and raw storage, acquisition separated
+from processing/panel work, initial single-link assessments, followed by
+time-aligned multi-link evaluation only when supported. Its safety and accuracy
+benefits require their own measurements. Moving processing to the Pi alone
+does not establish that the on-device CSI/watchdog path is safe.
+
+Documentary milestone 1 is complete; stage 2, per-repeater support classification
+and selection of a safe acquisition architecture, is next. Repeater capture and
+preparation safeguards remain unchanged pending a separately validated method.
+The old manifest's `incident.resolved: false` is retained as an operational
+safety block; this task does not reinterpret it as rejecting the user's causal
+finding or automatically clear it. No driver patch, device-side experiment or
+new simultaneous capture is performed by this documentation decision.
 
 ## Evidence locations
 

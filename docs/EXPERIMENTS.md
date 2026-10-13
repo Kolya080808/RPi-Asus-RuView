@@ -1,5 +1,95 @@
 # Experiments
 
+## User-supplied DHD watchdog report review — October 13, 2026
+
+Input: `dhd_watchdog_dos.zip`, containing only `F-01-dhd-csimon-watchdog.txt`.
+The user describes it as the incident explanation and asks to proceed to the
+next roadmap stage after documentation. No reported trigger was executed.
+The archive remains unchanged locally; hashes, claim-by-claim assessment and
+the distinction between the GT/DHD report and the AX58 incident are in
+`REPEATER-CSI-RESEARCH.md`, under the user-supplied watchdog report section.
+
+Local checks found that both timer predicates are false for return `-40`;
+replacing the operator cannot fix the proposed failure case. Eight representative
+return/Boolean-flag combinations were evaluated and agreed, independently of
+the Boolean-algebra argument. Matching AX58 GPL headers define `BCME_NODEVICE`
+as `-40`; the inspected DHD watchdog uses logical `&&` and its conditional
+file-output branch, not the described ring-overflow path, can return that code.
+Those sources do not independently verify the report's different compiled GT
+binary. The contemporaneous GT and AX56 uptimes also do not support a mesh-wide
+reboot during the saved incident. Results and extracted header hashes are in
+ignored `recordings/user-incident-review-20261013/`.
+
+Initial outcome: the short report alone left causal links unverified. The user
+then explicitly confirmed the incident cause based on objdump and additional
+analysis. The current record therefore attributes the CSI/DHD watchdog cause
+to the user's confirmed finding; the full binary evidence was not inspected by
+the assistant. The preceding excerpt checks retain their limited scope and do
+not substitute for reviewing that evidence. Documentary milestone 1 is complete;
+stage 2 classification is next at the user's direction. The preference for
+separate source acquisition and processing is in `RECORDING.md`, with safety and
+localization benefits still requiring validation. Runtime capture/preparation blocks and the unresolved manifest
+incident are unchanged. No device was contacted or changed, and no dynamic
+reproduction, driver patch or new CSI capture was performed.
+
+Validation: archive inventory/read and local predicate/source checks completed;
+`git diff --check` passed. This follow-up changes documentation and the ignore
+entry for the input archive only; application tests were not rerun. The earlier
+65-test result below belongs to the preceding diagnostic-code task.
+
+## RP-AX58 offline incident review and diagnostic repair — October 12–13, 2026
+
+Scope was entirely on the PC: retained October 5 logs/ELF, public ASUS source
+downloads and local SSH simulations. No router, repeater or Pi connection was
+made; no CSI was captured, history removed, device state changed or rollback
+executed. Operation `99256b673931` remains restored with an unresolved incident.
+
+The ASUS **Others** download category supplied the exact GPL archive for
+`3.0.0.4.388_24694`, including build suffix `g71d4ea1`. Its indexed 337,401
+members include CSIMON headers and a DHD sender, but not the NIC
+`wlc_csimon.c` implementation referenced by `wl.mk`. Shared constants agree
+with parts of the retained collector, without proving installed-build safety.
+The static ELF symbol comparison uses GPL toolchain libraries, not copies of
+the installed libraries, and remains preliminary. Sources, hashes, search
+scope, hypothesis table and the separately reviewed A/B/C test plan are in
+[REPEATER-CSI-RESEARCH.md](REPEATER-CSI-RESEARCH.md), in the October 12–13 review.
+Downloaded artifacts and comparison reports are retained locally under ignored
+`recordings/ax58-review-20261012/`. No proprietary binaries or raw device logs
+were added to Git or submitted to external services.
+
+Two diagnostic failure mechanisms are distinguished from the reboot cause:
+the old BufferedFile read could retain a short fragment on timeout, and Paramiko
+exec acknowledgement could wait indefinitely despite the supplied channel
+timeout. The new reader owns the channel before dispatch, drains both streams
+incrementally, syncs each received chunk, bounds acknowledgement/output waiting,
+and records incomplete outcomes instead of fabricating success or retrying.
+
+Validation on 2026-10-13:
+
+- `.venv/Scripts/python.exe -m unittest discover -s tests -p test_ssh_diagnostics.py -q`:
+  18 passed. Direct Paramiko buffers and actual local SSH over socket pairs
+  cover short/binary/no-newline output, channel close, transport loss, missing
+  exec acknowledgement, missing exit status, late output, nonzero status,
+  size limits, disk errors, fast-command dispatch races and stalled channel
+  close. No lab device is involved.
+- `.venv/Scripts/python.exe -m unittest discover -s tests -v`: 65 passed;
+  full output is in the ignored evidence folder as `tests-final-20261013.txt`.
+  The suite's printed capture-cleanup messages come from mocked rollback tests,
+  not live device inspection.
+- `git diff --check`: passed. No dependency or UI changes required JavaScript
+  checks; no live rollback check was run.
+
+A separate reviewer approved the A/B/C plan and final code after identifying
+the unbounded exec acknowledgement and a fast-command completion race; both
+were repaired and covered by regressions. The reviewer independently reran the
+18 diagnostic tests and reported no remaining substantial findings. This is a
+review of reasoning/code, not a new measurement of the AX58 incident. The local
+rekey/close fallback test is synthetic; real device rekey behavior is untested.
+
+These tests establish local output-preservation/error behavior, not recovery
+of the missing incident bytes, elimination of radio reset risk or usable CSI.
+Cause remains undetermined. The operational incident gate is still closed.
+
 ## RP-AX56 capability research — October 5, 2026
 
 After the AX58 incident, the user requested a separate AX56 investigation.

@@ -43,11 +43,12 @@ or the probe was safe/successful. Raw capture output is empty; diagnostic
 snapshots and saved device logs are in ignored
 `recordings/repeater-inspection-20261005/`. No rollback deletion was necessary.
 
-After the bounded run, the tool checks restoration and deletes only the temporary
-file matching its recorded checksum. Full available terminal output is kept locally
-in ignored `recordings/repeater-OPERATION_ID/capture.txt`; this preserves the stock
-utility's printed output, not a guarantee of complete kernel payloads. There is
-no automatic raw-record deletion. Log retention remains pending the user's choice.
+The historical capture procedure was intended to check restoration and delete
+only the temporary file matching its recorded checksum. Its output destination
+was ignored `recordings/repeater-OPERATION_ID/capture.txt`; during the incident
+that file remained empty. This did not guarantee delivery of diagnostics or
+complete kernel payloads. Capture is now disabled. There is no automatic
+raw-record deletion. Log retention remains pending the user's choice.
 
 For interruption recovery, wait for the bounded shell to finish, then run
 `python scripts/rollback.py --repeater-only --check`, followed by `--apply`.
@@ -56,6 +57,47 @@ collector, unknown peer configuration, unexplained enabled monitor, or modified
 temporary file. A failed or partial upload requires inspection rather than blind
 deletion. SSH loss or a hung device can prevent trap verification; report that
 condition and reconnect before claiming restoration. All earlier history remains.
+
+### Local diagnostic repair and read-only plan (2026-10-13)
+
+Only PC files changed. `scripts/ssh_diagnostics.py` now supplies incremental
+stdout/stderr journaling to the existing repeater `run()` and `remote_file()`
+helpers. It neither adds an acquisition command nor changes rollback ownership
+rules. The existing `--capture` and unresolved-incident `--prepare` blocks remain.
+No remote rollback was applied or checked in this task, and `deployment.json`
+was not changed. The optional read-only inventory plan in
+`REPEATER-CSI-RESEARCH.md` needs no remote files/processes/settings restored and
+must not automatically invoke the broader repeater rollback.
+
+Each diagnostic command creates a unique directory under ignored
+`recordings/repeater-diagnostics/` on the PC, containing `stdout.bin`,
+`stderr.bin`, and `events.jsonl`. Raw streams are private evidence; do not pass
+credentials or secret-bearing commands to this helper. The journal records the
+reviewed command, UTC start, elapsed receive events, byte counts, exit status
+or incomplete outcome. Data are flushed and synced after each chunk. A missing
+final event means completion is unknown (for example after local interruption).
+Neither separate stream arrival order nor PC timestamps reconstruct device
+execution order or acquisition time.
+
+Default bounds are 10 seconds and 4 MiB combined output, with a 100,000-byte
+bound for inspecting the manifest-listed temporary file. The optional inventory
+plan uses a tighter 256 KiB cap. Both streams are drained, including queued
+data on disconnect; missing exec acknowledgement and missing exit status fail
+explicitly. A nonzero remote status is recorded and rejected by `run()`.
+There is no automatic reconnect, retry, process kill or device recovery. A local
+disk failure prevents a success claim but can prevent the final journal marker
+from being written. Closing a channel does not verify remote termination.
+The helper requires a dedicated SSH client. If channel close stalls (including
+rekey), it closes that client's transport locally instead of waiting indefinitely
+to send the close packet. Dispatch/read budgets and bounded cleanup waits are
+not hard real-time guarantees for local disk I/O or thread scheduling.
+
+Read the journal locally with `Get-Content PATH/events.jsonl`; inspect raw
+streams only when required. Existing incident evidence and these bounded files
+are not automatically deleted. The project-wide several-week diagnostic-log
+retention duration remains awaiting the user's exact choice; this repair adds
+no cleaner or permanent logger and makes no retention-policy decision. Do not
+delete CSI records or incident evidence as a side effect of future log cleanup.
 
 ## Panel update (2026-10-04)
 

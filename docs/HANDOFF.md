@@ -1,5 +1,48 @@
 # Project handoff
 
+## User watchdog report documented; stage 2 is next — October 13, 2026
+
+The user supplied `dhd_watchdog_dos.zip` as their incident analysis and asked to
+document it and move the roadmap forward. The archive contains one static
+GT-AX11000/DHD report, with no hardware reproduction or supporting binary.
+The user subsequently confirmed the cause using their own objdump and additional
+analysis. Record the CSI/DHD watchdog failure as a user-confirmed causal finding;
+the assistant has not inspected that full evidence. The report, hashes and the
+earlier limited excerpt/source checks remain in `REPEATER-CSI-RESEARCH.md` with
+clear chronology and attribution, not as a rejection of the user's analysis.
+
+The documentary review milestone is complete. Stage 2,
+per-repeater support classification and alternatives, is now next in
+`NEXT-STEPS.md`; it was not started by this documentation task. Capture safeguards
+and `incident.resolved: false` are unchanged. No device connection, overload,
+driver patch, firmware change, history deletion or commit occurred. The original
+user ZIP is preserved locally and ignored by Git. See `EXPERIMENTS.md` for the
+local review checks. This update supersedes the earlier recommendation to keep
+the missing NIC implementation as the sole next roadmap task; that gap remains
+relevant to assessing blocked acquisition methods in stage 2.
+The user prefers separate data acquisition as a mitigation and to improve
+localization. The candidate design in `RECORDING.md` separates source streams,
+raw storage and processing; initial link assessments are sequential, whereas
+later combined estimates require measured alignment. Safety and accuracy are
+acceptance criteria still to test, not proven effects of this architecture.
+
+## RP-AX58 offline review checkpoint — October 13, 2026
+
+The user selected milestone 1 (AX58 incident review), not the panel repair.
+PC-only work found the exact ASUS GPL build, narrowed the missing NIC-driver
+source/ABI evidence and repaired incremental SSH diagnostics, including bounded
+exec acknowledgement. Eighteen diagnostic tests and the full 65-test Python
+suite passed; a separate reviewer approved the code and A/B/C plan after fixes.
+No device connections, changes, captures, commit or push occurred;
+the deployment manifest is unchanged. See `EXPERIMENTS.md` for validation and
+`REPEATER-CSI-RESEARCH.md` for source hashes, hypotheses and the A/B/C plan.
+
+The reboot cause remains unknown. `incident.resolved` is still false and both
+repeater capture paths remain disabled. Next work is the exact-build NIC
+implementation/build-selection gap, with optional narrowly scoped read-only
+library identification only if needed; do not repeat the failed probe. Source
+constants and a local diagnostic fix do not close the operational safety gate.
+
 ## User research integrated: repeater CSI and Pi architecture — October 5, 2026
 
 The user supplied a research draft named `deep-research-report.md`. Its claims

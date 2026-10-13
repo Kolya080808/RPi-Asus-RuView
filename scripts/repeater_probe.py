@@ -12,6 +12,8 @@ import uuid
 
 import paramiko
 
+from ssh_diagnostics import collect
+
 ROOT = Path(__file__).resolve().parents[1]
 LOG = logging.getLogger('ruview.repeater')
 TARGETS = {
@@ -46,10 +48,9 @@ def connect(target):
 
 
 def run(c, command):
-    _, out, err = c.exec_command(command, timeout=10)
-    value, error = out.read(), err.read()
-    if out.channel.recv_exit_status():
-        raise RuntimeError(f'Remote diagnostic failed: {command}: {error.decode(errors="replace")[:300]}')
+    value, error, status, folder = collect(c, command, ROOT / 'recordings/repeater-diagnostics')
+    if status:
+        raise RuntimeError(f'Remote diagnostic exited {status}; evidence: {folder}')
     return value.decode(errors='replace')
 
 
@@ -98,11 +99,10 @@ def validate(plan):
 def remote_file(c, path):
     quoted = shlex.quote(path)
     command = f'if [ -L {quoted} ]; then exit 2; fi; if [ -e {quoted} ]; then [ -f {quoted} ] || exit 2; cat {quoted}; fi'
-    _, out, err = c.exec_command(command, timeout=10)
-    data = out.read(100000)
-    error = err.read()
-    if out.channel.recv_exit_status() or error:
-        raise RuntimeError('Cannot inspect temporary file')
+    data, error, status, folder = collect(
+        c, command, ROOT / 'recordings/repeater-diagnostics', max_bytes=100000)
+    if status or error:
+        raise RuntimeError(f'Cannot inspect temporary file; evidence: {folder}')
     return data
 
 

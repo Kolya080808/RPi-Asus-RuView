@@ -1,9 +1,9 @@
 # Next steps
 
-Updated 2026-10-06. Current state and completed work: [HANDOFF.md](HANDOFF.md).
+Updated 2026-10-13. Current state and completed work: [HANDOFF.md](HANDOFF.md).
 Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
 
-## Current repair
+## Pending panel repair (not the selected task)
 
 - Restore manual capture on GT-AX11000, correct the countdown and verify live
   delivery, saved replay and controls on Pi with recorded rollback.
@@ -11,21 +11,36 @@ Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
 
 ## Ordered milestones
 
-1. **Resolve the RP-AX58 incident gate.** Analyze saved evidence and exact-firmware
-   compatibility; improve disconnect-resilient diagnostics. Record a testable
-   explanation or the evidence gap and a separately reviewed reversible test
-   plan. Do not repeat the failed probe. See [repeater research](REPEATER-CSI-RESEARCH.md).
+1. **RP-AX58 incident review — documentary milestone complete (October 13).**
+   Saved evidence, exact-build GPL findings, diagnostic repairs and the A/B/C
+   plan are recorded. The user confirms the CSI/DHD watchdog cause from their
+   own objdump and additional analysis, and directs the project to continue.
+   Record this as the user's confirmed finding; the full binary analysis has
+   not been independently inspected here. Do not repeat the failed probe.
+   A safe replacement acquisition method still requires validation.
+   See [repeater research](REPEATER-CSI-RESEARCH.md) and [experiments](EXPERIMENTS.md).
 
-2. **Classify each repeater's CSI acquisition support.** Only after the incident
-   gate closes, require repeatable raw records, per-device format/timing evidence
-   and verified cleanup. If blocked, document why and choose a separately evaluated
-   GT-AX11000 peer-link or Pi-source experiment. Keep GT-AX11000 as the baseline.
+2. **Classify each repeater's CSI acquisition support — next.** Following the
+   user's October 13 direction, start with per-device source/firmware evidence
+   and classify each method as verified or blocked. Plan separate per-source
+   acquisition, raw storage and later processing; initially assess one supported
+   link at a time. See [recording design](RECORDING.md#separate-acquisition-and-processing-decision-2026-10-13).
+   No new capture is authorized
+   by completing the documentary review. Before any repeater acquisition,
+   resolve the relevant compatibility/reset-risk gate and review a separate
+   reversible plan; success requires repeatable raw records, per-device
+   format/timing evidence and verified cleanup. If blocked, document why and
+   choose a separately evaluated GT-AX11000 peer-link or Pi-source experiment.
+   Keep GT-AX11000 as the baseline. Stage 2 has not been executed in this
+   documentation task.
 
 3. **Add selectable multi-source manual capture.** Offer a single verified source,
    any subset or all verified sources from the authoritative registry/map.
    Preserve source identities, layout revisions, raw streams, gaps and timing
    uncertainty in live views and aligned replay. Unverified sources stay
-   unavailable. Details: [PANEL.md](PANEL.md).
+   unavailable. Separate streams need measured time alignment before joint
+   position estimation; compare their contribution on held-out reference
+   sessions. Details: [PANEL.md](PANEL.md) and [recording design](RECORDING.md).
 
 4. **Add local panel login.** Protect reads and API actions; verify credential and
    session handling, recovery and revocation before longer experiments or Internet

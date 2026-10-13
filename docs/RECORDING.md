@@ -82,3 +82,39 @@ Moved from NEXT-STEPS on 2026-10-06. Remaining work must be verified separately.
 
 Done when different capture intervals have correct time windows, interruption
 preserves usable records, and a disconnected source is shown as unavailable.
+
+## Separate acquisition and processing decision (2026-10-13)
+
+Following the user's confirmed CSI/watchdog incident analysis, the preferred
+design is to collect data separately for each supported source/link and to keep
+acquisition independent of analysis and panel rendering. This is a design
+direction and candidate mitigation, not an implemented or validated safety fix.
+The goal is reliable evidence for estimating a moving object's position, with
+the contribution of each radio link measurable independently.
+
+- Keep a bounded acquisition operation and unchanged raw stream per source,
+  with stable source/device/interface/peer identity, firmware/profile, session
+  and layout revision. Distinct peers at the same receiver are distinct links,
+  not automatically independent physical sensors.
+- Use the Pi for receipt/storage and later processing where capacity permits;
+  assess the load before choosing the final process layout. Separate capture
+  from expensive decoding, visualization and inference. A receiver or writer
+  failure must be recorded explicitly, retaining partial data and diagnostics.
+- Initially evaluate one supported link per experiment, without deliberately
+  filling CSI rings or multiplying monitored peers. This limits experiment
+  scope; it is not proof against a driver/watchdog failure. Each new device-side
+  method still needs compatibility evidence, a baseline and verified rollback.
+- Preserve per-source sequence, device timer, PC/Pi monotonic receive time,
+  validity, gaps, drops and timing uncertainty. Later coordinated acquisition
+  must retain the separate streams and establish a common time reference before
+  combining them. Sequential runs cannot reconstruct one simultaneous movement.
+- Compare single-link and combined estimates on independently labeled, held-out
+  sessions. Report position/zone errors and failure cases; additional streams
+  alone do not guarantee improved accuracy, triangulation or a 3D skeleton.
+
+Separating the user-space collector or moving analysis off the router does not
+remove an in-kernel CSI/watchdog fault. Stage 2 must determine whether a safe
+source-local export path exists, or whether to use a separately verified
+GT-AX11000 peer link or another explicitly evaluated project source. No firmware
+patch, new service, deployment or permanent collection is authorized by this
+design entry. GT-AX11000 remains the only verified receiver profile today.
