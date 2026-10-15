@@ -1,5 +1,29 @@
 # Project handoff
 
+## Offline raw journal and deferred processing — October 15, 2026
+
+Implemented `src/raw_pipeline.py` and local-file CLI `scripts/raw_pipeline.py`.
+Ingestion commits complete input chunks before parsing or decoding, with source
+provenance, offsets, local import clocks and integrity metadata. Processing uses
+a read-only snapshot and writes results to a different new database. Partial
+envelopes, receive errors and unsupported profiles remain recoverable as raw
+bytes; Netlink frames are never fed to the GT decoder. Stage/error events retain
+tracebacks when storage permits. Existing output paths are refused.
+
+The version-1 envelope is a local fixture/import format, not a deployed device
+protocol. Tests cover fragmentation, errors, actual SQLite page-limit failure,
+late/slow processing and CLI operation. Details: [RAW-PIPELINE.md](RAW-PIPELINE.md).
+Existing panel/history, device firmware/configuration and capture blocks remain
+unchanged. No new dependencies, device connections, deployment or commits.
+Pi was made available by the user but was not needed. The user attributes the
+intervening PC BSoD to their graphics-driver update; no project cause is inferred.
+
+Next: interrupted-journal recovery and a verified legacy GT import adapter.
+Live reader/consumer integration, queue/drop/stop behavior and Pi load are still
+unverified and need a separate reversible device plan. The prototype refuses
+`running` journals after an abrupt interruption rather than claiming completion.
+This checkpoint does not establish repeater acquisition or finish stage 2.
+
 ## Stage 2: ordinary ADD and reader contract — October 15, 2026
 
 Offline work begun October 14 traced ADD, enable, peer lookup and Netlink export

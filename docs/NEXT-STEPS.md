@@ -28,9 +28,11 @@ Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
    ADD success does not prove peer activation; the lookup/association paths
    do not establish Managed upstream support. AX58's enable path also lacks
    AX56's null-result guard. Keep capture blocked; do not reproduce the risk.
-   Next implement/test the offline raw-storage/processing boundary. Remaining
-   static research is exact lookup-field/association semantics and lifecycle
-   safety. The per-method evidence is in
+   The October 15 [offline prototype](RAW-PIPELINE.md) now journals complete
+   input independently of deferred decoding, including partial/error evidence.
+   Next add bounded interrupted-journal recovery and a verified legacy GT import
+   adapter before planning live collector integration. Remaining static research
+   is exact lookup-field/association semantics and lifecycle safety. The per-method evidence is in
    [repeater research](REPEATER-CSI-RESEARCH.md#ordinary-add-and-reader-contract-2026-10-1415).
    Plan separate per-source
    acquisition, raw storage and later processing; initially assess one supported
@@ -43,7 +45,8 @@ Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
    choose a separately evaluated GT-AX11000 peer-link or Pi-source experiment.
    Keep GT-AX11000 as the baseline. Durable receipt/storage and decoding belong
    on Pi/PC; a minimal source-local reader is still needed for local Netlink.
-   Build/test the storage-processing boundary offline before device deployment.
+   Validate live queues, stop/drop behavior, timing and Pi capacity separately
+   before device deployment; deferred offline tests do not establish these.
    This static checkpoint does not complete stage 2 or authorize acquisition.
 
 3. **Add selectable multi-source manual capture.** Offer a single verified source,

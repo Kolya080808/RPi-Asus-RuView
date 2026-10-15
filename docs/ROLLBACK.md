@@ -1,5 +1,16 @@
 # Experiment rollback
 
+## Offline raw-pipeline prototype (2026-10-15)
+
+New local modules/tests/documentation only; no remote operation was prepared or
+applied. `deployment.json`, device files/processes/settings and operational
+history are unchanged. The CLI requires new output paths and never migrates or
+overwrites existing databases. Its synthetic tests use disposable local files.
+No new remote rollback action is necessary or claimed. Journals and diagnostics
+created by a later explicit local import must be retained; reverting the code
+must not delete them. A live deployment still needs exact baseline/rollback
+coverage before any device change; this prototype is not such authorization.
+
 ## Offline ADD/reader inspection (2026-10-14–15)
 
 Only PC analysis outputs/helpers under ignored

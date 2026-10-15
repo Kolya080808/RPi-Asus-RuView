@@ -1,5 +1,49 @@
 # Experiments
 
+## Offline raw-storage/processing prototype — October 15, 2026
+
+Scope: Python implementation and synthetic PC-only tests, with no router,
+repeater or Pi connections. The user offered Pi access and requested a bounded
+checkpoint without DoS; no live collection, overload, service change or remote
+rollback was attempted. The intervening PC BSoD was attributed by the user to
+their graphics-driver update, not to the research.
+
+`src/raw_pipeline.py` and `scripts/raw_pipeline.py` implement a new raw journal
+and separately created derived database. Exact input chunks are committed before
+parsing; unknown profiles and Netlink datagrams are not forced through the GT
+decoder. Partial envelopes and failures preserve committed evidence. Both
+databases retain stage events and full error tracebacks when storage permits.
+Existing database/output paths are refused. The format, CLI, limits and recovery
+gaps are documented in [RAW-PIPELINE.md](RAW-PIPELINE.md).
+
+Twenty new tests cover fragmented framing, preserved partial input, transport
+failure, unknown profiles, prefix classification, receive errors, real SQLite
+`SQLITE_FULL` induced with a page limit, byte budgets, delayed/slow processing,
+decoder exceptions, raw integrity checks, metadata validation, output protection,
+persisted diagnostics and a subprocess CLI round trip. Input reconstruction is
+checked directly against the generated stream; raw database hashes before/after
+processing provide a separate nonmutation check. SQLite `integrity_check` also
+passes after the induced storage failure. These checks do not simulate physical
+power loss, exhaust the PC disk or establish any RF/driver safety result.
+
+Validation on the final code:
+
+- `.venv/Scripts/python.exe -m unittest discover -s tests -q`: 85 tests passed
+  in 10.777 seconds. Failure tracebacks and cleanup messages are expected local
+  test-fixture output, not device actions.
+- `.venv/Scripts/python.exe -m py_compile src/raw_pipeline.py scripts/raw_pipeline.py tests/test_raw_pipeline.py`:
+  passed.
+- `git diff --check`: passed. No UI/browser or device tests were run because
+  the panel, deployment and existing collection paths were not changed.
+
+Limitations: only deferred processing of terminal journals is implemented.
+An abrupt termination can leave `running`, which processing refuses. A full
+store cannot guarantee the current uncommitted chunk or even the failure event;
+the raised error is not suppressed. Unknown loss/timing remain unknown. This
+checkpoint is complete locally; live repeater support and stage 2 remain open.
+Next: bounded interrupted-journal recovery and a verified legacy GT import
+adapter before a separately planned live integration.
+
 ## Ordinary ADD and reader contract — October 14–15, 2026
 
 PC-only static inspection of the existing official AX56/AX58 `wl.ko` files,

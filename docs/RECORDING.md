@@ -129,7 +129,10 @@ design entry. GT-AX11000 remains the only verified receiver profile today.
 
 ### Off-router processing boundary for the next implementation
 
-This is a design contract, not a deployed collector:
+This is a design contract, not a deployed collector. The October 15
+[offline prototype](RAW-PIPELINE.md) implements full input journaling and deferred
+processing into separate databases. Device readers, concurrent live consumers
+and panel integration are still unimplemented:
 
 1. **Source device:** the existing radio/driver produces measurements. If the
    only interface is local Netlink, a minimal compatible reader receives whole

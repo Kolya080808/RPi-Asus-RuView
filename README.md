@@ -30,6 +30,10 @@ Device versions and capabilities are documented in
 
 ## Contents
 
+- `src/raw_pipeline.py` and `scripts/raw_pipeline.py` — offline full-input
+  journal and separate processing prototype; no device access or panel changes.
+  Format, failure behavior and local usage: [docs/RAW-PIPELINE.md](docs/RAW-PIPELINE.md).
+
 - `src/web_panel.py` and `web/` — local Pi map, manual bounded CSI capture,
   live/replay session controls and annotation workspace; see
   [docs/PANEL.md](docs/PANEL.md).
