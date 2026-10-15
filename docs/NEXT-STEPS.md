@@ -1,6 +1,6 @@
 # Next steps
 
-Updated 2026-10-13. Current state and completed work: [HANDOFF.md](HANDOFF.md).
+Updated 2026-10-15. Current state and completed work: [HANDOFF.md](HANDOFF.md).
 Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
 
 ## Pending panel repair (not the selected task)
@@ -24,9 +24,14 @@ Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
    October 13 offline checkpoint found NIC Netlink export implementations in
    both exact-release images, with published image hashes verified. Both
    dispatchers reject ADD_AP command 5; no repeater raw capture is validated.
-   Next inspect ordinary ADD's Managed-mode/peer requirements and the minimal
-   raw forwarder contract against those binaries. The per-method matrix and
-   evidence are in [repeater research](REPEATER-CSI-RESEARCH.md#stage-2-static-source-classification-2026-10-13).
+   The October 14–15 continuation traced ordinary ADD and the reader contract:
+   ADD success does not prove peer activation; the lookup/association paths
+   do not establish Managed upstream support. AX58's enable path also lacks
+   AX56's null-result guard. Keep capture blocked; do not reproduce the risk.
+   Next implement/test the offline raw-storage/processing boundary. Remaining
+   static research is exact lookup-field/association semantics and lifecycle
+   safety. The per-method evidence is in
+   [repeater research](REPEATER-CSI-RESEARCH.md#ordinary-add-and-reader-contract-2026-10-1415).
    Plan separate per-source
    acquisition, raw storage and later processing; initially assess one supported
    link at a time. See [recording design](RECORDING.md#separate-acquisition-and-processing-decision-2026-10-13).

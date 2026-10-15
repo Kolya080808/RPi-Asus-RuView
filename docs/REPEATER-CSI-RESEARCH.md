@@ -1,6 +1,6 @@
 # Repeater CSI research and acquisition options
 
-Updated 2026-10-13 with exact-build firmware inspection and initial source classification.
+Updated 2026-10-15 with ordinary ADD, peer lookup and raw-reader contract inspection.
 This document distinguishes measured facts from proposed designs.
 The submitted file was named `deep-research-report.md`; its findings are retained
 here with claims narrowed to the evidence available in the repository.
@@ -12,6 +12,13 @@ finds NIC-side CSI Netlink export code in both exact-release firmware images,
 but no standalone collector or validated acquisition in the observed Managed
 mode. No device was contacted. The user's separate-acquisition/off-router
 decoding direction is retained in [RECORDING.md](RECORDING.md).
+
+The [October 14–15 continuation](#ordinary-add-and-reader-contract-2026-10-1415)
+finds that ADD can succeed without activating a peer timer. Both modules use
+`wlc_scbapfind`; AX58's enable path consumes its return without a null guard,
+unlike AX56. This is a static safety concern, not a reproduced failure or a
+replacement for the user's incident finding. Managed upstream-peer capture is
+still unvalidated; keep both capture blocks in place.
 
 Both RP-AX56 and RP-AX58 advertise `csimon`, and boot diagnostics show the
 Broadcom CSIMON module initializing. This makes repeater-side CSI an avenue to
@@ -535,6 +542,130 @@ an existing acquisition. The independent check can be rerun with:
 No router/repeater/Pi file, setting, monitor, process or service was changed;
 `deployment.json` and operational rollback ownership remain unchanged. The
 only environment additions are the optional analysis packages in the PC venv.
+
+## Ordinary ADD and reader contract (2026-10-14–15)
+
+Scope: existing official AX56/AX58 release modules on the PC, with the same
+SHA-256 values in the October 13 table. No device connection, binary execution,
+new download or RF measurement. Local helpers and outputs are retained under
+ignored `recordings/managed-contract-20261014/`; the directory date is the start
+of the work, which continued on October 15.
+
+### Command acceptance is not active acquisition
+
+The saved AX58 GPL `wlioctl.h` defines DEL/ADD/ENB/DSB/RSTCNT as 0/1/2/3/4.
+Its ordinary configuration has command at offset 0, six-byte peer at 4,
+version at 10, length at 12 and interval at 16. Both release handlers check
+version 1 and a minimum 20-byte supplied/declared length. This supports the
+ordinary layout; it does not establish the conditional ADD_AP extension.
+
+The new disassembly follows ELF `$a`/`$d` mapping symbols and resumes after
+inline jump-table data. This resolves the earlier *linear-disassembly stop*
+for the examined AX56 handler; it is not a whole-driver audit.
+
+| Observation | AX56 `.text` offset | AX58 `.text` offset |
+|---|---|---|
+| ADD entry selected by command 1 | `0x20281c` | `0x2b5334` |
+| Enable entry selected by command 2 | `0x202744` | `0x2b5310` |
+| ADD's peer lookup when already enabled | `0x202a9c` | `0x2b5524` |
+| Enable's peer lookup | `0x2027a4` | `0x2b560c` |
+| `wlc_scbapfind` implementation | `0x27e4a8` | `0x33c724` |
+
+Both ADD paths reject zero and multicast peer addresses, search ten configured
+slots, and insert/update a peer before considering timer activation. Zero
+requested interval selects 50 ms; a nonzero 32-bit interval is stored into a
+16-bit field. These are implementation observations, not recommended settings.
+The core-revision gate compares against 128. With monitoring disabled, ADD
+returns success without a peer lookup. When enabled, both ADD paths require a
+non-null `wlc_scbapfind` result and bit 1 at peer offset `0x2a` before creating
+the per-peer timer; otherwise they can still return success. Consequently a
+successful ADD/listed MAC does not demonstrate a usable measurement link.
+
+Both lookup implementations traverse 16 configuration slots, skip null entries,
+require nonzero bytes at configuration offsets 6 and 4, then call
+`wlc_scbfindband` with the current band and requested MAC. They explicitly
+return zero when no match is found. The symbol name suggests AP-side scope;
+the exact names of the two C structure fields are **not established** by the
+available headers. Do not label them definitively as AP/up flags or infer that
+a Managed upstream association satisfies these tests.
+
+A second possible activation entry, `wlc_csimon_scb_init`, checks the enabled
+state and configured peer list. The ELF relocation survey found one reference
+to it in each module, owned by `wlc_ap_scb_init` (AX56 `0x1b4218`, AX58
+`0x262418`). This supports an AP association path, not a verified station-side
+alternative. Relocations do not prove absence of indirect/unrelocated calls.
+Managed-mode acquisition therefore remains unresolved, with concrete peer lookup
+and association-path requirements rather than just a missing exporter.
+
+### Enable-path safety difference
+
+After its enable-path lookup, AX56 tests the pointer and peer-state bit before
+using it, skipping that slot on failure. AX58's corresponding block performs
+three register moves followed by a store through the returned pointer, with
+no intervening null or state test. The helper itself has an explicit zero-return
+path. A hypothetical zero return therefore reaches an invalid-pointer store in
+this block. Whether this condition occurs in an operational configuration is
+unverified; other caller/state invariants have not been proved.
+
+This narrow finding was checked independently with standard-library ELF32
+parsing, relocation names, exact A32 words and conditional-branch arithmetic,
+without Capstone or pyelftools. It establishes the missing local guard, **not**
+a live crash, exploitability, or the October 5 incident's cause. The user's
+CSI/DHD watchdog finding remains separately attributed. Do not use a new live
+probe to resolve this condition, substitute enable/ADD ordering as a safety fix,
+or treat AX56's extra check as proof that its whole acquisition path is safe.
+
+### Minimal reader contract narrowed
+
+Both attach functions select Netlink protocol 23/22/24 for internal radio unit
+0/1/other respectively. This now also has direct AX56 binary evidence. Linux
+interface-to-unit mapping is still not verified. Both watchdog senders advance
+the ring consumer before allocation/broadcast, copy 2,048 payload bytes after
+a 16-byte header, and broadcast 2,064 bytes to group 2. Allocation/socket/send
+failure paths increment an error counter and continue; no retransmission of
+that consumed slot is apparent in the examined loop. Receiver counts therefore
+cannot establish losslessness.
+
+The sender explicitly writes length, flags and port ID, but the inspected
+construction block does not assign header type or sequence. Preserve them as
+opaque received bytes; do not rely on type as a validated control-message tag
+or sequence as a loss counter. The clock function called before broadcast does
+not by itself establish an acquisition timestamp in the exported payload.
+
+The source-local reader must therefore retain the complete datagram and actual
+length, receive/truncation/error status, source identity and its own monotonic
+receive time/counter. It must not silently strip the header, normalize an
+unexpected length, decode the repeater with the GT profile, or equate an
+application counter with driver sequence/loss. Pi arrival time is separate.
+The versioned transport must distinguish these datagrams from legacy 2,048-byte
+payloads and 320-byte prefixes. These requirements refine the design in
+[RECORDING.md](RECORDING.md); no compatible reader is implemented or deployed.
+
+### Disposition and reproduction
+
+Both methods remain blocked for live acquisition. AX56 needs verified
+configuration/peer-mode semantics and the remaining lifecycle/reader checks.
+AX58 additionally needs the unchecked lookup condition resolved without crash
+reproduction. No repeater source may be marked selectable in the panel yet.
+The next useful implementation is the offline raw-storage/processing boundary;
+GT remains the validated receiver profile for separately planned integration.
+Further binary work should identify the lookup configuration fields and
+association call paths, not repeat exporter discovery or ADD_AP substitution.
+
+Reproduce locally using the retained, hash-locked public modules:
+
+```powershell
+.venv/Scripts/python.exe recordings/managed-contract-20261014/inspect_contract.py
+.venv/Scripts/python.exe recordings/managed-contract-20261014/verify_contract.py
+```
+
+The first emits mapping-aware disassembly, function references and caller
+ownership in `contract-functions.json`; the second emits
+`independent-contract-check.json`. The latter independently verifies dispatch,
+lookup relocation/zero-return and guarded-versus-unguarded consumer instructions;
+it does not independently verify every reader-contract or semantic inference.
+The helpers only read firmware inputs and write their own analysis outputs.
+Original images, raw CSI history, credentials and deployment state are untouched.
 
 ## Deferred acquisition acceptance procedure
 

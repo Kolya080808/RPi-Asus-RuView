@@ -164,3 +164,12 @@ exact device reader and rollback plan before any source-side execution. No
 new network listener, permanent service, database migration or C++ rewrite is
 introduced by this decision. Static per-device findings and the remaining
 Managed-mode gate are in REPEATER-CSI-RESEARCH.md.
+
+October 15 static refinement: both repeater images send a 16-byte header plus
+2,048-byte payload, but header type/sequence are not established as trustworthy
+tags/counters. Preserve the full received datagram and actual length; distinguish
+source-reader counters from driver counters, and unknown loss from zero loss.
+The examined driver loop consumes a ring slot before send success, so a fast
+off-router consumer alone cannot guarantee retention. Peer activation and the
+AX58 unchecked-lookup concern still block deployment. The detailed evidence is
+in [repeater research](REPEATER-CSI-RESEARCH.md#ordinary-add-and-reader-contract-2026-10-1415).

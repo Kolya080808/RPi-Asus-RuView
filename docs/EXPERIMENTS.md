@@ -1,5 +1,50 @@
 # Experiments
 
+## Ordinary ADD and reader contract — October 14–15, 2026
+
+PC-only static inspection of the existing official AX56/AX58 `wl.ko` files,
+using their previously recorded SHA-256 values. No new CSI records or device
+connections. Mapping-aware disassembly covered six relevant functions per
+module and surveyed their ELF relocation callers. This avoids the October 13
+linear disassembler's stop at AX56 inline data. Both lookups can return zero;
+AX56's enable consumer checks that result, while AX58's corresponding consumer
+does not. A separate stdlib ELF/A32 reader verified dispatch targets, relocation
+names, zero-return instructions, byte gates and the consumer guard difference.
+It does not prove a live failure or identify the prior incident's cause.
+
+The ordinary ADD/peer-mode findings, AP-named association caller, reader framing
+and loss limitations are documented once in
+[REPEATER-CSI-RESEARCH.md](REPEATER-CSI-RESEARCH.md#ordinary-add-and-reader-contract-2026-10-1415).
+Managed upstream support, exact lookup field names, runtime lifecycle safety,
+interface/unit mapping and repeater payload interpretation remain unverified.
+No source is newly enabled or classified as operational.
+
+Evidence/helpers: ignored `recordings/managed-contract-20261014/` (the start date).
+Original public modules/images and private history were not modified. The first
+post-disassembly search used a Windows wildcard path unsupported by `rg` and
+failed; the corrected directory plus `-g '*.asm'` search succeeded. No evidence
+was inferred from the failed search. The saved GPL inventory had no matching
+`wlc_bsscfg.h`, `wlc_scb.h` or `wlc_scb.c` names, so field names are not asserted.
+
+Validation:
+
+- `.venv/Scripts/python.exe recordings/managed-contract-20261014/inspect_contract.py`
+  passed both input-hash checks and emitted mapping-aware disassembly/callers.
+- `.venv/Scripts/python.exe recordings/managed-contract-20261014/verify_contract.py`
+  passed both independent opcode/branch checks. Its evidence scope is narrower
+  than the complete research conclusion.
+- `.venv/Scripts/python.exe -m py_compile recordings/managed-contract-20261014/inspect_contract.py recordings/managed-contract-20261014/verify_contract.py`
+  passed.
+- `.venv/Scripts/python.exe -m unittest discover -s tests -q` passed all 65
+  tests in 8.683 seconds. Expected exceptions/logs came from simulated failure
+  fixtures; printed cleanup messages are mock results, not device actions.
+- `git diff --check` passed. Application code and dependencies are unchanged;
+  UI tests, hardware checks and remote rollback commands were not run.
+
+The next implementation checkpoint is the offline raw-storage/processing
+boundary in RECORDING.md. Repeater deployment requires the remaining static
+and operational safety gates plus a separately recorded reversible plan.
+
 ## Stage 2 exact-release firmware inspection — October 13, 2026
 
 Scope: official public firmware downloads, the existing AX58 GPL archive,

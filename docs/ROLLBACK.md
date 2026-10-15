@@ -1,5 +1,15 @@
 # Experiment rollback
 
+## Offline ADD/reader inspection (2026-10-14–15)
+
+Only PC analysis outputs/helpers under ignored
+`recordings/managed-contract-20261014/` and project documentation were added or
+updated. Firmware inputs and existing recordings were read-only; no credentials
+were read, dependencies installed or devices contacted. `deployment.json` and
+`scripts/rollback.py` are unchanged. No remote rollback check/apply was run.
+The new static AX58 guard concern does not clear or take ownership of any
+existing operation. Retain the analysis evidence; no automatic cleanup is added.
+
 ## Offline source classification (2026-10-13)
 
 The current stage only inspected public firmware/GPL files on the PC and

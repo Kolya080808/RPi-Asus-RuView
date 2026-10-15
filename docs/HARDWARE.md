@@ -1,5 +1,16 @@
 # Hardware and verified state
 
+## Offline peer/reader checkpoint: October 15, 2026
+
+The exact-release ADD/enable paths were inspected without contacting devices.
+ADD success alone does not establish an active peer timer; Managed upstream
+capture remains unverified. AX58's enable-path lookup lacks the null/state
+checks found in AX56. This static difference is independently checked, not a
+reproduced reset or a new attribution of the October 5 incident. Both captures
+remain blocked. Both modules select Netlink 23/22/24 by internal radio unit,
+but the live interface mapping and raw format remain unvalidated. Details:
+[research checkpoint](REPEATER-CSI-RESEARCH.md#ordinary-add-and-reader-contract-2026-10-1415).
+
 ## Offline firmware capability checkpoint: October 13, 2026
 
 Official exact-release AX56 and AX58 firmware images passed their published

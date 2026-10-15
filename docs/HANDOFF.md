@@ -1,5 +1,31 @@
 # Project handoff
 
+## Stage 2: ordinary ADD and reader contract — October 15, 2026
+
+Offline work begun October 14 traced ADD, enable, peer lookup and Netlink export
+in the two hash-verified release modules. ADD can succeed without activating a
+peer timer. Both use `wlc_scbapfind`; the exact configuration-field semantics
+and Managed upstream support remain unverified. A relocation survey links the
+separate CSI association initializer to `wlc_ap_scb_init` in both images.
+
+AX58's enable path uses the lookup result without the null/state checks present
+in AX56. An independent stdlib ELF/A32 check confirms this local guard difference,
+not a runtime failure or the incident cause. The user's prior watchdog finding
+remains separately attributed. No device probe or command-order workaround is
+authorized by these results; both capture paths stay blocked.
+
+The raw-reader contract now covers both radio-unit/protocol selections, full
+2,064-byte datagrams, opaque/unvalidated type/sequence fields and consumed-ring
+failure behavior. Details and limits are in REPEATER-CSI-RESEARCH.md. Evidence
+and reproducible local helpers are in ignored
+`recordings/managed-contract-20261014/`. Next: offline raw-storage/processing
+implementation and failure tests, with GT retained as the validated baseline;
+resolve the remaining peer/lifecycle gates before any repeater integration.
+
+No application code, device state, deployment manifest, credentials or history
+changed. No new dependencies, device connections or commits. This checkpoint
+does not complete stage 2 or implement the planned forwarder/storage workers.
+
 ## Stage 2 started: exact-release NIC export evidence — October 13, 2026
 
 PC-only inspection downloaded official AX56/AX58 firmware images and verified
