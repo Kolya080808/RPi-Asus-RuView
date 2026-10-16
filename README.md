@@ -32,6 +32,7 @@ Device versions and capabilities are documented in
 
 - `src/raw_pipeline.py` and `scripts/raw_pipeline.py` — offline full-input
   journal and separate processing prototype; no device access or panel changes.
+  `src/raw_recovery.py` adds bounded new-file recovery and GT SQLite history import.
   Format, failure behavior and local usage: [docs/RAW-PIPELINE.md](docs/RAW-PIPELINE.md).
 
 - `src/web_panel.py` and `web/` — local Pi map, manual bounded CSI capture,

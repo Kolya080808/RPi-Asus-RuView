@@ -1,5 +1,63 @@
 # Experiment rollback
 
+## AX58 diagnostic correction and local reader candidate (2026-10-15)
+
+The socket-free self-test deployment is now implemented separately in
+`scripts/reader_probe.py`. `prepare` records a fresh AX58 baseline (boot ID,
+both disabled/empty monitors with counters, process/Netlink state), a unique
+absent `/tmp/ruview-nl-<12hex>` path and the exact reviewed binary hash in
+`deployment.json:reader_self_tests`. Run `scripts/rollback.py --reader-only
+--check` before `scripts/reader_probe.py self-test`. The latter creates only
+that file exclusively with mode 600, verifies bytes, changes its mode to 700,
+runs only `--self-test` (no socket/CSI), verifies both synthetic envelopes,
+removes the exact file and checks baseline again. No service or radio setting
+is touched. SSH command/output/exit evidence is retained locally under
+`recordings/reader-probe/` and `recordings/repeater-diagnostics/`.
+
+Recovery: `scripts/rollback.py --reader-only --apply`. It refuses live processes
+using that executable path (including deleted executables), changed boot or CSI
+state, symlinks, unrecognized bytes, and files attached to a restored/prepared
+operation. It never signals processes or changes a monitor. A full verified
+upload is removable; interrupted/empty/partial uploads are retained and require
+explicit inspection because a common binary prefix is not ownership proof.
+The plan remains active on failure. Do not retry the upload or delete a partial
+file automatically. Restore means exact path absent plus unchanged boot/CSI
+baseline, not merely SSH disconnection. The original incident block is retained.
+
+For a separately inspected nonempty partial upload, the manifest can record
+`inspected_partial` with its exact size, SHA-256 and inspection reason. Cleanup
+additionally requires that exact data equal the same-length prefix of the
+reviewed binary and that the operation still be `uploading`; it is not a generic
+prefix-based deletion rule. Operation `794b24803b6e` stopped while sending stdin,
+before chmod or execution. Independent readback found exactly 24,576 bytes,
+SHA-256 `5f4f3b3563e2e5f1ba7927c77296f3c24dcd8ba1924dadd65e9eaee575654938`,
+matching that prefix, with no matching process and unchanged boot identity.
+Its recovery is limited to `/tmp/ruview-nl-794b24803b6e` and the inspected hash.
+
+The earlier preflight used read-only queries; subsequent socket-free test
+`54eb642bed79` uploaded/executed/removed the exact owned helper successfully.
+Both it and the interrupted upload `794b24803b6e` are restored, verified by
+narrow rollback. No monitor was enabled and no persistent process/service was
+installed. The paragraphs above govern the self-test plans. Retain old evidence;
+do not treat earlier empty output as verified absence after the race discovery.
+Before deploying the candidate, implement its exact temporary-file/process
+ownership check here and in `scripts/rollback.py`, record its baseline in the
+manifest, dry-check, and verify actual cleanup. Details: [AX58-READER.md](AX58-READER.md).
+
+## Offline recovery and legacy import (2026-10-15)
+
+Local code/tests/documentation only. Recovery and import use read-only source
+snapshots and exclusively created output paths; no migration or in-place repair
+is performed. Inputs with SQLite sidecars are refused without removing or
+checkpointing them. Failed output files are retained for inspection rather than
+deleted/reused. Recovery copies are explicitly incomplete, even when all copied
+frames parse. Reverting this code must not remove user-created outputs/history.
+
+No device connections, files/processes/settings, services or existing lab history
+changed. `deployment.json` and `scripts/rollback.py` are unchanged and no remote
+rollback check/apply ran. The user-requested local checkpoint is complete;
+live integration still requires its own device baseline and rollback plan.
+
 ## Offline raw-pipeline prototype (2026-10-15)
 
 New local modules/tests/documentation only; no remote operation was prepared or

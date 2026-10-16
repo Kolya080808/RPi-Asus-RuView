@@ -1,5 +1,37 @@
 # Hardware and verified state
 
+## AX56 and stock exporter comparison: October 16, 2026
+
+Fresh pinned SSH confirmed AX56 firmware/kernel/ARMv7 and matched the installed
+`wl.ko` hash to the retained release module by bounded readback (the device lacks
+`sha256sum`). Both radios AP/up, one association each; CSI disabled, configured
+lists empty and counters zero; Netlink 22/23 kernel entries only. Boot unchanged.
+No AX56 file/configuration/process was changed. Exact-build rootfs audits found
+no validated direct IP/port CSI exporter on either ASUS. Shared reader transport
+is a candidate; identical payload/decoder/runtime behavior is not established.
+Details: [NETWORK-CSI-EXPORT.md](NETWORK-CSI-EXPORT.md).
+
+## Live AX58/Pi preflight: October 15, 2026
+
+Corrected later the same day: the SSH collector had a reproducible EOF/buffer
+race, so earlier empty outputs are not reliable absence evidence. Fresh queries
+after its fix show eth1 AP=1/BSS=up and its historical peer authenticated,
+associated and authorized on channel 4/20 MHz; wl0.1 is AP/up with no listed
+peer, eth2/wl1.1 are AP/down with no listed peers. Boot ID stayed unchanged.
+The standard executable-directory inventory contains no Python, Lua, Perl,
+compiler or standalone CSI reader name. This bounded inventory is not a full
+filesystem search. The static ARM reader passed socket-free self-test on AX58
+under operation `54eb642bed79`; its temporary file was removed and baseline
+verified unchanged. Netlink reception/CSI acquisition remain unvalidated.
+
+Fresh read-only SSH confirmed the AX58 firmware/kernel and installed `wl.ko`
+SHA-256 match the offline inspected release. Both monitors remain disabled,
+empty and at zero counters; Netlink 22/23 have no userspace listeners. Current
+association/status getters do not alone establish safe CSI activation. Pi is accessible
+with Python 3.13.5 and free storage. No collection or configuration change was
+performed. Details and limitations: [experiment](EXPERIMENTS.md#ax58-live-preflight--october-15-2026).
+Earlier association observations below are dated history, not current topology.
+
 ## Offline peer/reader checkpoint: October 15, 2026
 
 The exact-release ADD/enable paths were inspected without contacting devices.
@@ -132,13 +164,26 @@ were performed through read-only SSH access; no settings were changed.
 | ASUS GT-AX11000 | `192.168.50.1` | `3.0.0.4.388_24548` | `eth6` (2.4 GHz), `eth7/eth8` also visible | `csimon` and `/usr/sbin/csimond` verified; capture works on `eth6` |
 | ASUS RP-AX58 | `192.168.50.136` | `3.0.0.4.388_24694-g71d4ea1` | `eth1`, `eth2` | `csimon` advertised; one foreign-collector probe coincided with a reboot and yielded no CSI. Capture disabled pending incident review. |
 | ASUS RP-AX56 | `192.168.50.156` | `3.0.0.4.386_51891-g12b4ca4` | `eth1`, `eth2` | `csimon` advertised and responsive; no collector run and no CSI capture. |
-| TP-Link RE200 AC750 | not established | unknown | unknown | not tested |
+| TP-Link RE200 AC750 V5 | `192.168.50.155` (October 16 DHCP + local UI) | `1.0.4 Build 210408 Rel.37106n (8285)`; hardware `RE200 5.0` | unknown | normal local login verified; CSI not tested |
 | Raspberry Pi Zero 2 W | `192.168.50.100` | Raspberry Pi OS Lite ARM64 | built-in Wi-Fi not used as a CSI source | local collector, SQLite history, and deployed local panel |
 
-An unidentified candidate, `192.168.50.113`, was found in the ARP table
+October 16 follow-up identified the RE200 management address from the router's
+named DHCP lease and TP-Link web application. Revision, region and installed
+firmware were initially unknown after a direct HTTP 401. A subsequent normal
+browser visit displayed hardware 5.0 and firmware 1.0.4/210408/37106n, confirmed
+after the user-authorized login; region remains unverified. The supplied local
+credential is now stored privately. This does not validate CSI export or reader
+compatibility. See [NETWORK-CSI-EXPORT.md](NETWORK-CSI-EXPORT.md) for evidence.
+The official matching-build candidate was subsequently decoded on the PC:
+VxWorks 5.5.1/MT7628 markers plus independently checked MIPS startup instructions.
+The Linux/ARM ASUS reader cannot run unchanged on that candidate platform;
+installed-image hash/region and CSI extraction remain unverified.
+
+Historically, an unidentified candidate, `192.168.50.113`, was found in the ARP table
 (`52:AF:97:B7:E3:D5`, ports 80/443/8080 open), but it must not be identified as the RE200
-without checking its label or web interface. This is only an address to investigate
-during the next inventory.
+without checking its identity. October 16 DHCP identifies `.113` as `HPC7596B`,
+while `RE200` leases `.155`; both share the translated ARP MAC. Do not use `.113`
+as the RE200 management address. No connection to `.113` was made in this check.
 
 The presence of `csimon`, a boot-time CSIMON initialization message or a protocol
 23 socket-table entry does not establish that useful CSI can be read in userspace.

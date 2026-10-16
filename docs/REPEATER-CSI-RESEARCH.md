@@ -7,6 +7,13 @@ here with claims narrowed to the evidence available in the repository.
 
 ## Executive finding
 
+October 16 update: [stock network exporter comparison](NETWORK-CSI-EXPORT.md)
+completed for both AX58 and AX56. No validated direct IP/port CSI export setting
+was identified. RemoteWL is a remote-command interface; it was not demonstrated
+to forward CSI. AX56's installed module hash now matches the retained binary.
+The shared source-local reader remains a candidate, with per-device runtime,
+activation and payload validation still required.
+
 Stage 2 has now started. The [static classification below](#stage-2-static-source-classification-2026-10-13)
 finds NIC-side CSI Netlink export code in both exact-release firmware images,
 but no standalone collector or validated acquisition in the observed Managed
@@ -545,6 +552,9 @@ only environment additions are the optional analysis packages in the PC venv.
 
 ## Ordinary ADD and reader contract (2026-10-14–15)
 
+Later October 15 update: the BSS audit below resolves the two configuration
+byte meanings for AX58. Earlier uncertainty in this section is historical.
+
 Scope: existing official AX56/AX58 release modules on the PC, with the same
 SHA-256 values in the October 13 table. No device connection, binary execution,
 new download or RF measurement. Local helpers and outputs are retained under
@@ -702,3 +712,38 @@ captures and measure synchronization uncertainty before localization trials.
 If only one or neither works, assess available main-router peer links and record
 the revised experiment scope. Multiple sources do not by themselves establish
 triangulation or recoverable human coordinates.
+
+
+## AX58 BSS field audit and reader candidate (October 15)
+
+The installed module hash matches the retained AX58 release module. Expanded
+mapping-aware disassembly follows BSS type setter/getter and up/down paths;
+the independent `scripts/audit_ax58_contract.py` uses only stdlib ELF32 parsing,
+relocations, exact A32 words, branch arithmetic and hash-locked GPL enum values.
+No firmware code is executed. Reproduce with:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/audit_ax58_contract.py --module recordings/source-classification-20261013/ax58-a15a0ecf225d-wl.ko --header recordings/ax58-review-20261012/gpl-selected/e98af6096a2c-wlioctl.h
+```
+
+The setter at `.text+0x298038` writes byte +6 true for generic/AP (type 0,
+subtype 2) or P2P/GO (type 1, subtype 4), using the enums in the retained
+`wlioctl.h`. The independent getter at `0x2993e0` maps generic/+6 true back to
+AP subtype 2. BSS up writes 1 at +4 (`0x29a99c`); BSS down writes 0 to the
+same byte (`0x298830`). Together these establish the AP-role/up semantics
+of the two lookup filters. These are semantic identifications, not recovered
+C structure declarations. Ordinary station-role configurations fail the +6
+filter; a physical radio can also host AP BSS configurations.
+
+The guard defect remains at `0x2b561c`; live membership and getter observations
+do not prove absence of a disconnect race. This audit does not authorize
+activation or change the accepted historical incident finding. Unlike the
+previous empty diagnostics, fresh queries after the SSH race fix show eth1
+AP/up and the historical peer authenticated/associated/authorized. Details and
+limits are in EXPERIMENTS.md. No monitor was enabled.
+
+The source-local reader candidate is implemented and built locally. Its
+socket-free ARM self-test passed on AX58; temporary deployment was removed and
+baseline verified. Build, bounds and tests: [AX58-READER.md](AX58-READER.md).
+This supersedes the earlier statement that no reader implementation exists,
+not the requirement to validate live Netlink behavior and active CSI lifecycle.

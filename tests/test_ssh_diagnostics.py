@@ -87,6 +87,38 @@ class DiagnosticsTests(unittest.TestCase):
         with self.assertRaisesRegex(diagnostics.DiagnosticError, 'deadline'):
             self.collect(timeout=.02)
 
+    def test_output_arriving_between_empty_check_and_eof_is_drained(self):
+        sync = diagnostics._sync
+
+        def deliver_on_dispatch(file, data):
+            sync(file, data)
+            if b'"event": "dispatched"' in data:
+                self.channel.in_buffer.feed(b'final stdout')
+                self.channel.in_stderr_buffer.feed(b'final stderr')
+                self.finish()
+
+        with patch.object(diagnostics, '_sync', side_effect=deliver_on_dispatch):
+            out, err, status, folder = self.collect()
+        self.assertEqual((out, err, status), (b'final stdout', b'final stderr', 0))
+        self.assertEqual((folder / 'stdout.bin').read_bytes(), out)
+        self.assertEqual((folder / 'stderr.bin').read_bytes(), err)
+
+    def test_output_in_eof_race_still_obeys_byte_limit(self):
+        sync = diagnostics._sync
+
+        def deliver_on_dispatch(file, data):
+            sync(file, data)
+            if b'"event": "dispatched"' in data:
+                self.channel.in_buffer.feed(b'0123456789')
+                self.finish()
+
+        with patch.object(diagnostics, '_sync', side_effect=deliver_on_dispatch):
+            with self.assertRaisesRegex(diagnostics.DiagnosticError, 'output_limit'):
+                self.collect(max_bytes=5)
+        folder, events = self.evidence()
+        self.assertEqual((folder / 'stdout.bin').read_bytes(), b'01234')
+        self.assertEqual(events[-1]['outcome'], 'incomplete')
+
     def test_limit_preserves_exact_prefix_and_marks_incomplete(self):
         self.channel.in_buffer.feed(b'0123456789abcdef')
         self.finish()
@@ -117,6 +149,73 @@ class DiagnosticsTests(unittest.TestCase):
             with self.assertRaises(OSError):
                 self.collect()
         self.client.get_transport.assert_not_called()
+
+    def test_bounded_stdin_sent_once_and_eof_delivered(self):
+        self.channel.send = Mock(return_value=len(b'owned test binary'))
+        self.channel.shutdown_write = Mock(side_effect=lambda: self.finish())
+        self.assertEqual(self.collect(input_bytes=b'owned test binary')[:3], (b'', b'', 0))
+        self.channel.send.assert_called_once_with(b'owned test binary')
+        self.channel.shutdown_write.assert_called_once()
+
+    def test_oversized_stdin_refused_before_dispatch(self):
+        with self.assertRaisesRegex(ValueError, 'stdin'):
+            self.collect(input_bytes=b'x' * 65537)
+        self.client.get_transport.assert_not_called()
+
+    def test_stdin_partial_window_wait_does_not_duplicate_bytes(self):
+        self.channel.send = Mock(side_effect=[3, socket.timeout(), 3])
+        self.channel.shutdown_write = Mock(side_effect=lambda: self.finish())
+        self.assertEqual(self.collect(input_bytes=b'abcdef')[:3], (b'', b'', 0))
+        self.assertEqual([c.args[0] for c in self.channel.send.call_args_list],
+                         [b'abcdef', b'def', b'def'])
+
+    def test_real_local_ssh_stdin_larger_than_window(self):
+        class Server(paramiko.ServerInterface):
+            def check_auth_none(self, username): return paramiko.AUTH_SUCCESSFUL
+            def check_channel_request(self, kind, channel_id): return paramiko.OPEN_SUCCEEDED
+            def check_channel_exec_request(self, channel, command): return True
+
+        left, right = socket.socketpair()
+        server = paramiko.Transport(left, default_window_size=32768)
+        transport = paramiko.Transport(right)
+        self.addCleanup(server.close)
+        self.addCleanup(transport.close)
+        server.add_server_key(paramiko.RSAKey.generate(1024))
+        expected = bytes(range(256)) * 256
+        received = bytearray()
+        errors = []
+
+        def serve():
+            try:
+                server.start_server(server=Server())
+                channel = server.accept(3)
+                channel.settimeout(3)
+                time.sleep(.04)  # Ensure initial receive window fills.
+                while True:
+                    data = channel.recv(4096)
+                    if not data: break
+                    received.extend(data)
+                channel.sendall(b'stdin complete')
+                channel.send_exit_status(0)
+                channel.shutdown_write()
+            except BaseException as exc:
+                errors.append(exc)
+
+        thread = threading.Thread(target=serve, daemon=True)
+        thread.start()
+        try:
+            transport.start_client(timeout=3)
+            transport.auth_none('local-test')
+            client = paramiko.SSHClient()
+            client._transport = transport
+            result = diagnostics.collect(client, 'synthetic upload', self.root,
+                                         timeout=3, input_bytes=expected)
+        finally:
+            thread.join(4)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(errors, [])
+        self.assertEqual(bytes(received), expected)
+        self.assertEqual(result[:3], (b'stdin complete', b'', 0))
 
     def test_disk_failure_during_receive_is_not_success(self):
         self.channel.in_buffer.feed(b'bytes')

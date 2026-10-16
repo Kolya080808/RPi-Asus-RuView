@@ -1,6 +1,6 @@
 # Next steps
 
-Updated 2026-10-15. Current state and completed work: [HANDOFF.md](HANDOFF.md).
+Updated 2026-10-16. Current state and completed work: [HANDOFF.md](HANDOFF.md).
 Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
 
 ## Pending panel repair (not the selected task)
@@ -21,7 +21,20 @@ Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
    See [repeater research](REPEATER-CSI-RESEARCH.md) and [experiments](EXPERIMENTS.md).
 
 2. **Classify each repeater's CSI acquisition support — in progress.** The
-   October 13 offline checkpoint found NIC Netlink export implementations in
+   October 16 [direct network export comparison](NETWORK-CSI-EXPORT.md) is
+   complete: no working stock IP/port CSI exporter was identified for AX58 or
+   AX56. RemoteWL is a command interface, not validated CSI forwarding. Fresh
+   AX56 module hash and idle AP/up observations are recorded. Continue with
+   separate validation of the shared helper approach, not a presumed built-in
+   export setting. TP-Link is the already inventoried RE200 AC750; public-source
+   identification at `.155` is complete: hardware 5.0, firmware 1.0.4 Build
+   210408 Rel.37106n (8285), normal login verified. The official matching-build
+   candidate is saved and decoded locally: VxWorks/MT7628 markers plus MIPS
+   startup instructions rule out unchanged Linux/ARM helper reuse for this
+   image. No usable CSI sender was identified. RE200 requires a separate
+   platform-specific feasibility study with regional/installed-image matching;
+   the earlier direct-request 401 and decompression blockers are superseded.
+   The October 13 offline checkpoint found NIC Netlink export implementations in
    both exact-release images, with published image hashes verified. Both
    dispatchers reject ADD_AP command 5; no repeater raw capture is validated.
    The October 14–15 continuation traced ordinary ADD and the reader contract:
@@ -30,8 +43,28 @@ Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
    AX56's null-result guard. Keep capture blocked; do not reproduce the risk.
    The October 15 [offline prototype](RAW-PIPELINE.md) now journals complete
    input independently of deferred decoding, including partial/error evidence.
-   Next add bounded interrupted-journal recovery and a verified legacy GT import
-   adapter before planning live collector integration. Remaining static research
+   **Offline interrupted-journal recovery and legacy GT SQLite import are
+   complete (October 15):** new-file recovery preserves committed bytes/times
+   and marks completion unknown; the importer preserves exact BLOBs, sequence
+   gaps and diagnostics without promoting prefixes or failed sessions. Local
+   acceptance and limits are in [RAW-PIPELINE.md](RAW-PIPELINE.md).
+   **User-selected target: live RP-AX58 acquisition and decoding on Pi.**
+   Do not substitute GT collector integration or more offline import work for
+   this target. October 15 live read-only preflight matched the installed AX58
+   module hash to the inspected binary, but did not resolve the unsafe enable
+   path. A subsequent SSH EOF-race fix and fresh queries confirm an AP/up eth1
+   and an authenticated/associated/authorized peer on channel 4/20 MHz; the
+   offline BSS audit now identifies the lookup's AP-role/up fields.
+   The [minimal reader](AX58-READER.md) is built and locally tested; its
+   socket-free ARM self-test passed on AX58 with exact temporary-file rollback
+   verified (`54eb642bed79`). No CSI or Netlink receive was activated. Next
+   separately assess passive reception with CSI disabled. Active capture and
+   decoder validation remain pending.
+   The incident report and October 13 decision are
+   already recorded; do not require resubmission or reopen milestone 1. Next
+   establish a safe source-local reader/activation contract from the retained
+   exact-build evidence before
+   a reversible bounded capture. Remaining static research
    is exact lookup-field/association semantics and lifecycle safety. The per-method evidence is in
    [repeater research](REPEATER-CSI-RESEARCH.md#ordinary-add-and-reader-contract-2026-10-1415).
    Plan separate per-source

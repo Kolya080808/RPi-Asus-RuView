@@ -115,6 +115,13 @@ CREATE TABLE events (seq INTEGER PRIMARY KEY, utc_seconds REAL NOT NULL,
     event TEXT NOT NULL, details TEXT NOT NULL);
 '''
 
+RAW_SCHEMA = '''
+CREATE TABLE acquisition (source TEXT NOT NULL, status TEXT NOT NULL,
+    bytes INTEGER NOT NULL, sha256 TEXT NOT NULL, error TEXT);
+CREATE TABLE chunks (seq INTEGER PRIMARY KEY, offset INTEGER NOT NULL,
+    arrival_monotonic_ns INTEGER NOT NULL, raw BLOB NOT NULL);
+''' + EVENT_SCHEMA
+
 
 def _commit_chunk(connection, seq, offset, raw, digest):
     with connection:
@@ -124,7 +131,8 @@ def _commit_chunk(connection, seq, offset, raw, digest):
                            (offset + len(raw), digest))
 
 
-def ingest(stream, output, source, *, max_bytes=64 * 1024**2):
+def ingest(stream, output, source, *, max_bytes=64 * 1024**2,
+           provenance=None, upstream_complete=True):
     """Commit bounded read() chunks before any parsing. EOF is transport completion only.
 
     Prior commits survive a failure. The current uncommitted chunk cannot be
@@ -133,19 +141,20 @@ def ingest(stream, output, source, *, max_bytes=64 * 1024**2):
     validate_source(source)
     if type(max_bytes) is not int or max_bytes <= 0:
         raise ValueError('max_bytes must be positive')
-    schema = '''
-    CREATE TABLE acquisition (source TEXT NOT NULL, status TEXT NOT NULL,
-        bytes INTEGER NOT NULL, sha256 TEXT NOT NULL, error TEXT);
-    CREATE TABLE chunks (seq INTEGER PRIMARY KEY, offset INTEGER NOT NULL,
-        arrival_monotonic_ns INTEGER NOT NULL, raw BLOB NOT NULL);
-    ''' + EVENT_SCHEMA
+    if type(upstream_complete) is not bool:
+        raise ValueError('upstream_complete must be Boolean')
+    if provenance is not None and (not isinstance(provenance, dict) or
+                                   len(_json(provenance).encode()) > 16 * 1024**2):
+        raise ValueError('Import provenance must be a bounded object')
     count, seq, digest = 0, 0, hashlib.sha256()
-    with closing(_create(output, schema, 1)) as connection:
+    with closing(_create(output, RAW_SCHEMA, 1)) as connection:
         with connection:
             connection.execute('INSERT INTO acquisition VALUES (?,?,?,?,NULL)',
                                (_json(source), 'running', 0, digest.hexdigest()))
             _event(connection, 'ingestion_started', max_bytes=max_bytes,
                    time_basis='local-import-monotonic-not-rf')
+            if provenance is not None:
+                _event(connection, 'import_provenance', **provenance)
         LOG.info('Offline ingestion started output=%s', output)
         try:
             while True:
@@ -162,8 +171,11 @@ def ingest(stream, output, source, *, max_bytes=64 * 1024**2):
                 if count > max_bytes:
                     raise ValueError('Input byte budget exceeded; last read retained')
             with connection:
-                connection.execute("UPDATE acquisition SET status='received'")
-                _event(connection, 'input_eof', committed_bytes=count, chunks=seq)
+                status = 'received' if upstream_complete else 'failed'
+                connection.execute('UPDATE acquisition SET status=?,error=?',
+                                   (status, None if upstream_complete else 'UpstreamIncomplete'))
+                _event(connection, 'input_eof', committed_bytes=count, chunks=seq,
+                       upstream_complete=upstream_complete)
         except BaseException as exc:
             LOG.exception('Offline ingestion failed output=%s committed_bytes=%d', output, count)
             try:
@@ -176,7 +188,7 @@ def ingest(stream, output, source, *, max_bytes=64 * 1024**2):
                 LOG.exception('Cannot persist failure status; journal must not be treated as complete')
             raise
     LOG.info('Offline ingestion received bytes=%d chunks=%d', count, seq)
-    return {'status': 'received', 'bytes': count, 'chunks': seq}
+    return {'status': status, 'bytes': count, 'chunks': seq}
 
 
 def _chunks(connection):

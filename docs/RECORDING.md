@@ -131,7 +131,10 @@ design entry. GT-AX11000 remains the only verified receiver profile today.
 
 This is a design contract, not a deployed collector. The October 15
 [offline prototype](RAW-PIPELINE.md) implements full input journaling and deferred
-processing into separate databases. Device readers, concurrent live consumers
+processing into separate databases. Its interrupted-journal recovery and legacy
+GT SQLite import checkpoint is also complete locally: new outputs preserve the
+source and incomplete status, without converting prefixes into full records.
+Device readers, concurrent live consumers
 and panel integration are still unimplemented:
 
 1. **Source device:** the existing radio/driver produces measurements. If the

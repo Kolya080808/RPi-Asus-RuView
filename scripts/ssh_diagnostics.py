@@ -8,6 +8,7 @@ import datetime as dt
 import json
 import logging
 import os
+import socket
 from pathlib import Path
 import time
 import threading
@@ -55,7 +56,8 @@ def _close_channel(client, channel, remaining):
             LOG.error('Channel-close thread did not stop; client must not be reused')
 
 
-def collect(client, command, root, *, timeout=10, max_bytes=4 * 1024 * 1024):
+def collect(client, command, root, *, timeout=10, max_bytes=4 * 1024 * 1024,
+            input_bytes=None):
     """Return (stdout bytes, stderr bytes, exit status, evidence directory).
 
     Read the two Channel buffers fairly, without BufferedFile.read(size), and
@@ -70,6 +72,8 @@ def collect(client, command, root, *, timeout=10, max_bytes=4 * 1024 * 1024):
     """
     if timeout <= 0 or max_bytes <= 0:
         raise ValueError('Diagnostic bounds must be positive')
+    if input_bytes is not None and (not isinstance(input_bytes, bytes) or len(input_bytes) > 65536):
+        raise ValueError('Optional stdin must be bytes bounded to 65536')
     started = time.monotonic()
     identifier = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + uuid.uuid4().hex[:12]
     folder = Path(root) / identifier
@@ -79,7 +83,8 @@ def collect(client, command, root, *, timeout=10, max_bytes=4 * 1024 * 1024):
     counts = {'stdout': 0, 'stderr': 0}
     data = {'stdout': bytearray(), 'stderr': bytearray()}
     metadata = {'id': identifier, 'started_utc': dt.datetime.now(dt.timezone.utc).isoformat(),
-                'command': command, 'timeout_s': timeout, 'max_bytes': max_bytes}
+                'command': command, 'timeout_s': timeout, 'max_bytes': max_bytes,
+                'stdin_bytes': 0 if input_bytes is None else len(input_bytes)}
     with ExitStack() as stack:
         files = {name: stack.enter_context((folder / (name + '.bin')).open('xb'))
                  for name in counts}
@@ -103,6 +108,22 @@ def collect(client, command, root, *, timeout=10, max_bytes=4 * 1024 * 1024):
             def dispatch():
                 try:
                     channel.exec_command(command)
+                    if input_bytes is not None:
+                        offset = 0
+                        while offset < len(input_bytes):
+                            if time.monotonic() - started >= timeout:
+                                raise DiagnosticError('stdin_deadline')
+                            try:
+                                sent = channel.send(input_bytes[offset:])
+                            except socket.timeout:
+                                # Nonblocking channel: wait for an SSH window
+                                # update while the main thread journals output.
+                                time.sleep(.01)
+                                continue
+                            if sent <= 0:
+                                raise DiagnosticError('stdin_closed')
+                            offset += sent
+                        channel.shutdown_write()
                 except BaseException as exc:
                     dispatch_errors.append(exc)
                 finally:
@@ -141,6 +162,11 @@ def collect(client, command, root, *, timeout=10, max_bytes=4 * 1024 * 1024):
                         acknowledged = True
                         event('dispatched')
                 if not pending and (channel.closed or channel.eof_received):
+                    # The transport thread can enqueue final data and EOF after
+                    # the earlier empty-buffer sample. Observe terminal state
+                    # first, then sample both buffers again before returning.
+                    if channel.recv_ready() or channel.recv_stderr_ready():
+                        continue
                     if acknowledged and channel.exit_status_ready():
                         status = channel.recv_exit_status()
                         if status == -1:

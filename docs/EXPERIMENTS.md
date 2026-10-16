@@ -1,5 +1,262 @@
 # Experiments
 
+## RE200 V5 offline platform classification — October 16, 2026
+
+Completed bounded decompression after the user resumed work. The official
+matching-build image contains a main LZMA stream at offset 49,264, decoded to
+5,194,576 bytes with EOF verified, within 32 MiB decoder/16 MiB output bounds.
+Initial offset 49,262 failed because of two padding bytes; the earlier bootloader
+memory-limit failure was separately resolved with a 96 MiB PC-only budget.
+Main-image VxWorks 5.5.1/MT7628 labels are supported independently by MIPS
+little-endian startup instruction decoding. No unchanged ASUS Linux/ARM reader
+reuse is possible on this candidate platform. Its region and installed-image
+equality are not verified. CSI/beamforming capability labels do not establish
+measurement export; no usable sender was identified. No remote settings changed.
+
+Reproduction, hashes and limits: NETWORK-CSI-EXPORT.md and the new
+`scripts/audit_re200_profile.py`. The CLI completed; invalid-image rejection,
+existing-output preservation, `py_compile` and `git diff --check` passed. The
+earlier 125-test suite result remains historical; it was not rerun for this
+standalone offline classification tool. Raw reports are retained privately.
+
+## RE200 management identification — October 16, 2026
+
+Final continuation: the user supplied the local password; one normal browser
+login succeeded. Hardware `RE200 5.0` and firmware `1.0.4 Build 210408
+Rel.37106n (8285)` were observed. The login page already exposed the versions,
+so the earlier HTTP-only blocker below was not evidence of required login.
+The firmware page confirmed the values without selecting update/check actions.
+The credential was stored only in the ignored private store and normal logout
+selected. No configuration changed. An official version/build/release-matching
+V5 archive was downloaded to the PC; region/installed-image identity are not
+verified. Initial decompression hit its 64 MiB memory cap; driver/CSI analysis
+was not completed. See NETWORK-CSI-EXPORT.md for hashes and exact limitations.
+
+Earlier HTTP-only attempt (superseded for identification):
+
+The user requested an attempt to resolve the remaining hardware profile.
+Pinned GT-AX11000 SSH reads found DHCP hostname RE200 at `.155`; an independent
+HTTP GET returned a TP-Link repeater page. `.113` is leased to HPC7596B, despite
+the shared translated ARP MAC. Only `.155` received HTTP requests.
+
+Referenced static login resources were inspected. The exact device metadata
+read traced from firmwareModel (`POST /?code=2&asyn=0`, body `0|1,0,0`) returned
+401, so neither revision nor firmware was obtained. No stored TP-Link login is
+available; no passwords were guessed or reused from ASUS. No settings changed.
+Bounds, request plans, raw evidence and limitations are in NETWORK-CSI-EXPORT.md
+and private `recordings/re200-identification-20261016/`. The management address
+is now identified; CSI capability and exact firmware profile remain open.
+This continuation changes documentation only; `git diff --check` passed.
+
+## Stock network CSI export comparison — October 15–16, 2026
+
+Question: can AX58 send CSI straight to a Pi IP/port without a forwarding helper,
+and can AX56 use exactly the same approach? Completed bounded firmware/rootfs
+audits found no working stock configuration for either device. This does not
+prove every hidden export path absent. RemoteWL IP/port controls were checked
+against CLI usage and command tables, not assumed to carry CSI. Detailed scope,
+hashes, path classifications and reproduction: [NETWORK-CSI-EXPORT.md](NETWORK-CSI-EXPORT.md).
+
+AX58 audit read 1,769 regular files (78,091,074 bytes), including 541 ELFs;
+AX56 read 1,651 (76,206,302 bytes), including 498 ELFs. All 25 named CSI
+functions in each module were surveyed through ELF relocations: the discovered
+network export targets remain local Netlink. Generic network imports, OUI/libc
+false positives and AX56's bundled 43684 firmware blobs were retained with
+explicit limitations. Directory-entry totals agree with the earlier inventories;
+this is consistency, not independent algorithmic confirmation.
+
+Independent live evidence for AX56: pinned SSH, matching firmware/kernel and
+bounded module readback hash, two AP/up radios, one association each, disabled
+empty CSI with zero counters, kernel-only Netlink 22/23 and unchanged boot ID.
+The initial `sha256sum` command was unavailable; its batch stopped. A separately
+planned readback computed the hash on the PC, without installing anything.
+No remote mutation, socket listener, new service or CSI activation occurred in
+this investigation. No new rollback owner was needed. Prior self-test plans
+remain restored; no repeat of the October 5 experiment was attempted.
+
+Checks: both audit CLIs completed; `python -m unittest discover -s tests -q`
+passed 125 discovered tests in 12.774 seconds (121 executed, 4 optional native
+Linux skips). The three new tests cover invalid input, SCSI false positives
+and a CSI marker beyond the first 5,000 bytes of a line. `py_compile` for both
+audit scripts and `git diff --check` passed. Existing Linux helper tests were
+not rerun because native code did not change in this step.
+
+Conclusion: the helper transport is a candidate for reuse on AX56, not a
+validated identical acquisition/decoder profile. AX56 helper execution and both
+active CSI streams remain unvalidated. Correction on October 16: the inventory
+already names TP-Link RE200 AC750, R02 near the printer. Its revision, firmware
+and IP remain unknown. Official revision-specific downloads and the EU V1 manual
+were checked (sources and limits in NETWORK-CSI-EXPORT.md); no matching-build
+CSI audit or device access was performed. The earlier missing-model statement
+was incorrect. The ASUS comparison checkpoint is complete; stop as requested,
+retain evidence, propose a commit title and leave the live acquisition goal open.
+
+## AX58 socket-free ARM reader validation — October 15, 2026
+
+The local compiler is pinned in `requirements-native-build.txt`; ARM ELF and
+four local Linux socket-free tests are documented in [AX58-READER.md](AX58-READER.md).
+`reader_probe.py` supports only a socket-free test, with manifest baseline and
+`rollback.py --reader-only --check` required before upload. No CSI enable,
+ADD, protocol selection or active reader mode is exposed by this wrapper.
+
+First operation `794b24803b6e` failed during nonblocking SSH `sendall`, before
+chmod/execution. Separate readback found a 24,576-byte exact prefix of the
+28,516-byte build, no matching executable process and unchanged boot identity.
+Its precise size/hash was recorded as `inspected_partial` in the private
+manifest; narrow rollback check/apply/check passed. The incomplete transfer
+was not retried in place. Neither raw evidence nor old incident data was deleted.
+
+The sender now advances its stdin offset after each successful `send` and waits
+boundedly for window updates on timeout. A real local SSH socket-pair test
+independently transmitted 65,536 exact bytes through a 32,768-byte window.
+This extends the diagnostic collector only for explicit stdin <=65,536 bytes;
+it never logs stdin contents or reconnects/retries a remote command.
+
+New operation `54eb642bed79` recorded a fresh baseline and passed rollback dry
+check. Exclusive upload/readback and chmod succeeded. AX58 executed the static
+ARM helper with only `--self-test`: exit 0, two envelopes of 2,064 and 17 payload
+bytes, exact synthetic byte patterns, counters/timestamps and truncation/error
+metadata all verified independently by the Python wrapper. Full evidence:
+`recordings/reader-probe/20261015T192651Z-66e550dee166/`. This is executable/SSH
+framing validation, not real CSI or Netlink delivery. The self-test opens no socket.
+
+Exact temporary file removal, no matching process, unchanged boot ID and both
+CSI monitor/peer/counter baselines were checked after execution and again with
+the standalone narrow rollback check. Both operations are `restored` in
+`deployment.json:reader_self_tests`. No Pi file/service changes or router settings
+were made. Full Windows suite: 122 discovered, 118 executed successfully and
+4 optional Linux skips; all 4 Linux tests passed separately in local WSL.
+Compile checks passed. Live receive, lifecycle under active CSI, decoding and
+forwarding to Pi are not validated; next is a separately bounded passive-reader
+plan with monitors still disabled. No commit created.
+
+## AX58 live preflight — October 15, 2026
+
+**Superseded empty-output interpretation:** later this day a deterministic
+local test reproduced a race in `ssh_diagnostics.collect`: final stdout/stderr
+arriving after the empty-buffer sample but before EOF handling were discarded
+while returning status zero. Two regressions failed before the fix (including
+loss of byte-limit enforcement), then passed when buffers were rechecked after
+terminal state. Earlier raw logs are retained unchanged; empty results below
+cannot establish missing state or programs. This is a demonstrated failure
+mechanism, not proof of the timing of every earlier SSH result.
+
+Corrected read-only queries in `recordings/ax58-corrected-preflight-20261015/`
+show eth1 AP=1/BSS=up, historical peer authenticated/associated/authorized,
+DWDS_ACTIVE and channel 4/20 MHz; wl0.1 AP/up with empty association list;
+eth2/wl1.1 AP/down with empty lists. Loader/libc listing now returns sizes
+138,516 and 1,254,272 bytes. Boot ID remains unchanged. Commands and complete
+streams are saved with 10-second/256-KiB per-command bounds; no retries,
+uploads, monitor changes or process/service changes were performed. An earlier
+runtime inventory attempt failed because this shell lacks `command`; the later
+successful directory listing was a different read-only method, not evidence
+that a failed `command -v` proved programs absent.
+
+The new local BSS audit and minimal-reader build are documented in
+[repeater research](REPEATER-CSI-RESEARCH.md#ax58-bss-field-audit-and-reader-candidate-october-15)
+and [AX58-READER.md](AX58-READER.md). Linux socket-free reader tests passed four
+cases. The Windows full suite initially passed 111 discovered tests (3 optional
+Linux tests skipped); the fourth Linux backpressure test was added afterward
+and passed in WSL. No ARM helper execution or real CSI reception is claimed.
+
+Purpose: resume the user-selected AX58-to-Pi live acquisition target without
+repeating the October 5 failing activation. Authenticated pinned-host SSH used
+read-only commands, sequentially, without retries; each diagnostic was journaled
+locally with a 10-second deadline and 256 KiB output cap. Plans were written
+before each batch. The connection helper separately checks `productid` using
+its existing diagnostic bounds. No files/settings/processes were deployed or
+changed on either device; no rollback action was necessary.
+
+Observed on AX58:
+
+- Firmware `3.0.0.4.388_24694-g71d4ea1`, kernel `4.19.183`, ARMv7.
+- `/lib/modules/4.19.183/extra/wl.ko` SHA-256
+  `dabb2f7e716d63f4ffa9163773b7f87c15050cb442d021db528194f0b25e68a8`
+  exactly matches the offline inspected release module. `/proc/modules` lists
+  `wl` as live; this is not a dump/hash of loaded executable memory.
+- Netlink 22/23 have kernel entries (port ID zero), no userspace listeners.
+- Both `eth1`/`eth2` monitors disabled, peer lists empty, transfer/ACK/overflow
+  counters zero. The eth1 association list contains the same address as the
+  October 5 incident; eth2 has an empty list. `wl0.1` lists another peer whose
+  identity was not established; it was not queried or used for an experiment.
+- `ap` returns 1 on eth1, eth2 and wl1.1, but empty on wl0.1. These getters
+  do not establish the BSS configuration fields used by `wlc_scbapfind`.
+- `eth1 status` and `eth1 sta_info <historical-peer>` return zero bytes with
+  exit status zero; `eth2 status` reports not associated. Do not interpret
+  these empty/inconsistent observations as a validated active CSI partner.
+- Boot ID unchanged across the recorded AX58 boot checks; initial uptime
+  increased from 183325.27 to 183325.54 seconds. The final status/sta_info batch
+  did not include an additional boot-ID check. No CSI activation was attempted.
+
+Pi reports aarch64, Python 3.13.5, load averages 0.00/0.00/0.00 and 11,444,480
+KiB available on the filesystem holding the project. These are readiness
+observations, not a collector throughput/storage durability test.
+
+Private evidence and exact command plans are under ignored
+`recordings/ax58-live-{preflight,radio-preflight,module-preflight,link-preflight}-20261015/`
+(the first directory is `ax58-live-preflight-20261015`) and
+`recordings/pi-live-preflight-20261015/`; connection model checks are in
+`recordings/repeater-diagnostics/`. Raw stdout/stderr and diagnostic events are
+retained. No payloads were received: decoder, frame timing and loss remain
+unvalidated. Independent link to prior static evidence is the on-device file
+hash; it confirms applicable bytes, not the cause of the historical reboot.
+
+Decision: keep the capture block. Same-build risk and the historical peer are
+still present. Establish a safe activation/reader contract before any new mutation.
+The original report and October 13 user-confirmed cause are already retained;
+requesting that report again was unnecessary. Rereading the original ZIP on
+October 15 confirmed its recorded SHA-256 and the existing decision to proceed
+to stage 2 without reopening the documentary incident review. New-method safety
+validation is distinct from asking the user to prove the old incident again.
+This preflight does not complete the user's live acquisition task.
+
+## Completed offline recovery and GT history import — October 15, 2026
+
+Scope: `src/raw_recovery.py`, the existing raw pipeline/CLI and generated local
+SQLite fixtures. No device, private history or credential access. Recovery
+validates and copies a committed snapshot into a new failed/incomplete journal;
+it preserves chunk clocks, events and partial tails. Import reads one session
+in the existing GT history schema and preserves exact BLOBs, sequence values,
+session diagnostics and provenance. It does not reuse legacy derived values.
+Full behavior and bounded refusal conditions are in [RAW-PIPELINE.md](RAW-PIPELINE.md).
+
+Independent checks: a child process ingested one block and exited with
+`os._exit(73)`, bypassing Python cleanup; the readable `running` journal was
+copied successfully and processed only as partial. Before/after hashes showed
+the source unchanged. This tests abrupt process exit between commits, not a PC
+power cut, BSoD, a crash during SQLite commit or hot-journal repair. Separate
+test-side `struct` unpacking checked imported envelope bytes and sequence gaps
+against generated legacy BLOBs. Decoded first/last I/Q pairs matched the fixture
+integers; full logs and unknown clocks/loss were preserved in provenance.
+
+Twenty-one new tests also cover incomplete tails, corrupt bytes/clocks, byte/row
+and diagnostic limits, deadlines, failed copy transactions, sidecar refusal,
+existing-output protection, prefixes, short/failed/running sessions, unsupported
+profiles, identity conflicts, invalid sequences/BLOB types and CLI exit codes.
+A 70-record fixture additionally crossed multiple ingestion chunks and retained
+every original sequence and byte in order, checked with independent unpacking.
+No raw data or source files were deleted. The tests use disposable fixtures,
+not operational history or a radio producer.
+
+Final validation:
+
+- `.venv/Scripts/python.exe -m unittest discover -s tests -p 'test_raw*.py' -q`:
+  40 raw-pipeline/recovery tests passed in 3.179 seconds before the additional
+  multi-chunk regression case; that case is included in the final full run.
+- `.venv/Scripts/python.exe -m unittest discover -s tests -q`:
+  all 106 tests passed in 12.007 seconds. Expected failure logs and printed
+  cleanup reports originate from fixtures/mocks, not device actions.
+- `.venv/Scripts/python.exe -m py_compile src/raw_pipeline.py src/raw_recovery.py scripts/raw_pipeline.py tests/test_raw_recovery.py`:
+  passed.
+- `git diff --check`: passed; Git's LF/CRLF conversion notices are not whitespace
+  errors. No Git settings were changed.
+
+Acceptance: the defined offline recovery/SQLite-import step is complete and
+marked accordingly in NEXT-STEPS. No physical disk repair, actual user-history
+import, live queue/drop validation, source-local reader, Pi performance test or
+device deployment is claimed. Next work requires a separate GT integration
+plan and leaves repeater acquisition blocked. Work stops at this checkpoint.
+
 ## Offline raw-storage/processing prototype — October 15, 2026
 
 Scope: Python implementation and synthetic PC-only tests, with no router,

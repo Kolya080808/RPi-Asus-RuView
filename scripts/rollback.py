@@ -218,9 +218,15 @@ def main():
                         help='Check/restore the latest bounded repeater probe only')
     parser.add_argument('--capture-only', action='store_true',
                         help='Verify/recover the exact panel test monitor, preserving keys and recordings')
+    parser.add_argument('--reader-only', action='store_true',
+                        help='Check/remove only the manifest-owned socket-free AX58 reader self-test file')
     args = parser.parse_args()
-    if sum((args.panel_only, args.repeater_only, args.capture_only)) > 1:
+    if sum((args.panel_only, args.repeater_only, args.capture_only, args.reader_only)) > 1:
         parser.error('Choose only one narrow rollback scope')
+    if args.reader_only:
+        from reader_probe import rollback
+        rollback(args.apply)
+        return
     if args.capture_only:
         capture_only(args.apply)
         return
