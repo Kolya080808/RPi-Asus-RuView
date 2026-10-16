@@ -1,0 +1,3 @@
+# Optional PC-only cross compiler for the minimal Linux Netlink bridge.
+# The acquisition/processing application remains Python; never install on routers.
+ziglang==0.15.2
