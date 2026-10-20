@@ -1,5 +1,81 @@
 # Project handoff
 
+## Panel deployed; replay acceptance blocked — October 20, 2026
+
+With user authorization, deployed the existing local panel fixes as operation
+`20261020T145805Z-f9c6b3`. All 17 mapped file hashes were verified; service unit
+and enablement were preserved. Database counts/raw digest were unchanged by
+deployment; pre/post narrow rollback checks passed. No application source edits
+were made in this task. Baseline/backups and recovery are in ROLLBACK.md.
+
+Separate bounded GT acceptance `panel-acceptance-20261020` saved session
+`210ad70f-fd78-4bfb-bb92-f776e36ef038` (21 prefixes). Pause stability, resumed
+arrival and stop passed; replay failed 422. Inspection of timer fields shows a
+large forward jump between seq 0 and 1, not a proven reset or pause-boundary
+failure. Full results/limits are in EXPERIMENTS.md. GT boot identity was unchanged;
+monitor disabled, peer list empty, csimond absent; history integrity remained OK.
+The new manifest plan is `acceptance_failed_cleanup_verified`, not complete.
+Prior verification metadata is archived without deleting its sessions.
+
+Local validation: deployment tests 5, web-panel tests 13, capture-worker tests 7,
+and Node UI tests 7 passed. Synthetic storage-failure diagnostics were expected.
+No live storage-failure injection, browser visual acceptance, endurance run or
+AX58 acquisition was performed. The AX58 primary milestone remains unchanged.
+
+## Pi availability and deployment reconciliation — October 20, 2026
+
+The user confirmed Pi availability in this chat. Subsequent read-only SSH/SFTP
+and HTTP checks found the panel active, no active capture, and all four October 6
+verification sessions present. The fourth contains 119 records with status
+`captured`. Fifteen of 17 deployed panel files match local hashes; source diff
+shows that Pi's `web_panel.py` and `web/app.js` lack local pause-readiness and
+reader-cancellation fixes. See PANEL.md for scope and resource measurements.
+This supersedes any inference from the earlier local review that these fixes
+were already installed. Fresh reversible deployment and acceptance remain open.
+No device state was deliberately changed, no raw CSI was read, and no token was
+printed or retained. No capture or remote rollback action ran. Only local
+documentation was updated; the manifest was not marked verified.
+
+## Local project review and continuation — October 20, 2026
+
+Reviewed the maintained application, scripts, native helper, tests, web client,
+API contract, map configuration and project documentation against a clean working
+tree at `1c43727`. Inventoried retained recordings, firmware, archives, databases
+and access files by metadata; did not open credentials/private keys or query
+operational history. Vendored/generated assets were identified separately from
+maintained application code. Selected deployment status fields and October 6
+capture-report metadata were inspected to reconcile the queue; this is not a
+fresh device inventory. No device connection or external upload occurred.
+
+The unfinished selected target remains AX58 live acquisition and continuous
+decoding on Pi. The helper's ARM socket-free test is complete, and both recorded
+self-test operations are restored. `reader_probe.py` exposes only that mode;
+`raw_pipeline.validate_source` accepts only synthetic/offline origins, and
+`process` requires a terminal journal. No AX58 decoder or live Pi orchestration
+is implemented. The next bounded substep is the separately reviewed passive
+reader plan in NEXT-STEPS, with CSI still disabled. Active acquisition retains
+its peer/lifecycle safety gate; the user's incident finding is not reopened.
+
+Re-ran the hash-locked `scripts/audit_ax58_contract.py` command documented in
+REPEATER-CSI-RESEARCH.md: it passed and still reports `safe_to_enable: false`.
+This reproduces the static AP/up and unguarded-lookup findings, not runtime
+safety or an independent new measurement. The first sensing deliverable remains
+validated moving-object position; scene-change traces do not establish it.
+
+The GT panel repair is partially complete: October 6 deployments are applied,
+but its separate capture-verification entry remains `testing`. Saved short-run
+results and the unclosed acceptance are now recorded in PANEL.md. Do not mark
+the manifest verified from this local review or treat the old queue text as
+evidence that no repair was implemented.
+
+Local checks: `.venv/Scripts/python.exe -m unittest discover -s tests -q`
+reported 125 tests in 12.130 s, OK with 4 optional Linux tests skipped
+(121 executed). `node --test tests/test_panel_ui.cjs` passed all 7 tests.
+Expected failure diagnostics and cleanup messages came from fixtures/mocks,
+not hardware. Optional native Linux execution and live/browser device checks
+were not repeated. This review changes documentation only; no application,
+manifest, credential, history or device state was changed.
+
 ## Stock network export comparison completed — October 16, 2026
 
 The user selected investigation of CSI delivery directly to a Pi IP/port without

@@ -15,5 +15,7 @@ SHA-256:
 | `swagger-ui-standalone-preset.js` | `5243d492e14505e0cab87ac8b0195d0e615943e651743b2b698450a46eb470be` |
 | `swagger-ui.css` | `1ac324f7dcd27e4b9386b4bd6421271ec147e922a22c05ba24b115e9aa6321` |
 
-The local `api-docs.js` initializer disables “Try it out”; the interface is
-for viewing the contract and cannot submit API operations.
+The local `api-docs.js` initializer enables “Try it out” in the embedded
+workspace reference. It sends real requests to the local panel; writes require
+the temporary `X-Panel-Token` and may start captures or delete sessions.
+See `docs/API.md` for the current behavior and access limitations.

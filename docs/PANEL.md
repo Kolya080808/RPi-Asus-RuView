@@ -25,6 +25,70 @@ Its sources were recovered before implementing this version.
 The header theme button switches between light and dark mode and stores the
 choice locally in the browser.
 
+## October 6 repair status, reconciled October 20
+
+Local source and retained deployment metadata show that the configured GT eth6
+peer was changed to AX56's associated 2.4 GHz radio. The worker checks association,
+starts its countdown on `RUVIEW_CAPTURE_STARTED`, freezes it on pause/stop,
+drains final pipe output and waits for segment finalization before resume.
+Operations `20261006T102001Z-2ce117` and `20261006T102252Z-4a6d0c` are recorded
+as applied in the private manifest. The older October 5 countdown limitation
+below describes the earlier implementation.
+
+Three reports under ignored `recordings/panel-repair-20261006/` record six-second
+captures at 100/200/500 ms: 59/29/11 valid prefixes respectively, zero decode
+errors, and one timing gap in the 100 ms run. All stored records are 320-byte
+prefixes, not complete payloads. These are historical report observations,
+not newly acquired measurements or a current Pi health check.
+
+The separate `panel_capture_verification` plan still has status `testing` and
+lists four session IDs, while this report folder contains only three session
+reports. Final acceptance/cleanup must therefore be reconciled and verified
+before marking that plan complete. Do not infer the fourth session's outcome
+or change its status from these reports alone. Full pause/replay timing,
+30-minute endurance and complete raw retention remain separate work.
+
+### Live Pi reconciliation — October 20
+
+After the user confirmed Pi availability, read-only SSH/SFTP and HTTP GET checks
+found the panel active/enabled, no active capture, 12 sessions and 2,099 records.
+The database was 25,014,272 bytes; approximately 11 GiB remained free.
+All four verification sessions exist with status `captured`: the previously
+unaccounted fourth session (`92004432-6a1c-4690-be15-bf83ccee2e31`) has 119
+records. This resolves its stored outcome, not router cleanup or full acceptance.
+No raw payloads or session logs were inspected.
+
+Of the 17 files in the panel deployment mapping, 15 matched local SHA-256 hashes.
+Normalized source comparison confirmed substantive differences in `web_panel.py`
+and `web/app.js`: Pi lacks `pause_ready`/`pausing`, the resume guard, and reader
+cancellation/queue termination handling present locally. The source description
+above therefore must not be read as proof that all fixes are deployed.
+Finish a fresh reversible deployment of these fixes before testing pause/resume
+acceptance. Do not overwrite remote files using the old operation baseline.
+
+Systemd reported zero automatic restarts and no error-priority journal entries
+for the service in this boot. The service start timestamp predates the reported
+11-minute uptime, so it is not reliable evidence of continuous service age.
+No service restart, capture, deletion, package install or device configuration
+change occurred; the manifest remains `testing`.
+
+### Deployment and bounded acceptance later on October 20
+
+The user subsequently authorized completion. Fresh deployment
+`20261020T145805Z-f9c6b3` installed and verified all 17 mapped files, including
+the previously missing fixes, with unchanged history counts/digest and service
+configuration. The earlier read-only findings above are historical.
+
+One 20-second-budget, 200 ms capture was paused, resumed and stopped early.
+Pause held both record count and countdown; resume produced more records and
+stop reached `stopped`. All 21 prefixes were retained. Replay returned 422 because
+the timer jumped forward by 1,186.090651 s between the first two records, before
+pause; the pause-boundary gap was approximately 4.080392 s. The API wording
+about a repeated/reset timer is not a precise diagnosis of this observation.
+Acquisition controls passed this bounded run; replay/full acceptance remains
+open. No visual-browser, endurance, or live disk-failure acceptance is claimed.
+See EXPERIMENTS.md and ROLLBACK.md for evidence and verified device cleanup.
+
 The interface uses local HTML, CSS and JavaScript with no CDN, build step,
 analytics, external fonts, or additional Pi packages. The backend is Python's
 standard library. New modules are `src/web_panel.py` (HTTP API and metadata) and

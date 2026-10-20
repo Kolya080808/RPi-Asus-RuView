@@ -1,5 +1,42 @@
 # Experiments
 
+## GT panel deployment acceptance — October 20, 2026
+
+After fresh reversible panel deployment, ran one bounded 20-second-budget
+GT-AX11000 eth6 capture at 200 ms using the configured associated AX56 peer.
+Session `210ad70f-fd78-4bfb-bb92-f776e36ef038` retained 21 320-byte prefixes.
+The driver script paused after at least ten records, waited for confirmed pause,
+held for two seconds, resumed until ten additional records, then stopped.
+Polling confirmed stable count/countdown during pause, new records after resume,
+and terminal `stopped` with no active capture. The budget is not elapsed wall
+time; capture was deliberately stopped early.
+
+Replay GET returned 422, `Device timer repeated or reset; start a new capture`.
+Separate read-only extraction of uint32 timer fields at offset 20 found no
+nonincreasing adjacent values. Seq 0 -> 1 instead jumps by 1,186,090,651 ticks
+(1,186.090651 seconds under the provisional microsecond interpretation).
+Seq 11 -> 12 spans 4,080,392 ticks around pause; other observed intervals range
+from 168,905 to 231,666 ticks. `LiveSignal.add` rejects deltas above ten seconds,
+explaining the 422 without proving a reset. A stale initial buffered record is
+a hypothesis, not established provenance. Do not discard it or widen the guard
+without a checked acquisition-boundary model. No loss count can be inferred
+reliably from this discontinuous stream.
+
+Evidence is retained in ignored `recordings/panel-acceptance-20261020/`:
+`baseline.json`, `verify.py`, `result.json` (polls, checks, timer metadata and
+cleanup outcome). The script exits unsuccessfully on the replay error; earlier
+control assertions did pass. The timer extraction checks stored field values
+separately from API replay, but is not an independent RF-time measurement.
+
+Post-test narrow cleanup check found GT monitor disabled, empty peer list and
+no csimond; boot identity matched baseline. SQLite quick_check was OK with
+13 sessions/2,120 records, an increase of exactly one session/21 records.
+Raw history was not deleted. Capture verification remains
+`acceptance_failed_cleanup_verified`; AX58 acquisition, full raw payloads,
+localization, browser visual behavior and endurance were not tested.
+An additional digest over all prior raw records, excluding only the new session,
+matched the pre-test baseline. `git diff --check` passed for documentation.
+
 ## RE200 V5 offline platform classification — October 16, 2026
 
 Completed bounded decompression after the user resumed work. The official

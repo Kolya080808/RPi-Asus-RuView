@@ -1,5 +1,43 @@
 # Experiment rollback
 
+## Panel correction deployment — October 20, 2026
+
+Operation `20261020T145805Z-f9c6b3` records a fresh Pi baseline and exact
+17-file deployment mapping in ignored `deployment.json:panel_updates`.
+Original files are retained under
+`recordings/panel-deploy-20261020T145805Z-f9c6b3/`; application also saves
+`history-before.sqlite3` with the service stopped. Scope is the existing panel
+files and restart of `ruview-lab-panel.service`, preserving its unit, enablement,
+keys and history. Existing `rollback.py --panel-only` implements this exact scope;
+no new rollback action is needed. The pre-apply `--check` passed.
+Recovery uses `python scripts/rollback.py --panel-only --check`, then
+`--panel-only --apply` if restoration is needed. It restores file bytes/modes,
+checks service state and preserves current history rather than replacing it.
+No capture or router configuration change is included in this deployment.
+
+Separate acceptance plan `panel-acceptance-20261020` is recorded in
+`deployment.json:panel_capture_verification`; the prior plan is preserved in
+`panel_capture_verification_archive`. Fresh GT boot/idle-monitor/peer/process
+observations and Pi database counts/digest are in
+`recordings/panel-acceptance-20261020/baseline.json`. Scope: one bounded
+20-second, 200 ms GT eth6 capture using the already configured AX56 peer,
+pause/resume/stop and retention of the resulting session. Existing
+`rollback.py --capture-only --check` verifies no active panel capture, disabled
+monitor, empty peer list and no collector. Normal cleanup is the capture's EXIT
+trap; on failure stop the owned session and inspect before any recovery.
+`--capture-only --apply` only permits the documented peer cleanup when marked
+`recovery_required` and refuses unknown collectors/state. No repeater change,
+key change, session deletion or persistent monitor is authorized by this plan.
+Boot identity must also match the saved baseline after acceptance.
+
+Outcome: file deployment is `applied`; checks passed before and after application,
+with unchanged database counts/raw digest. The acceptance session
+`210ad70f-fd78-4bfb-bb92-f776e36ef038` was stopped normally. Post-test
+`--capture-only --check` passed and GT boot identity matched. Replay failed,
+so its plan is `acceptance_failed_cleanup_verified`. No rollback apply was
+needed or run. All old records plus the 21 new prefixes remain on Pi; no
+temporary capture monitor/peer/collector remained. Full acceptance is not closed.
+
 ## AX58 diagnostic correction and local reader candidate (2026-10-15)
 
 The socket-free self-test deployment is now implemented separately in

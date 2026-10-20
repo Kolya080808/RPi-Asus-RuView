@@ -75,8 +75,9 @@ The router's approximate 3 m placement still needs reconciliation with local
 scan height before using a physical 3D propagation model.
 
 Network addresses and CSI capability observations remain in [HARDWARE.md](HARDWARE.md).
-Placement on the map does not prove CSI capture from a repeater. TP-Link's IP
-address is still unidentified. The historical monitored peer `A0:36:BC:9B:BF:89` was identified on October 6
+Placement on the map does not prove CSI capture from a repeater. TP-Link RE200
+was identified at `192.168.50.155` on October 16; its CSI capability remains
+unverified (see HARDWARE.md). The historical monitored peer `A0:36:BC:9B:BF:89` was identified on October 6
 as AX58 eth1; the repaired panel uses AX56 eth1 as the main-router radio peer.
 See HARDWARE.md for the observed associations; this does not establish localization.
 The Pi's exact position, antenna orientations, backhaul paths, wall materials,

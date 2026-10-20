@@ -1,13 +1,42 @@
 # Next steps
 
-Updated 2026-10-16. Current state and completed work: [HANDOFF.md](HANDOFF.md).
+Updated 2026-10-20. Current state and completed work: [HANDOFF.md](HANDOFF.md).
 Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
 
-## Pending panel repair (not the selected task)
+## Partially completed panel repair (not the selected task)
 
-- Restore manual capture on GT-AX11000, correct the countdown and verify live
-  delivery, saved replay and controls on Pi with recorded rollback.
-  Results belong in [PANEL.md](PANEL.md), not in this queue.
+- Peer/countdown repairs are implemented and October 6 file deployments are
+  recorded as applied. Three retained short-capture reports support acquisition,
+  but the capture-verification manifest still says `testing`. Finish acceptance
+  and cleanup verification rather than restarting the repair from scratch.
+  Evidence and remaining limits: [PANEL.md](PANEL.md#october-6-repair-status-reconciled-october-20).
+- October 20 deployment `20261020T145805Z-f9c6b3` completed and verified the
+  missing pause-readiness and reader-cancellation fixes. Bounded live acceptance
+  passed pause/resume/stop and cleanup, but replay returned 422: the first two
+  records have a provisional timer delta of 1,186.090651 s, before the pause.
+  Next panel step: investigate initial stream/buffer provenance and represent
+  discontinuities explicitly, retaining every raw record. Do not silently drop
+  the first record or increase the timer guard. Repeat replay acceptance after
+  the cause and behavior are tested. See EXPERIMENTS.md for evidence.
+
+## Immediate continuation of milestone 2
+
+Prepare the separate **AX58 passive Netlink reader check with CSI disabled**:
+review socket subscription/lifecycle risks against the retained exact-build
+evidence, define bounded execution and expected no-data outcomes, add a distinct
+plan/rollback scope and local failure tests. The current device wrapper only
+permits socket-free self-test; its plan must not be relabeled as passive receive.
+Before device execution, obtain a fresh baseline and pass the exact rollback
+check. Stop before execution if reset risk remains unresolved.
+
+Acceptance for this substep is bounded reader termination, retained stdout/stderr
+and exit reason, removal of only the owned temporary file/process/socket, and
+unchanged boot/monitor state. No records with CSI disabled is not a failed CSI
+capability test, and passive success does not authorize active monitoring.
+The selected deliverable remains real AX58 acquisition and continuous decoding
+on Pi. It additionally needs safe peer activation, complete live journaling,
+independently validated AX58 payload interpretation and measured stop/drop/timing
+behavior; the current offline pipeline is not that live integration.
 
 ## Ordered milestones
 
