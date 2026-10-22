@@ -100,6 +100,19 @@ def audit(module, header):
     if refs.get(0x2b560c) != 'wlc_scbapfind':
         raise ValueError('Enable lookup relocation differs')
     words(0x2b560c, [0xebfffffe, 0xe1a0300a, 0xe1a01009, 0xe1a02000, 0xe5804210])
+    words(0x2b55e4, [0xe3a02001, 0xe5c321d0])
+    words(0x2b5430, [0xe5847048])
+    words(0x2b5448, [0xe3a03000, 0xe1a06003, 0xe5c231d0])
+    words(0x2b4dd4, [0xe3520000, 0x1a00000d])
+    words(0x2221f0, [0xe3a03000, 0xe1a04000, 0xe5c13025, 0xe1a00001])
+    for address, name in {
+            0x2b541c: 'wl_del_timer', 0x2b542c: 'wl_free_timer',
+            0x2b545c: 'wl_del_timer', 0x2b547c: 'wl_free_timer',
+            0x2b4de8: 'wl_del_timer', 0x2b4e10: 'wl_add_timer',
+            0x222200: 'del_timer', 0x22268c: 'wl_del_timer',
+            0x2226f4: 'wl_free_timer_freelist', 0x222740: 'osl_mfree'}.items():
+        if refs.get(address) != name:
+            raise ValueError(f'Timer lifecycle relocation differs at {address:#x}')
     return {
         'module_sha256': MODULE_SHA256, 'header_sha256': HEADER_SHA256,
         'method': 'stdlib ELF32 relocations, exact A32 words, branch arithmetic and GPL enums',
@@ -107,6 +120,15 @@ def audit(module, header):
         'configuration_byte_4': 'BSS up-state byte (paired up/down writes)',
         'lookup': 'non-null AP-role and up configuration; current-band peer; may return zero',
         'enable': 'unguarded store through lookup result at .text+0x2b561c',
+        'shutdown': {
+            'disable': 'per-peer del/free precedes enabled-byte clear and watchdog cancellation',
+            'peer_delete': 'single-peer deletion calls wl_free_timer',
+            'disabled_callback': 'disabled branch still reaches wl_del_timer and wl_add_timer',
+            'cancel': 'wl_del_timer calls kernel del_timer, not a proven synchronous cancellation',
+            'free': 'wl_free_timer uses a freelist or direct osl_mfree conditionally',
+            'locking_and_lifetime_validated': False,
+            'safe_to_activate_or_rollback_active': False,
+        },
         'runtime_validated': False, 'safe_to_enable': False,
         'limits': ['No live peer proof', 'No lifecycle/race safety proof',
                    'No reader compatibility or decoder validation',

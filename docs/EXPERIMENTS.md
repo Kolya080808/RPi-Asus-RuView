@@ -1,5 +1,92 @@
 # Experiments
 
+## Active lifecycle preparation and final local checks — October 22, 2026
+
+No device experiment in this checkpoint. The retained exact AX58 module was
+inspected through disassembly and independently checked A32 words/relocations
+in the extended `audit_ax58_contract.py`. DSB timer cancellation/free ordering,
+disabled callback rearm and wrapper cancellation/free paths are now explicit;
+their locking/lifetime safety remains unproved. Exact offsets, input hashes and
+the audit reproduction command are in REPEATER-CSI-RESEARCH.md. The bounded
+active design and missing implementation/rollback prerequisites are in AX58-READER.md.
+
+The positive audit passed. Additional local fault checks patched only the
+in-memory `read_elf` return: each of the 10 newly checked relocation targets was
+replaced with `unexpected_target`, and one byte was flipped at each of the five
+new instruction-block starts. Each of these 15 cases raised ValueError; original
+module/header files remained unchanged. This tests fail-closed audit behavior,
+not runtime safety or an independent hardware measurement.
+
+Final Python suite: 143 tests in 11.969 s, OK with 4 optional Linux skips
+(139 executed; 18 passive-wrapper tests). Node UI suite: 7 passed.
+Commands: `.venv/Scripts/python.exe -m unittest discover -s tests -q` and
+`node --test tests/test_panel_ui.cjs`. `git diff --check` passed. Review added
+wrong/reused-plan, missing-dry-check and final-cleanup-failure regressions;
+metadata now separates the initial execution gate from later accepted risk.
+No new firmware, dependency, device setting, raw session or commit was created.
+
+## Authorized passive AX58 trial — October 22, 2026
+
+The user explicitly requested a trial after the remaining release-notifier risk
+was explained. Exactly one protocol-23/group-mask-2 run used the reviewed ARM
+helper, two-second interval, 64-record ceiling and duration+2 emergency alarm.
+CSI stayed disabled. Fresh rollback inspection passed before execution.
+
+Operation `b9821d3edd5f`; receive UTC 14:17:57–14:17:59 (17:17:57–17:17:59
+Moscow). SSH receive elapsed 2.059 s; exit 3; stdout 8 bytes (`RUVRAW1` magic),
+stderr 53 bytes (exact zero-record diagnostic). Zero datagrams were reported;
+this is expected with monitoring disabled, not a negative CSI capability test.
+Evidence root: `recordings/passive-reader/b9821d3edd5f/20261022T141757Z-8d4799071756/`.
+The manifest preserves execution baseline, risk acceptance, receive status,
+output sizes, diagnostic path and verified cleanup timestamp.
+
+Before/after monitor states and counters matched, peers stayed empty, boot ID
+was unchanged, and no userspace protocol-22/23 listener or owned helper process
+remained. Exact helper bytes were verified before deletion; path absence was
+checked afterward. Separate pinned SSH rollback inspection at UTC 14:18:20–21
+also passed. No active CSI, firmware/settings change, Pi operation or history
+deletion occurred. No repetition or alternative protocol was attempted.
+
+The user subsequently reported noticing nothing unusual during this trial
+(October 22 chat response). This is a subjective observation supporting the
+technical checks, not an instrumented packet-loss or latency measurement.
+Local full suite after the run implementation: 141 tests in 12.594 s, OK,
+4 optional Linux cases skipped (137 executed). All 16 passive-wrapper tests
+passed, including exact receive arguments, upload mismatch, transport failure,
+unexpected exit with cleanup and refusal without explicit risk acceptance.
+`git diff --check` passed. Synthetic error logs do not describe device faults.
+The test does not resolve the active peer race, all kernel lifecycle paths,
+protocol-22 behavior, actual CSI payload or live Pi processing. Next work remains
+the separately evaluated active acquisition contract, not unrestricted capture.
+
+## Passive AX58 reader preparation — October 22, 2026
+
+Prepared operation `b9821d3edd5f` using read-only pinned SSH. Both radios had
+disabled CSI monitors, empty peer lists and no userspace Netlink 22/23 reader;
+the proposed `/tmp/ruview-passive-b9821d3edd5f` file was absent. Preparation and
+the separate `rollback.py --passive-reader-only --check` agreed on unchanged
+boot identity and monitor state. No upload, executable, socket or active capture
+was started. Pi availability was confirmed, but no Pi access was needed.
+
+Evidence: ignored `deployment.json:passive_reader_checks` and per-command
+stdout/stderr/metadata in `recordings/reader-probe/` and
+`recordings/repeater-diagnostics/`, UTC 13:37:03–13:37:33. No raw CSI records
+were obtained; loss and receive behavior are not measured. No rollback apply
+was needed. At this preparation checkpoint the plan was `prepared-blocked`;
+the subsequent authorized trial and restored state are recorded above.
+
+Local tests: 10 new passive plan/outcome/ownership tests; complete unittest
+discovery reported 135 tests in 12.041 s, OK, 4 optional Linux cases skipped.
+Covered complete no-data evidence, unexpected exits/partial output, foreign or
+partial files, changed boot/monitor/file, live process refusal and preservation
+of existing manifest fields. These mocks do not establish kernel safety.
+
+Independent exact-word/relocation checking corroborated the saved disassembly's
+NULL Netlink cfg; the retained GPL source exposes a global release notifier
+path still requiring review. Details and hashes: REPEATER-CSI-RESEARCH.md.
+The first source-read attempt incorrectly treated the GPL ZIP as a flat tree;
+the corrected read streamed its nested TGZ without extracting or changing files.
+
 ## GT panel deployment acceptance — October 20, 2026
 
 After fresh reversible panel deployment, ran one bounded 20-second-budget

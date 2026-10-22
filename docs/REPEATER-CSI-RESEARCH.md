@@ -1,5 +1,90 @@
 # Repeater CSI research and acquisition options
 
+## Active stop/lifetime contract review — October 22, 2026
+
+PC-only inspection of the same hash-locked AX58 module extended
+`scripts/audit_ax58_contract.py` with exact words/relocations for activation
+and shutdown. Mapping-aware disassembly and separate stdlib A32/ELF checks
+agree on the following local control flow:
+
+| Path | `.text` address | Observation |
+|---|---|---|
+| ENB | `0x2b55e8` | Enabled byte set before peer lookup |
+| ENB | `0x2b560c`, `0x2b561c` | Lookup then unchecked store through its result |
+| DSB | `0x2b541c`, `0x2b542c`, `0x2b5430` | Delete timer, free timer, clear slot pointer |
+| DSB | `0x2b5450`, `0x2b545c` | Then clear enabled and cancel watchdog |
+| Single-peer DEL | `0x2b547c` | Calls `wl_free_timer` |
+| Peer callback | `0x2b4dd8`, `0x2b4de8`, `0x2b4e10` | Disabled branch still reaches delete/rearm |
+| `wl_del_timer` | `0x222200` | Calls kernel `del_timer` |
+| `wl_free_timer` | `0x22268c`, `0x2226f4`, `0x222740` | Calls cancellation, then conditional freelist/direct freeing |
+
+These observations do not establish a crash or cancellation bug: dispatcher
+locks, callback serialization and deferred-free rules may supply the missing
+invariants. They do establish why checking the enabled flag or merely naming
+`disable` in a rollback script is insufficient evidence of active cleanup.
+No live activation, disconnect test, reboot reproduction or command-order
+workaround was performed. The historical incident attribution is unchanged.
+
+The audit now emits a `shutdown` object with
+`locking_and_lifetime_validated: false` and
+`safe_to_activate_or_rollback_active: false`; it retains `safe_to_enable: false`.
+Reproduction uses the existing command:
+
+```powershell
+.venv/Scripts/python.exe scripts/audit_ax58_contract.py --module recordings/source-classification-20261013/ax58-a15a0ecf225d-wl.ko --header recordings/ax58-review-20261012/gpl-selected/efa9a95e39e1-wlioctl.h
+```
+
+Next inspect the ioctl/callback/AP teardown locks and free-list contract.
+The proposed bounded active trial, required supervisor/readiness/failure tests
+and exact rollback acceptance are in AX58-READER.md. That design is preparation,
+not permission or an executable active capture implementation.
+
+### Follow-up: explicitly authorized passive trial, October 22
+
+After the explanation of the residual uncertainty, the user requested one trial.
+Protocol 23/group mask 2 was opened for two seconds with CSI disabled and closed
+normally: no records, exit 3, boot/monitor baseline unchanged, owned file/process
+absent and no remaining userspace listener. Separate post-run SSH inspection
+agreed. This supersedes the preparation execution block below for this one
+operation, not the active CSI gate. Static notifier review remains incomplete;
+the observed passive success is limited runtime evidence, not a general safety
+proof. Operation and raw diagnostic locations are in EXPERIMENTS.md.
+
+## Passive subscription review — October 22, 2026
+
+The retained exact AX58 module (SHA-256
+`dabb2f7e716d63f4ffa9163773b7f87c15050cb442d021db528194f0b25e68a8`)
+sets r3 to zero at `.text+0x2b5dfc` before calling
+`__netlink_kernel_create` at `0x2b5e14`: the configuration argument is NULL.
+The saved mapping-aware disassembly was cross-checked independently using
+`audit_ax58_contract.read_elf`, exact A32 word `0xe3a03000` and ELF relocation.
+That relocation inventory has no Netlink notifier registration/unregistration.
+This finding applies to this module, not all code running on the device.
+
+The retained GPL ZIP contains `GPL_RP-AX58_3.0.0.4.388.24694-g71d4ea1.tgz`.
+Within that tar, the member
+`asuswrt/release/src-rt-5.04axhnd.675x/kernel/linux-4.19/net/netlink/af_netlink.c`
+has SHA-256 `f29ff383bee7dcdd6320ee3f0d15285dff0aca92a4e752d2564778c7dad7a143`.
+It provides default 32 groups for NULL configuration (2040), installs input
+only when supplied (2050), and installs bind/unbind only for non-NULL cfg
+(2065–2068). Calls to bind/unbind are conditional (1029, 766).
+Thus no CSI-specific subscription callback was identified in this path.
+
+However, release of a bound user socket invokes the global `NETLINK_URELEASE`
+notifier chain (782–789). Other kernel/module subscribers and correspondence
+between this GPL source and the installed kernel have not been verified.
+This is an unresolved review boundary, not evidence that passive reception
+will reset the device. At the preparation checkpoint, execution was blocked
+under the project's reset-risk gate pending subscriber/protocol-filter review
+or explicit acceptance of the residual risk. The later user-authorized passive
+trial is recorded above; it does not resolve this static-review boundary.
+
+Fresh read-only AX58 observations and independent rollback inspection passed
+for plan `b9821d3edd5f`; both monitors stayed disabled/empty, no userspace
+Netlink 22/23 listener or owned temporary file was present, and boot identity
+was unchanged. No helper upload, socket creation, monitor activation or Pi
+operation occurred. See AX58-READER.md and ROLLBACK.md for the separate scope.
+
 Updated 2026-10-15 with ordinary ADD, peer lookup and raw-reader contract inspection.
 This document distinguishes measured facts from proposed designs.
 The submitted file was named `deep-research-report.md`; its findings are retained

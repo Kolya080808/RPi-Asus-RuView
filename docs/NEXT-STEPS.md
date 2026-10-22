@@ -1,6 +1,6 @@
 # Next steps
 
-Updated 2026-10-20. Current state and completed work: [HANDOFF.md](HANDOFF.md).
+Updated 2026-10-22. Current state and completed work: [HANDOFF.md](HANDOFF.md).
 Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
 
 ## Partially completed panel repair (not the selected task)
@@ -21,13 +21,20 @@ Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
 
 ## Immediate continuation of milestone 2
 
-Prepare the separate **AX58 passive Netlink reader check with CSI disabled**:
-review socket subscription/lifecycle risks against the retained exact-build
-evidence, define bounded execution and expected no-data outcomes, add a distinct
-plan/rollback scope and local failure tests. The current device wrapper only
-permits socket-free self-test; its plan must not be relabeled as passive receive.
-Before device execution, obtain a fresh baseline and pass the exact rollback
-check. Stop before execution if reset risk remains unresolved.
+The separate **AX58 passive Netlink check with CSI disabled passed** on October
+22 after the user explicitly accepted the explained residual lifecycle uncertainty
+for one trial. Plan `b9821d3edd5f`: protocol 23, group mask 2, two seconds,
+expected zero records, unchanged boot/monitor state and verified cleanup, including
+a separate post-run rollback inspection. Protocol 22 and active CSI remain untested.
+An active-trial design and exact shutdown audit are now prepared in
+AX58-READER.md and REPEATER-CSI-RESEARCH.md. Next inspect shared locks across
+ioctl, peer teardown and timer callback/free-list handling: activation uses an
+unchecked peer pointer, while disable/free/rearm serialization is not established.
+No active runner or active deployment plan has been enabled.
+Do not infer active-path safety from this passive result or
+reuse its authorization for monitor enablement. The unguarded peer lookup and
+disconnect/lifecycle questions remain relevant. Static global-release-notifier
+review is still incomplete; details: [research](REPEATER-CSI-RESEARCH.md).
 
 Acceptance for this substep is bounded reader termination, retained stdout/stderr
 and exit reason, removal of only the owned temporary file/process/socket, and
@@ -86,8 +93,9 @@ behavior; the current offline pipeline is not that live integration.
    offline BSS audit now identifies the lookup's AP-role/up fields.
    The [minimal reader](AX58-READER.md) is built and locally tested; its
    socket-free ARM self-test passed on AX58 with exact temporary-file rollback
-   verified (`54eb642bed79`). No CSI or Netlink receive was activated. Next
-   separately assess passive reception with CSI disabled. Active capture and
+   verified (`54eb642bed79`), without CSI or Netlink reception in that self-test.
+   Separately, passive protocol-23 reception with CSI disabled passed on October 22 with
+   no data and verified cleanup. Active capture and
    decoder validation remain pending.
    The incident report and October 13 decision are
    already recorded; do not require resubmission or reopen milestone 1. Next

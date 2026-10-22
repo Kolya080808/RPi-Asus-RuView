@@ -1,5 +1,77 @@
 # Project handoff
 
+## Active-plan preparation and final review — October 22, 2026
+
+Prepared the bounded active-trial design in AX58-READER.md and extended the
+hash-locked audit with shutdown/callback/free-path checks. Activation and active
+rollback still require the ioctl/AP-peer lifetime and timer-wrapper/free-list
+locking contracts. No active runner or active deployment entry was created;
+no device connection/change occurred in this final preparation/review turn.
+The completed passive trial and user report remain valid below.
+
+Final review corrected contradictory passive manifest metadata to historical
+`initial_execution_gate` and `unresolved_review`, clarified the old preparation
+checkpoint, and added rejection tests for wrong/reused plans, missing rollback
+check and failed final cleanup. Existing changes were retained; no commit.
+
+Validation: `.venv/Scripts/python.exe -m unittest discover -s tests -q` passed
+143 discovered tests in 11.969 s (139 executed, 4 optional Linux skips), including
+18 passive-wrapper tests. `node --test tests/test_panel_ui.cjs` passed 7 tests.
+The exact-module audit passed; 10 mutated relocations and 5 mutated instruction
+sites were each rejected using in-memory copies. Original firmware unchanged.
+`git diff --check` passed. These checks do not prove active-device safety.
+Next inspect shared locks/serialization in ioctl, AP teardown and timer callbacks;
+do not retry active acquisition or substitute command ordering as a workaround.
+
+## Passive AX58 trial passed — October 22, 2026
+
+After the user explicitly accepted the explained residual lifecycle uncertainty,
+implemented and executed exactly one two-second protocol-23/group-mask-2 passive
+trial, with CSI disabled. Operation `b9821d3edd5f` is now `restored`, outcome
+`expected-no-data`. The reader returned exit 3, eight stdout magic bytes and
+the exact zero-record diagnostic in 2.059 s. No CSI was acquired or decoded.
+
+Fresh checks before upload/receive and after cleanup found unchanged boot and
+both monitor states, empty peer lists and no userspace Netlink 22/23 listener.
+The exact temporary file was removed and no owned process remained. A separate
+post-run SSH rollback inspection also passed. The user subsequently reported
+noticing nothing unusual during the trial; this is not an instrumented network
+quality measurement. Pi was unused.
+
+Next: establish the separately bounded active peer/activation contract and AX58
+raw acquisition plan. This passive result does not authorize CSI enablement,
+prove active-path safety, validate protocol 22, establish decoder compatibility,
+or finish live acquisition/continuous Pi decoding. Static global-notifier review
+remains incomplete; the user authorized this limited trial despite that limit.
+See EXPERIMENTS.md for evidence and ROLLBACK.md for the exact recovery scope.
+
+The earlier preparation-only checkpoint below is historical; `run` now exists
+and requires an exact prepared plan, dry-check and explicit risk acceptance.
+Full unittest discovery passed: 141 tests, 4 optional Linux skips (137 executed);
+16 passive-wrapper tests are included. `git diff --check` passed. No commit.
+
+## Passive AX58 preparation; execution gate remains — October 22, 2026
+
+Implemented a separate preparation-only wrapper, passive rollback scope and
+10 local failure/ownership tests. Plan `b9821d3edd5f` is `prepared-blocked` in
+ignored `deployment.json:passive_reader_checks`; fresh AX58 read-only baseline
+and `rollback.py --passive-reader-only --check` passed. No device file/process,
+socket, monitor, setting or Pi state was changed. Pi availability was confirmed
+by the user but Pi was not needed. Previous self-test plans remain separate.
+
+Exact module A32/relocation inspection and bundled GPL source agree on NULL
+Netlink configuration with no identified CSI bind/unbind hook. Global socket
+release notifiers and installed-kernel correspondence remain to review; see
+REPEATER-CSI-RESEARCH.md. There is no execution command or flag bypass. Next
+resolve that review boundary and implement the bounded passive receive action,
+then refresh baseline/rollback checks before any device execution. Active AX58
+acquisition, Pi decoding and the panel replay repair remain unfinished.
+
+Local full suite: `.venv/Scripts/python.exe -m unittest discover -s tests -q`
+reported 135 tests, OK with 4 optional Linux cases skipped (131 executed).
+Diagnostics from deliberate failures are expected. Native receive, live stop,
+Pi load and real CSI decoding were not tested. No commit was created.
+
 ## Panel deployed; replay acceptance blocked — October 20, 2026
 
 With user authorization, deployed the existing local panel fixes as operation

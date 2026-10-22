@@ -1,5 +1,55 @@
 # Experiment rollback
 
+## Active AX58 preparation — October 22, 2026
+
+The active-trial design in AX58-READER.md is not a runnable rollback plan.
+The exact binary audit now records timer delete/free/rearm ordering, but the
+dispatcher/callback locks and peer lifetime remain unverified. No active entry
+was added to the deployment manifest and no remote changes occurred during
+this preparation. Preserve the restored passive entry and its evidence.
+
+Before an active trial, implement a separate scope covering exact temporary
+supervisor/reader files, owned tasks, the selected monitor and single peer.
+Prove the bounded supervisor/failure paths locally, record baseline and dry-check
+that scope, then verify actual stop/cleanup without deleting raw evidence.
+The passive scope never owns monitor settings and must not be used to disable CSI.
+
+## Passive AX58 reader plan — October 22, 2026
+
+Outcome of the subsequently authorized trial: operation `b9821d3edd5f` is
+`restored`, with `expected-no-data` and `cleanup_verified_utc`. Pre-run and
+independent post-run `--passive-reader-only --check` passed. The wrapper removed
+only `/tmp/ruview-passive-b9821d3edd5f` after exact-byte verification, checked no
+owned process or userspace Netlink listener remained, and compared boot/monitor
+state with the baseline. No standalone rollback apply or monitor command ran.
+
+Preparation only: `scripts/passive_reader_probe.py prepare --protocol 23`
+records fresh boot identity, both disabled/empty CSI monitors and counters,
+process/socket observations and absence of the unique temporary path. It writes
+only the local ignored manifest; it creates no device file, process or socket.
+The entry is separate from `reader_self_tests`, under `passive_reader_checks`.
+
+Inspect with `scripts/rollback.py --passive-reader-only --check`. Applying this
+scope verifies absence and closes an unused plan as restored. For a future
+uploaded plan it can remove only the exact full reviewed helper at that plan's
+path, after process/boot/monitor checks and immediate byte revalidation. It
+verifies absence and baseline afterward. Partial, empty, foreign or symlinked
+files require inspection; it never signals processes or changes monitors.
+If a bounded helper survives its alarm, stop automatic cleanup and investigate.
+Do not reuse the socket-free self-test plan for passive reception.
+
+The user subsequently authorized one bounded passive trial despite the documented
+remaining lifecycle uncertainty. Execution now requires the exact prepared ID,
+an earlier rollback check and explicit `--accept-passive-risk`. It rechecks the
+baseline before upload and receive, exclusively uploads/verifies the helper,
+records state before each action and preserves receive diagnostics. Complete
+results invoke narrow cleanup; transport failures retain the last known state
+for inspection with this same rollback scope. There is no automatic retry.
+The planned device changes are one exclusive temporary executable (600 on
+upload, 700 for execution), its bounded foreground process and kernel-managed
+socket. No settings, services, startup entries, credentials, history or Pi files
+are in scope. Local stdout/stderr and exit diagnostics must be preserved.
+
 ## Panel correction deployment — October 20, 2026
 
 Operation `20261020T145805Z-f9c6b3` records a fresh Pi baseline and exact

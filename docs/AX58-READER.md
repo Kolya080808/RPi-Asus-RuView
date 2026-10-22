@@ -1,5 +1,50 @@
 # AX58 raw reader candidate
 
+Latest October 22: the separately authorized passive protocol-23 trial completed
+with expected no-data exit 3 and verified cleanup (`b9821d3edd5f`). The socket
+was opened and closed with CSI disabled. Active acquisition and AX58 decoding
+remain unvalidated; the older socket-free checkpoint below describes October 15.
+
+## Passive check preparation — October 22, 2026
+
+`scripts/passive_reader_probe.py prepare --protocol 23` prepares a separate
+read-only baseline and plan; it does not upload or execute the helper. Protocol
+22 is an explicit alternative, not an automatic retry. The first planned run
+is two seconds, group mask 2, at most 64 datagrams, with the existing helper's
+four-second emergency alarm and one-second stdout deadline. The SSH collector
+must retain stdout, stderr and exit metadata, including partial failures.
+
+The plan is stored under `deployment.json:passive_reader_checks`, with its own
+`/tmp/ruview-passive-<12hex>` path. `rollback.py --passive-reader-only --check`
+checks that scope independently of the completed socket-free self-tests.
+Preparation is `prepared-blocked` by default. Later on October 22 the user
+explicitly accepted the explained residual uncertainty for one passive trial.
+The `run --plan ID --accept-passive-risk` command now records that acceptance,
+checks the exact plan and baseline, uploads/verifies the reviewed helper and
+runs it once. The CLI flag records an already authorized decision; it is not
+standing authorization for future experiments. No active CSI command is included.
+
+Expected no-data acceptance requires exit 3, exactly the `RUVRAW1` magic and
+the helper's zero-record diagnostic, followed by verified cleanup. Other exits,
+partial frames or unexpected data must retain evidence and stop acceptance.
+No-data alone neither proves CSI capability nor constitutes a failed CSI test.
+Full acceptance additionally requires unchanged boot/monitor state, no userspace
+listeners on protocols 22/23 and no process using the owned executable path.
+Closing SSH is not evidence that the socket/process has terminated.
+
+The execution implementation rechecks the baseline immediately before upload
+and receive, records upload/receive states before those actions, and invokes
+the separate cleanup verification on complete transport results. Unknown or partial
+files and still-running processes are retained for inspection; no monitor
+changes or broad process kills are allowed. Continuous Pi forwarding and AX58
+payload interpretation remain separate unimplemented work.
+
+The receive evidence directory is saved before execution. A transport exception
+leaves the plan at its last known state for narrow rollback inspection; no retry
+or cleanup success is invented. A complete unexpected result retains exit/output
+metadata and attempts verified cleanup, then reports failed acceptance. Even a
+clean no-data exit establishes only this bounded passive trial.
+
 October 15, 2026: built locally and socket-free self-test passed on AX58;
 temporary deployment removed and baseline verified. Live acquisition and
 decoding remain incomplete. No Netlink socket or CSI monitor was activated.
@@ -67,14 +112,66 @@ during receive and forwarding to Pi remain unvalidated.
 
 ## Next device steps and rollback gate
 
+### Active acquisition preparation — October 22
+
+This is a bounded design, not an implemented active runner. Passive acceptance
+is complete for protocol 23; it does not exercise monitor timers or peer lifetime.
+The earlier passive risk acceptance does not extend to active monitoring.
+
+Two exact-build prerequisites remain before a device activation plan:
+
+1. Establish the locking/lifetime contract between the CSI ioctl, AP peer lookup
+   and association/disassociation. A fresh AP/up/authorized-peer query is only
+   a snapshot; it cannot guarantee the pointer at the unguarded enable store.
+2. Establish serialization of timer callbacks with cancellation and freeing.
+   DSB deletes/frees per-peer timers before clearing enabled, and a callback
+   seeing disabled can still reach rearm. The wrapper calls `del_timer` and
+   conditionally frees through a freelist or directly. Without the caller locks
+   this proves neither a defect nor a reliable active rollback. Exact addresses
+   and reproduction are in REPEATER-CSI-RESEARCH.md.
+
+Next offline inspection targets are the ioctl dispatcher, timer callback
+wrapper/free-list lifetime and AP peer teardown, including their shared locks.
+Do not substitute enable-before-ADD, firmware patching, an absent peer or a
+forced disconnect as an experiment to bypass these prerequisites.
+
+Once those prerequisites are resolved, the proposed first active trial is:
+
+| Item | Proposed constraint / required evidence |
+|---|---|
+| Source | AX58 only, exact installed module and helper hashes |
+| Link | One freshly verified AP/up interface and one identified authorized peer; verify radio unit/protocol mapping |
+| Duration | One 5-second acquisition window, 500 ms requested CSI interval; no repeat or fallback interface |
+| Reader | Existing raw envelope, explicit readiness after bind, maximum 64 datagrams; no GT decoder |
+| Storage | Full envelopes plus stdout/stderr/exit metadata and source identity; retain partial failures |
+| Stop | Source-local owned supervisor and bounded cleanup, independent of PC/SSH continuity |
+| Rollback | Disable only the monitor enabled by this operation, remove only its exact peer, wait for owned tasks and remove only verified files |
+| Acceptance | Raw frames, lengths/times/error counters, unchanged boot, baseline monitor/peer/socket state and exact cleanup |
+
+These limits are proposals to validate locally, not current runtime guarantees.
+The reader alarm alone does not stop an enabled monitor; a userspace watchdog
+cannot recover a stuck kernel. The supervisor, readiness handshake, failure
+tests and active rollback scope must exist before upload or monitor changes.
+Failure cases include bind failure, blocked output, lost SSH, partial upload,
+monitor-command failure, unexpected peer state and cleanup verification failure.
+Do not use blanket peer deletion, unknown PID kills or automatic retries.
+
+The future manifest entry must be distinct from `passive_reader_checks`, with
+exact owned files/processes/settings, initial state, command/cleanup evidence and
+an explicit acceptance outcome separate from restoration. No active manifest
+entry or remote mutation was created by this preparation. Continuous Pi receipt,
+durable live journaling and independently validated AX58 decoding are subsequent
+integration steps; an offline import is not their replacement.
+
 Before any upload: record the unique temporary path and its absence, build
 hash, boot/monitor/peer/socket baseline in `deployment.json`; implement and
 dry-check exact cleanup in `scripts/rollback.py`. Then test socket-free
 `--self-test`, followed by a separately bounded passive receive check with CSI
 still disabled. Verify cleanup and baseline after each operation. Socket-free
 self-test deployment and rollback are now implemented in `scripts/reader_probe.py`
-and `scripts/rollback.py --reader-only`. Passive reception still needs its own
-plan; this wrapper exposes only `--self-test`, with no Netlink or CSI mode.
+and `scripts/rollback.py --reader-only`. This wrapper still exposes only
+`--self-test`. Passive reception uses `passive_reader_probe.py` and the separate
+`--passive-reader-only` rollback scope documented above.
 
 Active CSI additionally needs a lifecycle/peer review and reversible activation
 plan. AP/up/authorized-peer observations do not prove absence of disconnect races
