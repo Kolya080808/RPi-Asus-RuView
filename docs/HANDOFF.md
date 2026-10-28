@@ -1,5 +1,155 @@
 # Project handoff
 
+## Ordinary source-acquisition decision point — October 28, 2026
+
+After the Pi receiver check, returned to the actual AX58 source blocker.
+Searched 31,934 additional documentation/script files (345,077,733 bytes) in the
+retained GPL archive; no matching CSI acquisition documentation was found in
+that scope. Official quick-start and Nexmon CSI upstream documentation also
+provided no applicable stock AX58 procedure. Exact limits, links and retained
+search evidence are in REPEATER-CSI-RESEARCH.md. No device access or code change
+occurred in this review; current uncommitted work remains preserved.
+
+Prepared concrete isolated-bench conditions in AX58-READER.md and updated
+NEXT-STEPS.md. The user subsequently declined: AX58 must remain in the home
+network. The isolated bench is not selected and is no longer awaiting approval.
+Do not remove AX58 from service or activate the unqualified path. The live
+acquisition goal is blocked under the current network-stability constraint;
+materially new applicable compatibility evidence is needed to revisit it. Do not
+resume driver-failure research, silently switch the target, or repeat receiver
+fixtures as if they closed this blocker.
+
+## Pi synthetic receiver acceptance — October 28, 2026
+
+Continued autonomously with a bounded Pi check, after documenting and testing
+its exact rollback scope. Added `scripts/pi_transport_probe.py`, six local tests,
+and `rollback.py --pi-transport-only`. Operation `39ab258501ff` wrote only three
+files under its unique temporary directory; no packages, settings, panel files,
+credentials or router commands changed. Code ran from memory with bytecode off.
+
+Pi received/journaled a generated 69,118-byte, 32-frame stream without mismatch;
+SQLite quick_check passed. Files were retained on PC, then exact-file rollback
+and an independent final inspection passed; manifest status is `restored`.
+Pi boot and active panel state match baseline. PC replay independently yields
+32 raw-only frames. This confirms Pi runtime/basic journal compatibility, not
+real CSI, live SSH receipt on Pi, sustained capacity or active AX58 acquisition.
+Evidence/limits: EXPERIMENTS.md; recovery scope: ROLLBACK.md.
+Full local suite: 172 tests, 168 passed/four opt-in Linux skips (78.343 s);
+six targeted probe tests and `git diff --check` passed.
+
+## Receive-layer implementation — October 28, 2026
+
+Following the user's request for autonomous continuation, implemented
+`src/raw_transport.py` for bounded receipt from an already-started SSH channel
+into the raw journal, with separate durable stderr and transport metadata.
+It checks drained EOF and exit status, preserves partial failures, and does not
+run device commands or decode AX58 as GT. Added `live-stream` provenance to the
+journal validator; existing source origins remain valid. Older validators need
+updating for that additive value. Full contract is in RAW-PIPELINE.md.
+
+Tests include a real SSH socket pair wholly within the PC, without a listening
+service or device connection. No Pi/router deployment, activation or manifest
+change occurred; device rollback scope is unchanged. Active source acquisition,
+Pi integration/capacity and AX58 decoding remain unfinished. This work supplies
+the transport receiver required by that goal, not another offline importer.
+Full local suite: 166 discovered, 162 passed/four opt-in Linux skips (78.079 s);
+`git diff --check` passed. Evidence and commands are in EXPERIMENTS.md.
+
+## Current scope and Pi availability — October 28, 2026
+
+The user requested more caution after reporting safeguards and explicitly said
+vulnerability discovery is not the task. Continue ordinary CSI acquisition and
+compatibility work; do not expand the earlier synthetic failure scenarios. Keep
+all existing research/code changes and evidence. The live AX58/Pi deliverable
+remains unfinished; the passive reader result does not validate active capture.
+NEXT-STEPS.md now separates the current acquisition plan from historical reviews.
+
+One bounded SSH attempt to Pi timed out before remote commands ran. After the
+user reconfirmed availability, one retry succeeded using the existing lab key
+and strict known-host verification. Observed: aarch64, Python 3.13.5, panel
+service active, project directory present, 11,444,280 KiB free on its filesystem
+(18% used). This confirms access and basic readiness only, not CSI throughput
+or panel endpoint acceptance. No remote changes or capture were made.
+
+## Guarded ADD / association matrix — October 28, 2026
+
+Continued PC-only investigation of alternative activation, retaining all prior
+edits. Extended the local ARM harness with `--activation-matrix` and four tests
+covering six states. The guarded ADD path handles absent peers but can return
+success without binding/timer readiness. Explicit subsequent callback invocation
+faults with an unbound slot, or after timer allocation failure. Normal binding
+and SCB-init controls pass. Callback execution after failed init is hypothetical;
+caller suppression and runtime concurrency are not proven. Do not promote these
+results to a new historical-incident cause or a command-order workaround.
+
+The new section in REPEATER-CSI-RESEARCH.md records addresses, exact scope and
+remaining prerequisites. Artifacts: ignored
+`recordings/ax58-activation-review-20261028/`. No device, deployment, firmware,
+credential or capture-history change; no commit. No active alternative has
+qualified. The live AX58/Pi goal remains open pending a lifecycle-safe design.
+Full suite: 157 discovered, 153 passed/four opt-in Linux skips, 78.417 s;
+`git diff --check` passed. Reproduction commands/logs are in EXPERIMENTS.md.
+
+## Local ARM execution checkpoint — October 28, 2026
+
+User requested continuous progress rather than stopping at intermediate findings.
+Added bounded PC-only `scripts/emulate_ax58_lifecycle.py` and six optional
+regression tests; installed/pinned Unicorn 2.1.4 only in the PC venv/research
+requirements. The exact module's real peer-lookup instructions produce an
+invalid ENB write to `0x210` at `.text+0x2b561c` for a synthetic absent peer and
+retained slot. Present-peer/explicit-delete controls and sequential deferred
+timer freeing passed. External kernel primitives are stubbed; this is not a
+device incident reproduction or complete concurrency proof.
+
+The maintained research document records the mapped-A32 reference survey and
+its alias/indirect-call limits. Evidence is under ignored
+`recordings/ax58-slot-closure-20261028/`. The proposed active sequence is not
+ready; do not spend another turn on idle peer queries as an alleged safety fix.
+An exact source invariant or separately evaluated AX58 acquisition method is
+needed. The AX58/Pi target stays open. No devices, deployment, firmware, secrets
+or historical captures were modified; no commit was made.
+Validation: six emulator tests passed; full Python suite discovered 153 tests,
+149 passed/four opt-in Linux skips. Dependency and diff checks passed. Commands,
+durations, synthetic assumptions and evidence paths are in EXPERIMENTS.md.
+
+## CSI slot/teardown continuation — October 28, 2026
+
+Following the user's request to continue, PC-only inspection confirmed AP cubby
+deinit registration, descriptor callback dispatch and asynchronous work submission.
+ADD retains a MAC before its enabled check; AP deinit skips its CSI hook while
+disabled; ENB later looks up nonempty slots without guarding a zero result.
+The conditional absent-peer path is now explicit, not a reproduced crash or a
+claim of complete teardown coverage. All active-safety flags remain false.
+No device connection, activation, forced disconnect or deployment edit occurred.
+
+Extended the audit and mutation regression tests. Exact evidence and the remaining
+slot-invalidation invariant question are in REPEATER-CSI-RESEARCH.md; reproduction
+artifacts are in ignored `recordings/ax58-slot-review-20261028/`. Do not resume
+device activation on the strength of another userspace peer check. The live
+AX58/Pi acquisition target remains unfinished; existing edits are preserved.
+Audit and four targeted tests passed. Full local Python discovery: 147 tests,
+143 passed and four opt-in Linux skips; `git diff --check` passed. Exact commands
+and retained logs are in EXPERIMENTS.md.
+
+## AX58 wrapper-lock continuation — October 28, 2026
+
+User confirmed Pi availability and authorized continuation with network stability
+as a priority. Work remained PC-only. The exact module shows matching locks in
+ioctl/callback wrappers, task-aware deferred freeing and an AP CSI timer teardown
+hook. These narrow the previous uncertainty without proving active-path safety.
+The unchecked ENB peer lookup still needs a peer/CSI-slot invariant across
+separate commands. Full scheduler/free and AP teardown caller coverage remains
+open; next targets and addresses are in REPEATER-CSI-RESEARCH.md.
+
+Extended the maintained stdlib audit with exact-word/relocation checks and
+added optional retained-fixture regression tests for safety flags and altered
+lock/gate/free evidence. Mapping-aware reproduction and disassembly are retained
+under ignored `recordings/ax58-locking-20261028/`.
+The expanded audit, three targeted regression tests and `git diff --check`
+passed; exact commands and limitations are recorded in EXPERIMENTS.md.
+No SSH, CSI activation, remote mutation, deployment change or commit occurred.
+Stage 2 and the live AX58/Pi target remain unfinished.
+
 ## Active-plan preparation and final review — October 22, 2026
 
 Prepared the bounded active-trial design in AX58-READER.md and extended the

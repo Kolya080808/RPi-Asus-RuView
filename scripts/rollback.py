@@ -222,10 +222,16 @@ def main():
                         help='Check/remove only the manifest-owned socket-free AX58 reader self-test file')
     parser.add_argument('--passive-reader-only', action='store_true',
                         help='Check/restore only the separately planned passive AX58 reader scope')
+    parser.add_argument('--pi-transport-only', action='store_true',
+                        help='Check/remove only verified synthetic Pi receiver outputs')
     args = parser.parse_args()
     if sum((args.panel_only, args.repeater_only, args.capture_only, args.reader_only,
-            args.passive_reader_only)) > 1:
+            args.passive_reader_only, args.pi_transport_only)) > 1:
         parser.error('Choose only one narrow rollback scope')
+    if args.pi_transport_only:
+        from pi_transport_probe import rollback
+        rollback(args.apply)
+        return
     if args.passive_reader_only:
         from passive_reader_probe import rollback
         logging.basicConfig(level=logging.INFO)

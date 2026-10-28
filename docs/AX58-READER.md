@@ -1,5 +1,39 @@
 # AX58 raw reader candidate
 
+## Current scope — October 28, 2026
+
+Follow the ordinary-acquisition plan in NEXT-STEPS.md. The user asked to stop
+expanding driver-failure investigations. Earlier findings below remain evidence
+and limitations, not instructions to run more failure scenarios. Active capture
+is still unvalidated; no reordered activation sequence is qualified by them.
+Pi access and basic runtime/storage checks succeeded on October 28, but live
+AX58 receipt, payload interpretation and continuous decoding remain open.
+
+Guarded-ADD follow-up: the existing null guard is real, but ADD success may leave
+a retained MAC without an SCB binding/timer. Offline association-callback tests
+show why readiness must include those invariants and allocation-failure handling.
+This is not evidence to deploy a reordered activation sequence. The active
+design remains blocked; details and controls are in REPEATER-CSI-RESEARCH.md.
+
+Latest October 28: bounded local ARM emulation with original peer-lookup code
+reproduced the conditional ENB invalid write for a retained slot/absent peer.
+Sequential deferred-timer-free controls passed in one synthetic runtime mode.
+The proposed active sequence remains blocked; a short supervisor/precheck does
+not resolve the activation failure path. See REPEATER-CSI-RESEARCH.md for method,
+controls and limits. No active device experiment or firmware change occurred.
+
+October 28 continuation traced AP deinit registration and the disabled-ADD /
+disabled-teardown / ENB paths. A nonempty retained slot with an absent peer
+reaches an unchecked store; a userspace peer snapshot does not rule this out.
+Other callback slot-invalidation coverage and runtime reachability are unproven.
+The active design below is still blocked; no live reproduction was attempted.
+
+October 28 offline continuation found matching ioctl/callback lock offsets,
+deferred-free task bookkeeping and AP CSI timer teardown. Full activation and
+shutdown lifetime safety is still unvalidated: remaining coverage is documented
+in REPEATER-CSI-RESEARCH.md, "Wrapper locks and AP teardown". The prerequisites
+below are narrowed, not closed. No active runner or remote change was made.
+
 Latest October 22: the separately authorized passive protocol-23 trial completed
 with expected no-data exit 3 and verified cleanup (`b9821d3edd5f`). The socket
 was opened and closed with CSI disabled. Active acquisition and AX58 decoding
@@ -55,6 +89,47 @@ storage, decoding and panel remain Python on Pi/PC. The helper does not invoke
 `wl`, enable CSI, transmit packets, fork, write files or install services.
 It is not the foreign GT `csimond` binary.
 
+## Proposed isolated ordinary-acquisition bench — October 28
+
+Status: not selected. On October 28 the user explicitly required AX58 to remain
+in the home network and declined a separate bench. The proposal below is
+historical context, not the current next action or authorization.
+This is the next concrete source-acquisition option after the ordinary-document
+review, not authorization to activate CSI on the current home repeater. An
+isolated bench limits household impact but does not establish driver safety.
+
+1. Establish that AX58 no longer carries household clients/backhaul before
+   changing its role. Keep GT-AX11000/RP-AX56 serving the home network. The user
+   must confirm available cabling and a management path that survives loss of
+   the experimental radio; do not assume a spare Ethernet adapter or infer
+   isolation from an SSID name. No factory reset or firmware replacement.
+2. Plan the exact reversible topology/configuration changes only after that
+   confirmation. Record the current role and changed values privately; never
+   dump credentials into the repository. Any persistent mode/address/SSID change
+   needs its own baseline, manifest scope and restoration verification before
+   application. This draft contains no such configuration change or command.
+3. Candidate topology: PC manages AX58 through its LAN port; one identified
+   authorized lab peer uses its AP radio. Pi may be that peer/collector if its
+   management and recovery access are confirmed. One link, not multiple sources.
+   Loss of the experimental radio must not remove control of the home router.
+4. Prepare a separate active operation with exact interface/module/helper,
+   owned supervisor/processes, reader readiness, full raw output and a bounded
+   stop/cleanup implementation. Retain the October 22 candidate limits (five
+   seconds, 500 ms requested interval, at most 64 datagrams) as design limits,
+   not validated runtime guarantees. Choose no command order solely from the
+   synthetic matrices. No forced departure, allocation failure or load testing.
+5. Before any activation, explicitly record the accepted possibility of an
+   AX58 restart/hang and its local recovery route. A userspace timeout cannot
+   prevent or recover a stuck kernel. Stop after one attempt; no automatic retry.
+   Preserve stdout/stderr/exit and all partial raw data. Independently verify
+   device boot/state and exact cleanup, then restore any separately planned
+   temporary topology change. Failure does not authorize a factory reset.
+
+Successful acceptance requires actual AX58 records and verified cleanup;
+subsequent source-specific interpretation remains separate. If isolation is
+unavailable or the remaining device risk is unacceptable, active AX58 acquisition
+remains blocked rather than being replaced silently by another project task.
+
 ## Contract
 
 Explicit arguments select protocol 22 or 23 and duration 1–8 seconds. The
@@ -77,8 +152,9 @@ Exit codes: 0 = interval finished with records; 2 = usage/I/O/receive failure;
 130 = stop signal. `--self-test` opens no socket and emits two synthetic
 records, including one explicitly truncated fixture.
 
-The existing Python CLI still accepts offline/synthetic origins only. Sharing
-an envelope does not implement live orchestration. That integration must retain
+The journal now also accepts `live-stream` provenance, and a bounded channel
+receiver is locally tested. Pi runtime/storage passed a synthetic check. Sharing
+an envelope still does not implement active source orchestration. That integration must retain
 source identity, executable hash, stderr, SSH exit, stop reason and failures.
 A magic header alone is not a capture; EOF is not a zero-loss guarantee.
 
@@ -130,8 +206,9 @@ Two exact-build prerequisites remain before a device activation plan:
    this proves neither a defect nor a reliable active rollback. Exact addresses
    and reproduction are in REPEATER-CSI-RESEARCH.md.
 
-Next offline inspection targets are the ioctl dispatcher, timer callback
-wrapper/free-list lifetime and AP peer teardown, including their shared locks.
+Historical October 22 inspection targets were the ioctl dispatcher, timer
+wrapper/free-list lifetime and AP peer teardown. Later results are retained in
+REPEATER-CSI-RESEARCH.md. They are not a current queue of failure investigations.
 Do not substitute enable-before-ADD, firmware patching, an absent peer or a
 forced disconnect as an experiment to bypass these prerequisites.
 

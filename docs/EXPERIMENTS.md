@@ -1,5 +1,254 @@
 # Experiments
 
+## Ordinary acquisition documentation search — October 28, 2026
+
+PC-only search streamed the already retained exact-release ASUS GPL archive;
+no archive code executed and no private records or devices accessed. The selected
+31,934 documents/scripts total 345,077,733 bytes; no `csimon`/`csimond` or
+`channel state information` matches. Runtime 37.200 s. Exact selection, exclusions,
+public-source checks and limited negative conclusion are documented in
+REPEATER-CSI-RESEARCH.md. Helper and JSON report:
+`recordings/ax58-normal-acquisition-20261028/` (ignored).
+
+Reproduction:
+
+```powershell
+.venv/Scripts/python.exe recordings/ax58-normal-acquisition-20261028/search_documentation.py
+```
+
+The scanned count/byte total also matches the separate candidate count from
+the previously retained complete archive member index. This checks selection
+coverage, not independence of the negative content-search result. No active
+acquisition procedure was established. Proposed isolated-bench conditions are
+in AX58-READER.md, pending user decision; no device plan applied. Only documents
+changed; `git diff --check` passed, no test-suite rerun for these documentation
+changes. Prior code validation remains the 172-test checkpoint below.
+
+## Pi receiver runtime/storage smoke check — October 28, 2026
+
+Operation `39ab258501ff`, manifest scope `pi_transport_checks`. After local
+payload/rollback guard tests, preparation recorded boot/panel state and absence
+of `/tmp/ruview-transport-39ab258501ff`. Pre-run narrow rollback check passed.
+Code was delivered through stdin to bounded Python, loaded in memory, and
+created only the three planned output files. No package installation, router
+access, service restart or operational-history write occurred.
+
+Generated 32 envelopes with opaque 2,064-byte payloads: 69,118 total stream
+bytes, 17 journal chunks, 29 stderr bytes. Receiver returned zero producer exit,
+`received`, SQLite quick_check `ok`, and exact input/output equality. Reported
+receive/verification interval: 0.022502 s. This small, memory-fed synthetic run
+is not a sustained throughput, radio timing or SD power-loss benchmark.
+There was no AX58 traffic and no actual SSH producer channel consumed on Pi;
+the channel interface was synthetic (actual SSH channel behavior was tested
+separately on PC in the preceding checkpoint).
+
+Stream SHA-256:
+`5b0bab98a03f9f7345cebcf6495ec5dcc8de9ee8325d994d0a97b2dde2dcad72`.
+The three outputs were copied to ignored `recordings/pi-transport-39ab258501ff/`
+and checked byte-for-byte before removal. Post-run check, scoped rollback apply,
+and a separate final check passed. Manifest status `restored`; boot ID and active
+panel service unchanged; no matching probe process or temporary directory left.
+SSH stdout/stderr/events and `report.json` remain on PC.
+
+Independent PC replay used:
+
+```powershell
+.venv/Scripts/python.exe scripts/raw_pipeline.py process --raw recordings/pi-transport-39ab258501ff/raw.sqlite3 --output recordings/pi-transport-39ab258501ff/derived.sqlite3
+```
+
+Result: 32 frames, zero invalid frames; a separate read-only SQL query confirms
+all 32 are `raw-only`. No CSI decoding/measurement claim follows. The source
+origin remains `synthetic`. Commands for preparation/run/cleanup are documented
+in ROLLBACK.md. No existing recording was read or removed.
+
+Local validation: `.venv/Scripts/python.exe -m unittest discover -s tests -q`
+discovered 172 tests, 168 passed/four opt-in Linux skips in 78.343 s; output is
+`recordings/pi-transport-39ab258501ff/full-tests.log`. Six targeted probe/rollback
+tests also passed after organizing the test cases. `git diff --check` passed.
+Cleanup messages in the unit-test log are mocked fixture output; actual Pi
+cleanup is supported by the separate deployment/SSH evidence above.
+
+## Bounded channel-to-journal receiver — October 28, 2026
+
+Implemented `src/raw_transport.py` and nine local tests in
+`tests/test_raw_transport.py`. Generated envelope: 2,170 bytes, containing one
+opaque 2,064-byte candidate Netlink payload. No private recording was used.
+Fixtures cover fragmented stdout/stderr, committed prefix observed through a
+separate SQLite connection before a later receive error, early exit without
+EOF, nonzero/missing status, byte budgets, existing-output refusal and provenance.
+An independent transport exercise uses actual Paramiko client/server channels
+over `socket.socketpair()` on the PC, sending exit status before final data.
+Exact bytes/SHA-256 and separately stored stderr match; replay stays raw-only.
+No listening server or project-device connection is created by this test.
+
+Validation:
+
+```powershell
+.venv/Scripts/python.exe -m unittest discover -s tests -q
+git diff --check
+```
+
+Full suite: 166 discovered, 162 passed, four opt-in Linux skips, 78.079 s.
+Log: ignored `recordings/transport-readiness-20261028/full-tests.log`.
+`git diff --check` passed. Printed capture-cleanup messages in that test log
+are fixture output, not evidence of remote actions in this run. Dependencies
+unchanged. No remote deployment/configuration/firmware/capture-history change.
+This validates bounded local receipt and its error handling, not Pi throughput,
+AX58 RF acquisition, remote cleanup or a source-specific decoder. The receiver
+requires a separately reviewed dispatch/termination/rollback owner; it does not
+supply an active source command or claim the end-to-end target is finished.
+
+## Ordinary acquisition readiness — October 28, 2026
+
+Scope: read-only Pi availability check after the user requested ordinary CSI
+work without further failure experiments. First SSH connection timed out in
+five seconds. User reconfirmed Pi availability; one retry succeeded, with strict
+host checking, BatchMode and the existing lab key. Remote commands:
+
+```sh
+uname -m
+python3 --version
+df -Pk /home/pi
+systemctl is-active ruview-lab-panel.service
+test -d /home/pi/ruview-lab && echo PROJECT_DIRECTORY_PRESENT
+```
+
+Observed: aarch64; Python 3.13.5; filesystem 14,434,168 KiB total,
+2,360,840 KiB used, 11,444,280 KiB available (18%); service active; project
+present. SSH exit 0. The initial timeout does not identify its cause. No router
+connection, capture, deployment, configuration or file change on devices.
+No throughput, end-to-end panel or AX58 acquisition claim follows from this.
+An attempted refresh of the official ASUS support page timed out; no new
+vendor-supported CSI procedure was verified from that attempt.
+
+## Guarded ADD and callback matrix — October 28 continuation
+
+PC-only original ARM instruction execution, same hash-locked module. The new
+`--activation-matrix` starts from a synthetic already-enabled state; it does not
+run or recommend an enable-before-ADD sequence. Six scenarios cover absent
+peer, existing peer with bit 0x02 clear/set, ADD allocation failure, later SCB
+initialization, and SCB-init allocation failure. SCB binding initially is zero.
+Peer lookup, callback bodies and `wl_add_timer` execute original instructions;
+allocation and kernel operations are explicit stubs. Calls after failed init
+are deliberate conditional tests, not proven runtime-reachable paths.
+
+Observed: absent/bit-clear ADD returns 0 without binding/timer. The bit-clear
+case followed by the selected auth callback faults at `.text+0x2b5a94`, write
+address `0x0c`. Allocation failure returns -22 with null timer; deliberately
+invoking the callback then faults at `.text+0x22214c`, read address `0x25`.
+Existing bound-peer and later successful SCB-init controls pass. Exact state
+snapshots and stub calls are in
+`recordings/ax58-activation-review-20261028/activation.json`; mapping-aware
+callback/registration disassembly and its helper are alongside it.
+
+Reproduction:
+
+```powershell
+.venv/Scripts/python.exe scripts/emulate_ax58_lifecycle.py --module recordings/source-classification-20261013/ax58-a15a0ecf225d-wl.ko --activation-matrix
+.venv/Scripts/python.exe -m unittest discover -s tests -q
+git diff --check
+```
+
+Matrix completed. Full suite discovered 157 tests: 153 passed, four opt-in Linux
+skips, 78.417 s; full output retained in the same evidence directory. This rerun
+also checks that starting with an unbound SCB preserves the earlier ENB/timer
+results. Ten emulator tests now cover both matrices. Diff check passed.
+No new dependency beyond the previously pinned Unicorn, no device access,
+firmware/deployment/history change, or commit. Active alternatives remain
+unqualified; research conclusions and limitations are in REPEATER-CSI-RESEARCH.md.
+
+## Original ARM instructions in synthetic memory — October 28 continuation
+
+PC only, no SSH/device operations. Installed optional `unicorn==2.1.4` in the
+existing venv and pinned it in requirements-research.txt; no device dependency
+changed. `scripts/emulate_ax58_lifecycle.py` uses the same hash-locked module as
+the static audits and explicit synthetic objects/stubs, with per-invocation
+instruction/time bounds. It executes the real peer-lookup functions. The selected
+AP deinit runs before an explicit synthetic hash-table peer removal; the full
+kernel/SCB free chain and scheduling are not modelled.
+
+ADD/deinit retained MAC `020000000001`. Absent-peer ENB reached an unmapped
+four-byte write at address `0x210`, PC `.text+0x2b561c`, after 179 instructions,
+with the enabled byte already set. Present-peer ENB returned zero after 232
+instructions; explicit DEL cleared the slot and empty ENB returned zero after
+151. These controls do not establish capture or safe command ordering.
+Mode +0x100=0 timer controls retained a queued timer through cancellation,
+skipped its cancelled callback, and freed it in a later freelist pass; an
+unqueued timer was freed directly. Kernel cancellation/locking/allocation calls
+are stubbed, so this does not establish concurrent or device stop safety.
+
+An independent mapped-A32 `.text` immediate-field/named-relocation survey found
+18 external named CSI references and no undecoded mapped A32 spans. It found
+no additional named peer-removal CSI hook; computed aliases/indirect paths are
+outside that claim. Reproduction helper and results, disassembly, emulator JSON
+and full test logs remain under ignored `recordings/ax58-slot-closure-20261028/`.
+The research document records the decision to keep the proposed active sequence
+blocked. No live failure or historical incident reproduction is claimed.
+
+Checks:
+
+- `.venv/Scripts/python.exe scripts/emulate_ax58_lifecycle.py --module recordings/source-classification-20261013/ax58-a15a0ecf225d-wl.ko`: completed the classified fault and control scenarios.
+- `.venv/Scripts/python.exe -m unittest discover -s tests -p test_ax58_emulation.py -v`: six passed, 29.615 s.
+- `.venv/Scripts/python.exe -m unittest discover -s tests -q`: 153 discovered, 149 passed, four opt-in Linux skips, 42.024 s.
+- `.venv/Scripts/python.exe -m pip check`: no broken requirements.
+- `git diff --check`: passed.
+
+Synthetic failure/cleanup logs in the suite are expected, not device actions.
+All prior edits and historical capture data were retained; no commit was made.
+
+## CSI slot and AP registration review — October 28 continuation
+
+PC-only, same module/header hashes as the wrapper-lock review below. No device
+connection or experiment. Mapping-aware function inspection and independent
+stdlib exact-word/branch/relocation checks confirmed AP callback registration,
+ADD MAC persistence before the enabled test, disabled AP teardown CSI gating,
+and ENB's nonempty-slot iteration with unchecked peer lookup. These establish a
+conditional unsafe path, not its observed occurrence or whole-program reachability.
+`wl_schedule_task` submits to `queue_work_on`; pre-lock/free interleavings remain
+unproven. Findings and remaining prerequisites are in REPEATER-CSI-RESEARCH.md.
+
+Evidence directory: ignored `recordings/ax58-slot-review-20261028/`, containing
+the mapping-aware reproduction helper, disassembly, function/caller JSON,
+`independent-audit.json` and complete `unittest.log`. Existing evidence is retained.
+Reused the audit command below; it passed with active/runtime safety flags false.
+`python -m unittest discover -s tests -p test_ax58_contract.py -v` passed four
+tests, now including eleven altered instruction sites and seven altered
+relocation targets across the three mutation checks. The complete local command
+`.venv/Scripts/python.exe -m unittest discover -s tests -q` discovered 147 tests:
+143 passed, four opt-in Linux native-reader tests skipped. Synthetic error logs
+and mocked cleanup messages are expected test output, not remote operations.
+`git diff --check` passed. No dependencies, deployment changes or commits.
+
+## AX58 wrapper-lock review — October 28, 2026
+
+Local Windows PC only; no device experiment, connection, raw acquisition or
+change to deployment state. User reported Pi available, but this review did not
+need it. Inputs: retained AX58 module SHA-256
+`dabb2f7e716d63f4ffa9163773b7f87c15050cb442d021db528194f0b25e68a8`
+and GPL header SHA-256
+`efcba85dff6df5ad80e82777bb04e35fea16011f5f80a41b9a04be4134fdd1d5`.
+
+Mapping-aware Capstone/pyelftools inspection of ioctl, timer, free-list and AP
+peer teardown functions found shared wrapper-lock offsets and additional
+lifetime bookkeeping. Exact findings, addresses and remaining uncertainty are
+in REPEATER-CSI-RESEARCH.md. Reproduction helper, function/caller metadata and
+disassembly are in ignored `recordings/ax58-locking-20261028/`.
+Independent stdlib instruction/relocation checks passed using:
+
+```powershell
+.venv/Scripts/python.exe scripts/audit_ax58_contract.py --module recordings/source-classification-20261013/ax58-a15a0ecf225d-wl.ko --header recordings/ax58-review-20261012/gpl-selected/efa9a95e39e1-wlioctl.h
+.venv/Scripts/python.exe -m unittest discover -s tests -p test_ax58_contract.py -v
+git diff --check
+```
+
+Audit passed with active-safety/runtime flags still false. Three tests passed,
+including rejection of five altered lock/gate/teardown instruction sites and
+four altered call targets. Tests require optional retained firmware/header
+fixtures and skip when absent. Diff whitespace check passed. The earlier full
+suite in this chat preceded these edits; only the relevant new tests were rerun.
+These checks validate evidence extraction and conservative reporting, not live
+locking, safe monitor activation, complete teardown coverage or CSI decoding.
+
 ## Active lifecycle preparation and final local checks — October 22, 2026
 
 No device experiment in this checkpoint. The retained exact AX58 module was

@@ -113,6 +113,62 @@ def audit(module, header):
             0x2226f4: 'wl_free_timer_freelist', 0x222740: 'osl_mfree'}.items():
         if refs.get(address) != name:
             raise ValueError(f'Timer lifecycle relocation differs at {address:#x}')
+    # The ioctl and callback wrappers select the same lock offsets using +0x100.
+    # This checks local instruction evidence, not all entry paths or runtime mode.
+    for address, expected in {
+            0x21e52c: [0xe2840014, 0xebfffffe],
+            0x21e590: [0xe2840024, 0xebfffffe],
+            0x2214c0: [0xe2870014, 0xebfffffe],
+            0x2215a4: [0xe2870024, 0xebfffffe],
+            0x2212b0: [0xe2840014, 0xebfffffe],
+            0x221274: [0xe2840024, 0xebfffffe],
+            0x21e534: [0xe5d53025, 0xe284603c, 0xe3530000, 0x0a000002],
+            0x21e5b8: [0xe3a03000, 0xe1a00008, 0xe585302c, 0xe12fff37],
+            0x21e658: [0xe3a03001, 0xe1a02004, 0xe584302c],
+            0x22263c: [0xe593002c, 0xe3500000, 0x0afffff1],
+            0x2b5a0c: [0xe5943210, 0xe3a02000, 0xe5832008],
+    }.items():
+        words(address, expected)
+    for address, name in {
+            0x21e530: 'down', 0x21e594: '_raw_spin_lock_bh',
+            0x21e58c: 'up', 0x21e5a4: '_raw_spin_unlock_bh',
+            0x2214c4: 'down', 0x2215a8: '_raw_spin_lock_bh',
+            0x2214ec: 'up', 0x2215b4: '_raw_spin_unlock_bh',
+            0x2215dc: 'wlc_ioctl', 0x2212e4: 'wlc_ioctl',
+            0x2212b4: 'down', 0x221278: '_raw_spin_lock_bh',
+            0x222614: 'osl_mfree', 0x261454: 'wlc_csimon_enabled',
+            0x2614e8: 'wlc_csimon_timer_isnull',
+            0x2614fc: 'wlc_csimon_timer_del', 0x2b5a08: 'wl_free_timer',
+            0x33cfc0: 'wlc_cubby_deinit',
+    }.items():
+        if refs.get(address) != name:
+            raise ValueError(f'Lock/teardown relocation differs at {address:#x}')
+    # AP deinit is actually registered, but its CSI hook is enabled-gated.
+    # ADD persists the MAC before the enabled test; ENB later looks it up again.
+    for address, expected in {
+            0x2630f0: [0xe58d3024, 0xe3003000, 0xe3403000, 0xe58d3028],
+            0x261458: [0xe3500000, 0x1a000020],
+            0x2b5694: [0xe59a2000, 0xe2867001, 0xe0853307,
+                         0xe7852307, 0xe1da20b4, 0xe1c320b4],
+            0x2b5508: [0xe5923000, 0xe5d331d0, 0xe3530000, 0x0affff84],
+            0x2b55ec: [0xe3a02006, 0xe1a01004, 0xe1a00006,
+                         0xebfffffe, 0xe3500000, 0x0a000018],
+            0x2b5668: [0xe2844040, 0xe1570004, 0x1affffdd],
+            0x2b6a50: [0xe59c2004, 0xe3520000, 0x0afffff2,
+                         0xe5950014, 0xe7900103, 0xe12fff32],
+    }.items():
+        words(address, expected)
+    for address, target in {0x26145c: 0x2614e4, 0x2b5514: 0x2b532c,
+                            0x2b5600: 0x2b5668, 0x2b5670: 0x2b55ec}.items():
+        if branch(struct.unpack_from('<I', text, address)[0], address) != target:
+            raise ValueError(f'Slot lifecycle branch differs at {address:#x}')
+    for address, name in {
+            0x2630f4: 'wlc_ap_scb_deinit', 0x2630f8: 'wlc_ap_scb_deinit',
+            0x26310c: 'wlc_scb_cubby_reserve_ext',
+            0x2b55f8: 'memcmp', 0x21dac0: 'queue_work_on',
+    }.items():
+        if refs.get(address) != name:
+            raise ValueError(f'Slot/scheduler relocation differs at {address:#x}')
     return {
         'module_sha256': MODULE_SHA256, 'header_sha256': HEADER_SHA256,
         'method': 'stdlib ELF32 relocations, exact A32 words, branch arithmetic and GPL enums',
@@ -120,6 +176,27 @@ def audit(module, header):
         'configuration_byte_4': 'BSS up-state byte (paired up/down writes)',
         'lookup': 'non-null AP-role and up configuration; current-band peer; may return zero',
         'enable': 'unguarded store through lookup result at .text+0x2b561c',
+        'wrapper_evidence': {
+            'lock_selection': 'ioctl and _wl_timer use +0x14 semaphore or +0x24 spinlock, selected by +0x100',
+            'callback_gate': 'timer +0x25 checked under wrapper lock before indirect callback',
+            'deferred_free': 'non-forced freelist retains timer with nonzero +0x2c task marker',
+            'ap_teardown': 'enabled/non-null CSI timer path calls timer_del, frees timer and clears slot +8',
+            'scope': 'local exact-build static paths, not complete runtime lifetime proof',
+            'remaining': ['Runtime mode and all scheduler/free entry interleavings',
+                          'Outer teardown lock coverage',
+                          'CSI slot validity after peer departure between ADD and ENB'],
+        },
+        'slot_lifecycle': {
+            'ap_deinit_registration': 'callback supplied to wlc_scb_cubby_reserve_ext',
+            'cubby_dispatch': 'non-null registered deinit function invoked indirectly',
+            'add': 'copies six MAC bytes into slot before testing CSI enabled',
+            'disabled_ap_deinit': 'skips the CSI timer cleanup hook',
+            'enable': 'iterates nonempty slots and performs a fresh unchecked peer lookup',
+            'scheduler': 'wl_schedule_task submits work through queue_work_on',
+            'conditional_hazard': 'retained nonempty slot plus absent lookup result reaches unchecked store',
+            'limits': 'No runtime reproduction; no whole-program proof that other paths cannot invalidate slots',
+            'userspace_precheck_sufficient': False,
+        },
         'shutdown': {
             'disable': 'per-peer del/free precedes enabled-byte clear and watchdog cancellation',
             'peer_delete': 'single-peer deletion calls wl_free_timer',

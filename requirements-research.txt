@@ -1,6 +1,7 @@
 # Optional PC-only offline firmware inspection; not deployed to lab devices.
 pyelftools==0.33
 capstone==5.0.6
+unicorn==2.1.4
 ubi-reader==0.8.16
 lzallright==0.2.6
 zstandard==0.25.0

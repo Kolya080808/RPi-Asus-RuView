@@ -1,6 +1,6 @@
 # Next steps
 
-Updated 2026-10-22. Current state and completed work: [HANDOFF.md](HANDOFF.md).
+Updated 2026-10-28. Current state and completed work: [HANDOFF.md](HANDOFF.md).
 Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
 
 ## Partially completed panel repair (not the selected task)
@@ -21,29 +21,40 @@ Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
 
 ## Immediate continuation of milestone 2
 
-The separate **AX58 passive Netlink check with CSI disabled passed** on October
-22 after the user explicitly accepted the explained residual lifecycle uncertainty
-for one trial. Plan `b9821d3edd5f`: protocol 23, group mask 2, two seconds,
-expected zero records, unchanged boot/monitor state and verified cleanup, including
-a separate post-run rollback inspection. Protocol 22 and active CSI remain untested.
-An active-trial design and exact shutdown audit are now prepared in
-AX58-READER.md and REPEATER-CSI-RESEARCH.md. Next inspect shared locks across
-ioctl, peer teardown and timer callback/free-list handling: activation uses an
-unchecked peer pointer, while disable/free/rearm serialization is not established.
-No active runner or active deployment plan has been enabled.
-Do not infer active-path safety from this passive result or
-reuse its authorization for monitor enablement. The unguarded peer lookup and
-disconnect/lifecycle questions remain relevant. Static global-release-notifier
-review is still incomplete; details: [research](REPEATER-CSI-RESEARCH.md).
+Current direction, October 28: the user asked to stop expanding driver-failure
+investigation and concentrate on ordinary CSI acquisition without disrupting the
+network. Earlier binary/emulation findings remain historical evidence in
+REPEATER-CSI-RESEARCH.md; they are not a queue of further failure experiments.
+The selected deliverable is still live RP-AX58 acquisition and continuous
+decoding on Pi, supporting the eventual moving-object location system.
 
-Acceptance for this substep is bounded reader termination, retained stdout/stderr
-and exit reason, removal of only the owned temporary file/process/socket, and
-unchanged boot/monitor state. No records with CSI disabled is not a failed CSI
-capability test, and passive success does not authorize active monitoring.
-The selected deliverable remains real AX58 acquisition and continuous decoding
-on Pi. It additionally needs safe peer activation, complete live journaling,
-independently validated AX58 payload interpretation and measured stop/drop/timing
-behavior; the current offline pipeline is not that live integration.
+| Component | Confirmed | Still required |
+|---|---|---|
+| AX58 reader | Socket-free self-test and October 22 passive protocol-23/group-2 trial with CSI off; cleanup verified | An acceptable ordinary active acquisition procedure and real records |
+| Stock network export | No working IP/port CSI configuration identified in the examined releases | Do not assume RemoteWL forwards measurements |
+| Receive layer | October 28 bounded SSH channel-to-journal adapter implemented; local validation described in RAW-PIPELINE.md | Reviewed source dispatch/termination, Pi deployment and measured capacity |
+| Pi | October 28 synthetic receiver run: 32 frames / 69,118 bytes journaled, exact replay and temporary-file rollback verified | Actual live transport integration and sustained capacity; synthetic check does not qualify active CSI |
+| AX58 interpretation | No active AX58 payload validated | Source-specific format/timing validation before decoding or motion claims |
+
+The October 28 ordinary-document review is complete within its stated scope:
+31,934 GPL documents/scripts plus primary public documentation did not establish
+an applicable AX58 acquisition procedure. Repeating idle queries or synthetic
+receiver tests is not the next step. The user declined the proposed isolated
+bench on October 28: AX58 must remain in the home network. Do not remove it from
+service, change its role, or activate the unqualified capture path. Live AX58
+acquisition is blocked under the current network-stability constraint; the
+receiver and Pi checks do not resolve it. Revisit activation only with materially
+new applicable compatibility evidence, not a repeated idle check, command-order
+guess or failure experiment. Preserve the AX58/Pi goal; do not silently replace
+it with GT work or treat the declined bench as awaiting approval.
+
+Once that prerequisite is resolved, prepare one bounded capture: record the
+baseline and exact owned files/processes/settings, implement and check scoped
+rollback, then receive complete raw bytes with stderr and exit metadata on Pi.
+Verify cleanup and unchanged device/network state before accepting the capture.
+Do not enable continuous collection as part of that first trial. Only validated
+AX58 records can support the subsequent decoder and continuous integration.
+The existing passive authorization does not qualify the active procedure.
 
 ## Ordered milestones
 
@@ -101,8 +112,8 @@ behavior; the current offline pipeline is not that live integration.
    already recorded; do not require resubmission or reopen milestone 1. Next
    establish a safe source-local reader/activation contract from the retained
    exact-build evidence before
-   a reversible bounded capture. Remaining static research
-   is exact lookup-field/association semantics and lifecycle safety. The per-method evidence is in
+   a reversible bounded capture. Current work follows the ordinary-acquisition scope above; historical static
+   research does not require further failure experiments. The per-method evidence is in
    [repeater research](REPEATER-CSI-RESEARCH.md#ordinary-add-and-reader-contract-2026-10-1415).
    Plan separate per-source
    acquisition, raw storage and later processing; initially assess one supported

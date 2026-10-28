@@ -1,10 +1,11 @@
-# Offline raw-storage and processing prototype
+# Raw storage, bounded channel receipt and deferred processing
 
 Implemented October 15, 2026 in `src/raw_pipeline.py` and `src/raw_recovery.py`,
-with a local-file CLI in `scripts/raw_pipeline.py`. This is an executable part of the
+with a local-file CLI in `scripts/raw_pipeline.py`. The original offline checkpoint is an executable part of the
 [separate acquisition design](RECORDING.md#off-router-processing-boundary-for-the-next-implementation).
 It does not open sockets, run SSH/commands on devices, enable CSI, change the
-panel, or migrate existing history. It is not a live repeater reader.
+panel, or migrate existing history. It is not a live repeater reader. The October 28 receive-only channel adapter
+is described below; remote activation/dispatch and Pi deployment remain separate.
 
 ## Boundary and guarantees
 
@@ -35,7 +36,8 @@ they do not replace or rewrite the original bytes.
 
 This checkpoint validates **deferred offline processing**, not a simultaneous
 live worker, transport backpressure, radio timing, sustained throughput or Pi
-capacity. There is no receiver queue or network producer in this implementation.
+capacity. There is no application receiver queue or network producer in the journal itself;
+the channel adapter below provides bounded transport receipt without decoding.
 
 ## Version 1 envelope
 
@@ -87,8 +89,10 @@ unknown values rather than inventing device facts:
 ```
 
 `source_id` and `operation_id` must be nonempty; the descriptor is limited to
-4096 UTF-8 bytes. `origin` is `synthetic` or `offline-import`, never a claim of
-a new live measurement. `configuration` records non-secret capture parameters;
+4096 UTF-8 bytes. `origin` is `synthetic`, `offline-import`, or `live-stream`.
+The latter records a live transport origin; it does not establish authentic CSI,
+a supported radio profile or a successfully validated measurement. Generated
+transport-test bytes must retain `synthetic`, even when sent through SSH. `configuration` records non-secret capture parameters;
 do not place credentials or full device configurations here. Other fields are
 nonempty strings or null. `kind` is one of:
 
@@ -165,6 +169,63 @@ for local fixture validation. Next is separately planned collector integration. 
 repeater reader and live queue/drop/time behavior still need implementation,
 device compatibility evidence and a recorded rollback plan. No device change
 or rollback procedure is introduced by this offline checkpoint.
+
+## Bounded SSH channel receipt (October 28)
+
+`src/raw_transport.py:receive_channel(channel, new_directory, source, ...)`
+accepts an already-started Paramiko-compatible channel and creates exactly
+`raw.sqlite3`, `stderr.bin`, and `transport.jsonl` in a new directory. It does not
+connect, authenticate, execute a command, enable CSI or close caller-owned SSH
+resources. The caller must separately establish reviewed dispatch and bounded
+source termination, close its resources, and verify remote rollback on every
+outcome. This is a receiver component, not an active-capture runner or deployment.
+It imports only standard-library modules and the existing journal; desktop
+Paramiko is used in its integration test, not installed on Pi.
+
+Stdout goes directly to journal chunks before another stdout read. Stderr is
+drained fairly into a separate fsynced file; the full stream is not accumulated
+in Python memory. There is no parsing or decoding during receipt. The channel's
+own SSH window still provides buffering/backpressure; no sustained-capacity or
+radio-loss claim follows. Both buffers must drain after EOF/close, and producer
+exit status must be zero, before receipt succeeds. Early exit status alone,
+missing/nonzero status, a disconnect, or deadline produce an incomplete result.
+A producer exit of 3 (the passive reader's no-data outcome) is also incomplete
+for this acquisition API; the separate passive-check classifier is unchanged.
+
+Defaults: 10 seconds polling deadline, 64 MiB stdout and 64 KiB stderr. Each
+budget can be exceeded by at most one 65,536-byte read, retained as evidence.
+Limits do not bound filesystem overhead or blocking local storage I/O. A write
+failure can lose the uncommitted chunk; previous journal commits remain. SSH
+buffers not yet read at a deadline/failure are not promised as retained. The
+exception is propagated, not retried. Transport events preserve operation ID,
+budgets, producer status and failure class; journal events retain traceback.
+A transport-event write failure still fails the API even if stdout was committed.
+
+`live-stream` is an additive source-origin value. Current processing/recovery
+accept it; older readers that allow only offline/synthetic origins will reject
+such a journal and need updating. SQLite schema remains version 1. AX58 Netlink
+frames remain raw-only irrespective of the origin or claimed GT profile.
+Diagnostics follow the existing retention rule above: no automated deletion,
+no loss of raw CSI as a side effect, final several-week duration still undecided.
+
+Validation uses generated data, fake channel boundaries, and a real in-process
+SSH socket pair with no listening service or project-device access. It checks
+commits before the next receive, early status, partial failure, byte limits,
+existing-output refusal and opaque Netlink replay. This does not measure Pi SD
+latency, sustained throughput or active AX58 acquisition. Run:
+
+```powershell
+.venv/Scripts/python.exe -m unittest discover -s tests -p test_raw_transport.py -q
+```
+
+### Pi runtime check
+
+October 28 operation `39ab258501ff` executed the same receiver/journal modules
+in memory on Pi against a synthetic channel. All 69,118 bytes (32 frames) were
+retained; SQLite integrity and independent PC replay passed. No dependency was
+installed. Temporary outputs were copied to PC before exact rollback, verified
+separately. This is basic runtime/storage compatibility, not sustained throughput
+or a real source-to-Pi stream. See EXPERIMENTS.md and ROLLBACK.md for scope.
 
 ## Interrupted journal recovery (completed local checkpoint, October 15)
 

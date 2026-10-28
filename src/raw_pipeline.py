@@ -1,4 +1,4 @@
-"""Offline raw journal and independent replay; no device or network operations.
+"""Raw journal and independent replay; no device commands or network setup.
 
 See docs/RAW-PIPELINE.md. Each output is a new database, never operational history.
 """
@@ -43,8 +43,8 @@ def _load_json(value):
 def validate_source(source):
     if not isinstance(source, dict) or set(source) != SOURCE_FIELDS:
         raise ValueError('Source descriptor requires exactly the documented fields')
-    if source['kind'] not in KINDS or source['origin'] not in {'synthetic', 'offline-import'}:
-        raise ValueError('Unsupported source kind/origin for offline prototype')
+    if source['kind'] not in KINDS or source['origin'] not in {'synthetic', 'offline-import', 'live-stream'}:
+        raise ValueError('Unsupported source kind/origin')
     for key in SOURCE_FIELDS - {'configuration'}:
         if source[key] is not None and (not isinstance(source[key], str) or not source[key]):
             raise ValueError('Source field must be a nonempty string or null: ' + key)
@@ -152,10 +152,10 @@ def ingest(stream, output, source, *, max_bytes=64 * 1024**2,
             connection.execute('INSERT INTO acquisition VALUES (?,?,?,?,NULL)',
                                (_json(source), 'running', 0, digest.hexdigest()))
             _event(connection, 'ingestion_started', max_bytes=max_bytes,
-                   time_basis='local-import-monotonic-not-rf')
+                   time_basis='local-receive-monotonic-not-rf')
             if provenance is not None:
                 _event(connection, 'import_provenance', **provenance)
-        LOG.info('Offline ingestion started output=%s', output)
+        LOG.info('Raw ingestion started output=%s', output)
         try:
             while True:
                 chunk = stream.read(CHUNK_SIZE)
@@ -177,7 +177,7 @@ def ingest(stream, output, source, *, max_bytes=64 * 1024**2,
                 _event(connection, 'input_eof', committed_bytes=count, chunks=seq,
                        upstream_complete=upstream_complete)
         except BaseException as exc:
-            LOG.exception('Offline ingestion failed output=%s committed_bytes=%d', output, count)
+            LOG.exception('Raw ingestion failed output=%s committed_bytes=%d', output, count)
             try:
                 with connection:
                     connection.execute("UPDATE acquisition SET status='failed', error=?",
@@ -187,7 +187,7 @@ def ingest(stream, output, source, *, max_bytes=64 * 1024**2,
             except sqlite3.Error:
                 LOG.exception('Cannot persist failure status; journal must not be treated as complete')
             raise
-    LOG.info('Offline ingestion received bytes=%d chunks=%d', count, seq)
+    LOG.info('Raw ingestion terminal status=%s bytes=%d chunks=%d', status, count, seq)
     return {'status': status, 'bytes': count, 'chunks': seq}
 
 

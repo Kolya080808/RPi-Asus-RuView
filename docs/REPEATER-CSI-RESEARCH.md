@@ -1,5 +1,230 @@
 # Repeater CSI research and acquisition options
 
+## Ordinary acquisition documentation review — October 28, 2026
+
+Scope follows the user's direction to stop expanding driver-failure scenarios.
+A separate search of the retained official exact-build GPL archive inspected
+31,934 regular documentation/script/example files, 345,077,733 bytes, in
+37.200 s. Selection: files up to 2 MiB with extensions `.sh`, `.txt`, `.md`,
+`.rst`, `.html`, `.htm`, `.py`, `.conf`, `.example`, `.sample`, or names beginning
+README/INSTALL/CHANGELOG. Case-insensitive search for `csimon`/`csimond` or
+`channel state information` (spaces, underscores or hyphens) found no matching
+files. This complements the earlier C/header/Makefile search; it is not an
+all-format or all-language proof of absence. Archive files were streamed and
+never executed. Reproduction helper/report are in ignored
+`recordings/ax58-normal-acquisition-20261028/`; original archive/hash is identified
+in the October 12 review below.
+
+Primary public sources inspected on October 28:
+
+- [ASUS RP-AX58 quick-start guide](https://dlcdnets.asus.com/pub/ASUS/wireless/RP-AX58/E20762_RP-AX58_UK_QSG_WEB.pdf)
+  documents extender/AiMesh setup, without a CSI acquisition procedure.
+- [Nexmon CSI upstream README](https://github.com/seemoo-lab/nexmon_csi)
+  lists chip/firmware-specific extraction support, including the RT-AC86U;
+  RP-AX58 is not a listed target. Its patched-firmware/UDP procedure is not
+  evidence for stock AX58 Netlink acquisition and was not executed.
+- Refreshing the ASUS firmware support page failed in the web tool; no new
+  firmware version or compatibility claim is made from that failed fetch.
+
+Conclusion: no documented ordinary procedure applicable to the installed AX58
+release was established. This does not prove acquisition impossible. Repeating
+idle queries or receiver fixtures would not resolve this source-side gap.
+The separate isolated-bench option was proposed and declined by the user on
+October 28: AX58 must remain in the home network. Active acquisition remains
+blocked under this constraint; the home-network configuration stays unchanged. This is not a plan
+to trigger failures or resume vulnerability discovery. See the proposed bench
+conditions in AX58-READER.md. No new device access occurred in this review.
+
+## Guarded ADD and association prerequisites — October 28 continuation
+
+The already-enabled ADD path has a null-result guard at `0x2b5528`/`0x2b552c`
+and a peer-state-bit 0x02 check at `0x2b5530`–`0x2b5538`. It is not equivalent
+to ENB's unchecked loop. However, success can mean that only the MAC was stored:
+no SCB slot binding or timer was created. A separate offline matrix now tests
+this path and the association callbacks. It starts from an explicitly synthetic
+enabled state, not a recommended enable-before-ADD sequence.
+
+| Synthetic state / operation | Observed original-instruction behavior |
+|---|---|
+| Enabled ADD, peer absent | Returns 0, retains MAC, no SCB binding/timer |
+| Enabled ADD, existing peer bit 0x02 clear | Returns 0, no binding/timer; subsequent explicitly invoked auth callback writes to unmapped `0x0c` at `0x2b5a94` |
+| Enabled ADD, existing peer bit 0x02 set | Binds slot and creates stub-allocated timer; auth callback reaches kernel `add_timer` stub without fault |
+| Absent-peer ADD followed by `wlc_csimon_scb_init` for a new peer | Creates binding/timer; auth callback control succeeds |
+| Timer allocation fails during ADD or SCB init | Returns -22 with retained binding/MAC and null timer; an explicitly invoked later auth callback reads unmapped `0x25` at `0x22214c` |
+
+The last row deliberately invokes a callback after a failed initialization to
+test the callback's own preconditions. It does **not** prove that normal caller
+error handling allows that callback. Likewise, full runtime reachability of the
+existing-unbound-peer case is not established. Positive controls exercise neither
+radio capture nor concurrent teardown. The timer allocator and kernel primitives
+remain stubs, while `wl_add_timer`, peer lookup and CSI callback bodies execute
+original instructions. SCB slot starts at zero, not a pre-created binding.
+
+Static corroboration: `wlc_ap_sendauth` supplies `wlc_ap_auth_tx_complete` to
+`wlc_sendauth` at `0x267780`–`0x26779c`. The callback checks
+`wlc_csimon_enabled` (enabled flag plus matching MAC), then calls
+`wlc_csimon_assocts_set` and `wlc_csimon_timer_add` without its own binding/timer
+check. MAC membership alone is therefore not an adequate readiness invariant.
+The correct SCB-init path binds the slot and checks timer allocation, but its
+caller/error/teardown ordering must be preserved end to end.
+
+Decision: no active method is qualified by this matrix. The two reviewed entry
+paths require different invariants: ENB needs a valid peer for every retained
+slot; guarded ADD additionally needs proof that later callbacks cannot see an
+unbound slot or failed timer initialization. Do not label return code 0, an
+idle peer snapshot, or command reordering as safe capture readiness. A future
+acquisition design must establish atomic peer/slot/timer lifecycle and failure
+cleanup; these tests are reusable acceptance evidence for that review.
+
+Reproduce with the same module and optional research dependencies:
+
+```powershell
+.venv/Scripts/python.exe scripts/emulate_ax58_lifecycle.py --module recordings/source-classification-20261013/ax58-a15a0ecf225d-wl.ko --activation-matrix
+```
+
+Six scenario results, mapping-aware reproduction helper and callback disassembly
+are retained in ignored `recordings/ax58-activation-review-20261028/`. No device
+connection, ordering workaround, monitor activation or firmware change occurred.
+
+## Local ARM execution and activation decision — October 28 continuation
+
+The selected active sequence is **not ready for deployment**. Local instruction
+execution now independently reproduces the conditional ENB invalid write; this
+is not merely another reading of the disassembly. No device was contacted.
+It is not a reproduction of the historical incident or a full-kernel emulation.
+
+`scripts/emulate_ax58_lifecycle.py` checks the exact module hash, maps ELF
+sections/relocations into Unicorn ARM, and runs bounded original instruction
+sequences with synthetic objects. Both `wlc_scbapfind` and `wlc_scbfindband`
+execute original instructions against a synthetic AP/up BSS and peer hash table;
+their results are not stubbed. External allocation, timer/kernel primitives and
+iteration over unrelated peers are explicit stubs, listed in every result.
+Peer removal is a synthetic hash-table update after the selected AP deinit;
+other cubby callbacks and concurrent kernel paths are not emulated.
+
+| Scenario | Observed in the emulator |
+|---|---|
+| ADD while disabled, selected AP deinit, remove peer, ENB | ADD/deinit return 0 and retain MAC; ENB writes four bytes to unmapped `0x210` at `.text+0x2b561c`, with enabled already 1 |
+| Same retained slot, peer present at lookup | ENB returns 0 (timer operations stubbed; no hardware-success claim) |
+| Explicit DEL before ENB with absent peer | DEL clears the slot; empty ENB returns 0; this control provides no acquisition and is not a proposed command-order workaround |
+| Mode +0x100=0, cancellation with queued task marker | `wl_free_timer` retains timer; `_wl_timer` skips callback after cancellation; later non-forced freelist pass frees it |
+| Same mode, no queued marker | Timer is freed without a deferred drain |
+
+The timer controls support the deferred-free mechanism in this sequential model,
+not all concurrent interleavings, the other runtime mode or live stop safety.
+They reduce the earlier generic timer concern without removing the independent
+activation blocker. Further idle queries cannot close that blocker.
+
+A separate mapped-A32 `.text` survey found 18 named references to CSI functions
+outside CSI functions, covering attach/detach, AP init/deinit/auth, interrupt,
+worklet and transmit-status paths. No additional named peer-removal CSI hook
+was found. All mapped A32 spans decoded in this survey. Immediate-offset memory
+accesses were also inventoried. This does **not** exclude computed aliases,
+indirect callbacks, external module behavior or runtime changes; it is not a
+whole-program nonexistence proof. Reproduction and JSON are in ignored
+`recordings/ax58-slot-closure-20261028/`.
+
+Decision: retain the active capture block. The proposed ADD-then-ENB supervisor
+cannot be presented as safe merely by adding prechecks or a short timeout. A
+source-level invariant or a separately reviewed acquisition method is required
+before activation. Do not force a disconnect, alter firmware, reorder commands
+as a workaround, or substitute a GT stream for the user's AX58 target.
+
+Reproduction (PC only, optional `requirements-research.txt`, now including
+`unicorn==2.1.4`):
+
+```powershell
+.venv/Scripts/python.exe scripts/emulate_ax58_lifecycle.py --module recordings/source-classification-20261013/ax58-a15a0ecf225d-wl.ko
+.venv/Scripts/python.exe -m unittest discover -s tests -p test_ax58_emulation.py -v
+```
+
+The harness rejects other module hashes and unmodelled executed external calls,
+and bounds each invocation to 10,000 instructions/one second. It returns
+classified memory faults without treating them as successful execution.
+Six tests passed, covering the fault, controls, timer bookkeeping and wrong hash.
+
+## CSI slot persistence and registered teardown — October 28 continuation
+
+The next PC-only pass closes the AP callback-registration question and narrows
+the activation blocker. Same hash-locked inputs as below; mapping-aware helper,
+disassembly and caller metadata are in ignored
+`recordings/ax58-slot-review-20261028/`. The stdlib audit independently verifies
+selected words, branch destinations and relocation targets.
+
+| Evidence | `.text` address | Meaning and limit |
+|---|---|---|
+| AP registration | `0x2630f4`, `0x2630f8`, `0x2630fc`, `0x26310c` | `wlc_ap_scb_deinit` supplied in the descriptor passed to `wlc_scb_cubby_reserve_ext` |
+| Cubby dispatch | `0x2b6a50`–`0x2b6a64` | Calls a non-null registered deinit callback; earlier `wlc_scbfree` linkage remains valid |
+| Disabled teardown | `0x261454`–`0x261460` | CSI cleanup branch is taken only when `wlc_csimon_enabled` returns nonzero |
+| ADD persistence | `0x2b5694`–`0x2b56bc` | Copies six MAC bytes into a slot and increments the count before joining the enabled-state test |
+| Disabled ADD | `0x2b5508`–`0x2b5514` | Returns through the existing success path without peer lookup/timer setup when disabled |
+| ENB selection | `0x2b55ec`–`0x2b560c`, `0x2b5668`–`0x2b5670` | Iterates nonempty slots and looks up each peer anew |
+| ENB dereference | `0x2b561c` | Unchecked store through that lookup result, independently confirmed in the earlier audit |
+| Work submission | `0x21dac0` | `wl_schedule_task` calls `queue_work_on`; this does not establish safety of the pre-lock interval |
+
+**Conditional unsafe path:** if a nonempty configured CSI slot survives until
+ENB but its peer lookup returns zero, ENB reaches an unchecked store. ADD while
+disabled persists the MAC; the inspected AP deinit CSI hook is skipped while
+disabled. Neither the userspace peer snapshot nor the per-ioctl lock supplies
+an invariant spanning those separate commands. This is stronger than merely
+not knowing whether locks exist, but it is not a reproduced device crash or a
+whole-program proof that no other callback invalidates the slot.
+
+Explicit CSI DEL has a separate slot-reset path (`0x2b5484`–`0x2b54d4`);
+the CSI timer-deletion helper only clears the timer pointer. Do not equate
+timer removal with CSI MAC removal. A script that checks a peer then enables
+CSI still lacks a demonstrated safe failure path if that peer disappears.
+No ordering workaround, forced disconnect, firmware modification or activation
+was attempted. The previous watchdog attribution is not being reconsidered.
+
+The proposed active trial remains blocked at its activation prerequisite.
+The remaining source question is whether another installed-build path invalidates
+the CSI slot before ENB (including other cubby callbacks), or enforces an
+equivalent invariant. Establish it from exact-build code before an activation
+plan; if absent, the proposed sequence needs a separately reviewed acquisition
+method. Timer-mode/outer-caller/free-entry coverage also remains incomplete.
+The audit now reports `slot_lifecycle` and keeps all active-safety flags false.
+
+## Wrapper locks and AP teardown — October 28, 2026
+
+PC-only continuation used the same hash-locked AX58 module and GPL header.
+Mapping-aware Capstone/pyelftools output and its reproduction helper are retained
+in ignored `recordings/ax58-locking-20261028/`. The maintained stdlib audit
+independently checks selected instruction words and relocation targets; agreement
+confirms local static observations, not the complete concurrency contract.
+
+| Path | `.text` evidence | Observation |
+|---|---|---|
+| `_wl_timer` | `0x21e52c`, `0x21e590` | Selects semaphore at driver +0x14 or spinlock at +0x24 using byte +0x100 |
+| `wl_ioctl` / local entry | `0x2214c0`, `0x2215a4`; `0x2212b0`, `0x221274` | Same lock offsets/selector; `wlc_ioctl` runs inside these local lock scopes |
+| Callback gate | `0x21e534` through `0x21e5c4` | Under lock, timer +0x25 gates invocation; task marker +0x2c clears before the indirect callback |
+| Deferred task | `0x21e658` through `0x21e664` | Sets +0x2c before scheduling; full scheduler-entry interleaving is not established |
+| Freelist | `0x22263c` through `0x222654` | Non-forced cleanup retains an item whose +0x2c task marker is nonzero |
+| AP peer deinit | `0x261454`, `0x2614e8`, `0x2614fc` | Enabled/non-null CSI timer path calls `wlc_csimon_timer_del` |
+| CSI timer deletion | `0x2b5a08` through `0x2b5a14` | Frees the timer and clears the CSI slot's timer pointer (+8) |
+
+This narrows the October 22 uncertainty: shared wrapper locks, a callback gate,
+deferred-free bookkeeping and an AP teardown hook are present. The earlier
+`del_timer` observation alone must not be described as proof of a race.
+It also does not prove reliable active shutdown: mode selection, scheduler entry
+before lock acquisition, forced/direct freeing, AP cubby registration and all
+outer teardown callers still need coverage. `wlc_scbfree` calls
+`wlc_cubby_deinit` at `0x33cfc0`; these local bodies do not prove the
+registration and caller-lock chain end to end.
+
+The activation blocker remains independently relevant: ENB performs an unchecked
+store through `wlc_scbapfind`. Correct locking within one ioctl does not make
+separate userspace peer checks, ADD and ENB atomic. A peer may already be absent
+when ENB begins. The inspected timer-deletion body clears the timer pointer;
+it does not itself establish removal of the retained CSI MAC slot. Trace slot
+invalidation and AP cubby teardown/registration next, alongside runtime-mode and
+scheduler/free entry coverage. Do not test this by forcing a disconnect.
+
+The stdlib audit reports narrower `wrapper_evidence` findings while retaining
+all false active-safety/runtime flags. No device connection, active runner,
+monitor command or deployment entry was added. The historical incident
+attribution and successful passive trial remain unchanged.
+
 ## Active stop/lifetime contract review — October 22, 2026
 
 PC-only inspection of the same hash-locked AX58 module extended

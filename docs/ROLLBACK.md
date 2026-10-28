@@ -1,5 +1,37 @@
 # Experiment rollback
 
+## Synthetic Pi receiver check — October 28, 2026
+
+Executed operation `39ab258501ff`: pre-run check, post-run check, scoped apply
+and independent final check passed. Status `restored`; all three generated
+files and diagnostics retained on PC under `recordings/pi-transport-39ab258501ff/`.
+Temporary directory/process absent; boot/panel baseline unchanged.
+
+`scripts/pi_transport_probe.py prepare` records the Pi boot ID, panel service
+state and absence of `/tmp/ruview-transport-<12hex>` in the separate ignored
+`deployment.json:pi_transport_checks` scope. The payload SHA-256 locks the exact
+reviewed in-memory source. Before execution, run
+`scripts/rollback.py --pi-transport-only --check`.
+
+The only new remote files are `raw.sqlite3`, `stderr.bin`, `transport.jsonl`
+inside that unique directory. Python modules arrive through SSH stdin and are
+loaded in memory with bytecode writes disabled. The foreground command is
+`timeout --signal=TERM --kill-after=2s 15s python3 -B - ruview-transport-<12hex>`;
+it creates no service, package, socket listener or configuration. Its synthetic
+32-frame stream is below 128 KiB; the receive polling deadline is five seconds.
+No router commands or private recordings are used. The outer timeout owns only
+its child process; rollback never signals unknown processes.
+
+After execution, retain all three files byte-for-byte on PC under
+`recordings/pi-transport-<12hex>/`, plus SSH diagnostics and the report. Run the
+same narrow rollback check, then `--pi-transport-only --apply`. Removal requires
+unchanged boot/panel state, no matching probe process, only expected regular
+files, matching result hashes, and identical local evidence. Files are individually
+removed, then the empty directory; no recursive removal. A separate final check
+verifies absence and baseline. Unknown/partial output, changed bytes, symlinks
+or failed execution require inspection and are not automatically erased.
+Existing panel files, history, credentials and other deployment scopes are untouched.
+
 ## Active AX58 preparation — October 22, 2026
 
 The active-trial design in AX58-READER.md is not a runnable rollback plan.
