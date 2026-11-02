@@ -40,8 +40,25 @@ class ReplayTests(unittest.TestCase):
     def test_reset_wrap_and_empty(self):
         result=measurements([(0,raw(2**32-100000)),(1,raw(0))])
         self.assertAlmostEqual(result['summary']['duration_s'],.1)
-        with self.assertRaises(ValueError):measurements([(0,raw(100000)),(1,raw(0))])
+        broken=measurements([(0,raw(100000)),(1,raw(0))])
+        self.assertIsNone(broken['summary']['duration_s'])
+        self.assertEqual(broken['summary']['discontinuity_count'],1)
         self.assertIsNone(measurements([])['summary']['duration_s'])
+
+    def test_discontinuities_preserve_records_and_restart_only_local_clock(self):
+        result=measurements([(0,raw(0)),(1,raw(1186090651)),
+                             (2,raw(1186290651,True)),(3,raw(1186290651)),
+                             (4,b'bad'),(5,raw(1186490651))],200)
+        self.assertEqual(len(result['samples']),6)
+        self.assertEqual(result['summary']['discontinuity_count'],2)
+        self.assertEqual(result['summary']['valid_records'],5)
+        self.assertAlmostEqual(result['summary']['median_interval_s'],.2)
+        self.assertTrue(all(s['seconds'] is None for s in result['samples']))
+        self.assertEqual(result['samples'][1]['segment_seconds'],0)
+        self.assertAlmostEqual(result['samples'][2]['segment_seconds'],.2)
+        self.assertIsNone(result['samples'][1]['smooth'])
+        self.assertIsNone(result['samples'][3]['smooth'])
+        self.assertEqual(result['discontinuities'][0]['candidate_delta_s'],1186.090651)
 
 
 class APITests(unittest.TestCase):
@@ -102,6 +119,19 @@ class APITests(unittest.TestCase):
         for value in (float('nan'),float('inf'),False,999):
             self.assertEqual(self.request('/api/points',{'label':'p','x':value,'y':0})[0],400)
         self.assertEqual(self.request('/api/captures',{'seconds':4})[0],400)
+
+    def test_discontinuous_replay_succeeds_but_time_labels_are_refused(self):
+        with closing(panel.db()) as c,c:
+            c.execute('UPDATE records SET raw=? WHERE session=? AND seq=0',
+                      (raw(2**32-1185990651),'test-session'))
+        before=self.request('/api/sessions/test-session/export')[1]['records']
+        status,replay=self.request('/api/sessions/test-session/measurements')
+        self.assertEqual(status,200)
+        self.assertEqual(replay['summary']['records'],21)
+        self.assertFalse(replay['summary']['timeline_continuous'])
+        self.assertEqual(self.request('/api/sessions/test-session/annotations',
+                         {'start_s':0,'end_s':1,'activity':'walking'})[0],422)
+        self.assertEqual(self.request('/api/sessions/test-session/export')[1]['records'],before)
 
     def test_health_empty_unknown_and_detail_beyond_first_page(self):
         status,h=self.request('/api/health');self.assertEqual(status,200)
@@ -172,15 +202,16 @@ class APITests(unittest.TestCase):
             self.assertTrue(result['reset'])
             self.assertEqual(len(result['samples']), 21)
 
-    def test_capture_signal_error_does_not_hide_controls(self):
+    def test_capture_discontinuity_does_not_hide_controls(self):
         with closing(panel.db()) as c, c:
             c.execute('UPDATE records SET raw=? WHERE session=? AND seq=2',
                       (raw(0), 'test-session'))
         status, snapshot = self.request('/api/captures/test-session')
         self.assertEqual(status, 200)
         self.assertEqual(snapshot['id'], 'test-session')
-        self.assertIn('timer', snapshot['signal_error'])
-        self.assertEqual(self.request('/api/sessions/test-session/measurements')[0], 422)
+        self.assertEqual(snapshot['summary']['discontinuity_count'], 1)
+        self.assertEqual(len(snapshot['samples']), 21)
+        self.assertEqual(self.request('/api/sessions/test-session/measurements')[0], 200)
 
     def test_delete_running_rejected_paused_and_stopping_joined(self):
         job = Mock(session='test-session', pause_requested=False, remaining=20)

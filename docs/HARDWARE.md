@@ -1,5 +1,22 @@
 # Hardware and verified state
 
+## AX58 AP/Pi acquisition and restored state — November 2, 2026
+
+One explicitly authorized trial on RP-AX58 firmware 3.0.0.4.388_24694-g71d4ea1
+confirmed raw output from wl0.1 (radio 0, Netlink 23/group 2) for the identified
+Pi client: nine 2,064-byte datagrams and matching DDR transfer-count increase.
+This does not validate other interfaces, AX56 acquisition, coefficient layout
+or sustained operation. GT-AX11000 remains the existing decoded baseline.
+
+Pi temporarily associated with AX58 and returned to its original AX56 BSSID
+and unchanged NetworkManager profile. Pi and AX58 boot IDs remained unchanged;
+AX58 monitors were disabled/empty, temporary helpers and the owned Pi log were
+removed after evidence preservation. PC received the records; Pi was the radio
+peer, not the collector in this trial. Existing panel deployment remains applied.
+These are last verified observations, not a guarantee of current connectivity.
+Exact state and scoped recovery: deployment.json and ROLLBACK.md; experiment,
+checks and limitations: EXPERIMENTS.md. Earlier entries below remain dated history.
+
 ## AX56 and stock exporter comparison: October 16, 2026
 
 Fresh pinned SSH confirmed AX56 firmware/kernel/ARMv7 and matched the installed

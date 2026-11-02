@@ -473,3 +473,26 @@ so future processing does not require repeating every experiment.
 
 Done when a saved session can be reopened with its original map, device layout,
 reference labels, and signal trace, and exported through the API.
+
+## Discontinuous saved-record replay — November 1, 2026
+
+Replay retains every record when a candidate device-timer delta is zero or
+exceeds the existing ten-second guard. It starts a new signal/filter segment,
+records both timer values and the provisional delta, and does not diagnose a
+reset or stale buffer from that alone. Normal uint32 wrap remains supported.
+The live acquisition filter is unchanged.
+
+The measurements API exposes `discontinuities`, `sample_index`, and per-valid-
+sample `segment`/`segment_seconds`. With any break, all global `seconds` and
+summary `duration_s` are null, `timeline_continuous` is false, and the time basis
+is `device-segment-relative-provisional`. Cadence uses only within-segment
+intervals. UI plots record order, permits individual record inspection, and
+shows the unknown elapsed-time warning. Timed playback and new time annotations
+are disabled; the API rejects such annotation writes with 422. Existing labels
+remain stored/listed but are not overlaid or aligned across breaks. A recovered
+live window with unknown global times directs the user to Sessions instead of
+plotting null timestamps at zero. Continuous recordings retain their prior behavior.
+
+No database schema change, record deletion, threshold widening, or synthetic
+time insertion is involved. The October 20 first-record provenance remains
+unresolved; handling that uncertainty does not establish its physical cause.

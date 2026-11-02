@@ -1,6 +1,58 @@
 # AX58 raw reader candidate
 
-## Current scope — October 28, 2026
+## Offline structure inspection — November 2, 2026
+
+Use scripts/inspect_ax58_payload.py --input <retained-stdout.bin> --output
+<new-report.json> for a bounded, non-decoding audit. It preserves the source,
+rejects malformed/truncated/error-marked frames and reports payload-relative
+fields separately from opaque Netlink metadata and reader receive time.
+Nine observed frames match the Pi/AP addresses but have a different profile word
+from GT. Timer units and coefficient packing remain hypotheses. See the offline
+structure audit in EXPERIMENTS.md for exact observations and tests.
+
+## Active source confirmed; decoding pending — November 2, 2026
+
+The single authorized wl0.1/Pi trial ee8a83f9ee78 produced nine complete
+2,064-byte raw datagrams through protocol 23/group 2. The source radio counter
+independently increased by nine. Cleanup, unchanged boot and Pi return were
+verified. Full conditions, retained evidence and limitations: EXPERIMENTS.md.
+This confirms acquisition only for the observed firmware/interface/peer; it does
+not qualify sustained operation or the AX58 payload format. The GT decoder was
+not applied. Next: offline interpretation, then scoped Pi transport integration.
+Sections below describe historical preflight and earlier restrictions.
+
+## Historical preflight - November 1-2, 2026
+
+The user explicitly accepted one short active trial on the in-service AX58,
+including hang/reboot and temporary client interruption. This overrides the
+historical blanket active block for one operation only. It does not establish
+driver safety or authorize firmware, topology changes, retries or continuous
+capture. The trial has not been dispatched.
+
+The selected candidate is virtual AP `wl0.1` (radio 0/protocol 23) and the
+identified Pi peer `88:A2:9E:94:7D:80`. Initial preflight observed Pi on that AP;
+later preparation correctly refused because the association list became empty.
+Pi's cached NetworkManager active-BSSID read independently shows
+`A0:36:BC:16:85:B9` (the documented AX56 radio). No scan was requested.
+Do not activate CSI for an absent Pi or substitute the Managed upstream GT link.
+
+Added `active_reader_probe.py`, a separate native supervisor, and an optional
+reader `--ready-fd=3` handshake after bind. The supervisor is fixed to the Pi/AP
+pair: ADD at 500 ms, enable, a five-second window, disable, exact-peer delete.
+It bounds child command waits and attempts cleanup on HUP/INT/TERM. Kernel
+hangs remain unrecoverable by these userspace bounds. Commands and child PIDs
+go to stderr; raw stdout stays separate. Full scope is in ROLLBACK.md.
+
+Builds: `recordings/ax58-active-build-20261101/build.json`; private preflight and
+tests: `recordings/ax58-active-20261101/`. Initial Linux test failures were a
+CRLF fake-wl shebang problem, corrected locally; no device commands ran there.
+Five supervisor tests and four native-reader tests pass on local WSL. Five
+Python plan guards pass; full suite before the last added guard: 183 tests,
+174 passed/nine opt-in skips.
+No helper upload or monitor mutation occurred, and failed preparation created
+no active manifest entry. The one-shot authorization remains unused.
+
+## Historical scope — October 28, 2026
 
 Follow the ordinary-acquisition plan in NEXT-STEPS.md. The user asked to stop
 expanding driver-failure investigations. Earlier findings below remain evidence

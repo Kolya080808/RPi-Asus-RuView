@@ -1,5 +1,116 @@
 # Project handoff
 
+## End-of-session checkpoint — November 2, 2026
+
+User requested stopping for today after documentation reconciliation. No further
+device work or capture is queued. Preserve all current uncommitted changes:
+saved-record replay repair (already deployed on Pi), bounded AX58 supervisor
+and readiness handshake, temporary Pi roaming/rollback, and offline payload audit.
+No commit, tag or remote push was made. Devices were restored after the trial;
+the earlier panel deployment intentionally remains applied.
+
+Resume with offline PHY packing/valid-length identification in NEXT-STEPS.md.
+The single active-trial authorization was consumed; no new trial follows
+implicitly from this checkpoint. Confirm Pi availability when a future task
+actually requires access. Existing recordings, build artifacts, deployment.json
+and credentials remain local/ignored; Git alone does not contain the operational
+baseline or reproduce the retained device evidence. Do not force-add them.
+
+Validation is staged: full suite before the offline audit had 178 passes/nine
+opt-in skips; the later audit added five passing tests and reran 20 raw-pipeline
+tests. Nine Node UI tests and the separate five supervisor/four reader Linux
+tests passed earlier. Final closeout changes are documentation only; diff check
+passed. No claim of a full post-audit suite rerun or sustained device validation.
+
+## Offline AX58 audit completed — November 2, 2026
+
+The nine retained datagrams match the known Pi/AP addresses. Payload word 16 is
+0x02011004, different from the GT gate; word 20 is a candidate timer whose
+intervals differ from receive time. No AX58 IQ decoder or motion interpretation
+has been enabled. New bounded audit script and five synthetic tests reproduce
+structural findings; 20 raw-pipeline regressions also pass. Detailed offsets,
+clock discrepancies and evidence are in EXPERIMENTS.md. No devices changed.
+Next unresolved task is PHY packing/valid-length identification, then independent
+validation with known conditions and bounded Pi transport integration.
+
+## Active trial completed and devices restored — November 2, 2026
+
+AX58 operation ee8a83f9ee78 produced nine complete raw Netlink datagrams;
+independent parsing, journal replay and the radio transfer-count delta agree.
+Raw AX58 data is now confirmed for this exact AP/Pi configuration, but the
+payload is still undecoded. Pi was the wireless peer; reception/storage for this
+trial ran on PC, not a live Pi collector. The one-trial authorization was used.
+
+Pi roam 70f638a52d74 returned to its original AX56 BSSID and unchanged NM profile;
+scoped cleanup and final checks passed for both devices. Neither device rebooted.
+Final local checks: 178 Python tests passed, nine opt-in skips; nine Node tests
+passed; diff check passed. Separate Linux native checks passed before dispatch.
+Source state, exact-file scope and checks are in deployment.json; actual evidence,
+limits and next work are in EXPERIMENTS.md. Continue offline AX58 format analysis
+before another device experiment. Preserve all earlier panel-repair changes.
+
+## Historical preflight before the successful trial - November 1-2, 2026
+
+The user explicitly accepted one short active AX58 capture despite hang/reboot
+and client interruption. Built a fixed AP/Pi supervisor, post-bind reader
+readiness and a separate active manifest/rollback scope. No active trial has
+been dispatched. Existing panel-repair edits remain preserved and deployed.
+
+Fresh device checks identified the GT Managed backhaul on eth2 (not selected)
+and Pi initially associated with virtual AP wl0.1. The exact installed module
+hash matches the retained release. Later preparation refused because wl0.1's
+association list was empty. Pi remained reachable; its cached active BSSID
+independently showed the documented AX56 address A0:36:BC:16:85:B9. AX58's target
+virtual AP BSSID is A0:36:BC:9B:BF:8A. No Wi-Fi scan or forced reconnect occurred.
+At this preflight checkpoint reassociation approval was still pending. It was
+subsequently granted and the one-shot trial completed, as recorded above.
+
+Active prepare created no manifest entry; no helper upload, CSI command mutation
+or remote setting change occurred. Baseline/evidence: recordings/ax58-active-20261101/.
+Local Linux fake-wl tests initially failed because the fixture had CRLF; after
+fixing it, all five supervisor tests passed (normal/readiness/add/enable/HUP).
+Four Linux reader tests passed; five PC plan guards now pass, including Pi
+roaming away. Full suite before the last guard addition: 183 discovered, 174
+passed/nine opt-in skips, 79.718 s. Diff check passed. Exact proposed runtime and
+recovery limits are in AX58-READER.md and ROLLBACK.md. Do not equate these local
+results with driver safety, real CSI, live Pi forwarding or successful rollback
+of an active monitor on the device.
+
+Additional access observations: GT login using Pi's existing collector key was
+refused; direct pinned GT login with the stored credential succeeded read-only.
+An AX56 Paramiko attempt failed during host-key verification with a DSA parameter
+error, before device diagnostics; no verification bypass or key change was made.
+These are separate access issues, not evidence of device identity changes.
+
+## Saved-record replay repaired and deployed — November 1, 2026
+
+The user authorized choosing the next useful task while AX58 stays on the home
+network. Selected the known panel replay failure; no further receiver fixtures
+or radio experiments. Commit at restart: `91f133e`, clean working tree. Pi
+availability was confirmed by the user and a read-only check.
+
+Saved replay now segments ambiguous device-timer jumps without discarding raw
+records or inventing a global time axis. Discontinuous sessions expose local
+segment clocks, global seconds/duration null, and explicit break metadata. UI
+uses record order and disables timed playback/new time labels; original labels
+remain retained. LiveSignal's strict guard is unchanged. API contract: PANEL.md
+and API.openapi.json. A restarted live window cannot plot null clocks at zero.
+
+Deployment `20261101T181210Z-31c28c` applied/verified through existing panel-only
+rollback, with checks before/after. Existing service briefly restarted; no
+router, package, startup or schema change. Whole-history counts/raw digest
+unchanged. The original 21-record October 20 session now returns HTTP 200,
+one break/two segments; exact records and annotations match the before export.
+Its first 1,186.090651 s candidate delta remains unexplained, not silently fixed.
+Evidence: `recordings/replay-repair-20261101/`; backups/baseline in the deployment
+manifest and corresponding panel-deploy directory. No new capture occurred.
+
+Validation: full Python suite 174 discovered, 170 passed/four opt-in skips,
+78.310 s; nine Node UI tests passed; diff check passed. Browser visual inspection
+was not performed. AX58 source acquisition remains blocked under the existing
+home-network constraint. Next separate panel investigation is initial-record
+provenance; handling the uncertainty does not resolve its source.
+
 ## Ordinary source-acquisition decision point — October 28, 2026
 
 After the Pi receiver check, returned to the actual AX58 source blocker.

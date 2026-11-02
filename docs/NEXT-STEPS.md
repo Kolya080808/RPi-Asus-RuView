@@ -1,9 +1,9 @@
 # Next steps
 
-Updated 2026-10-28. Current state and completed work: [HANDOFF.md](HANDOFF.md).
+Updated 2026-11-02. Current state and completed work: [HANDOFF.md](HANDOFF.md).
 Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
 
-## Partially completed panel repair (not the selected task)
+## Panel repair (selected continuation on November 1)
 
 - Peer/countdown repairs are implemented and October 6 file deployments are
   recorded as applied. Three retained short-capture reports support acquisition,
@@ -14,10 +14,26 @@ Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
   missing pause-readiness and reader-cancellation fixes. Bounded live acceptance
   passed pause/resume/stop and cleanup, but replay returned 422: the first two
   records have a provisional timer delta of 1,186.090651 s, before the pause.
-  Next panel step: investigate initial stream/buffer provenance and represent
-  discontinuities explicitly, retaining every raw record. Do not silently drop
-  the first record or increase the timer guard. Repeat replay acceptance after
-  the cause and behavior are tested. See EXPERIMENTS.md for evidence.
+  November 1: replay handling is repaired and deployed, with HTTP 200 acceptance
+  on the same 21-record session. Discontinuities are explicit, all raw records
+  retained, and no global time is fabricated. Initial stream/buffer provenance
+  remains unresolved and is a separate next investigation. No new radio capture
+  was run; the October 20 pause/resume/stop evidence remains historical. See
+  EXPERIMENTS.md and PANEL.md for behavior, tests and limitations.
+
+## One risk-accepted trial - November 1-2, 2026
+
+The user now explicitly accepts one short active AX58 capture and possible
+hang/reboot/client interruption, while keeping it in the home network. This
+supersedes the historical blanket active block below for one trial only.
+The authorized trial completed on November 2 after separately approved temporary
+Pi roaming: nine raw datagrams, matching radio count delta, verified cleanup and
+return to AX56. This one-shot authorization is consumed. Next work is offline
+AX58 PHY packing/valid-length validation, followed by a bounded Pi integration
+design. The initial offline structure audit is complete: known address fields
+match, but candidate timer units and coefficient format remain unvalidated.
+Do not choose the Managed GT backhaul or absent peer as a substitute, and do
+not automatically repeat a capture. Details: AX58-READER.md and ROLLBACK.md.
 
 ## Immediate continuation of milestone 2
 
@@ -30,31 +46,26 @@ decoding on Pi, supporting the eventual moving-object location system.
 
 | Component | Confirmed | Still required |
 |---|---|---|
-| AX58 reader | Socket-free self-test and October 22 passive protocol-23/group-2 trial with CSI off; cleanup verified | An acceptable ordinary active acquisition procedure and real records |
+| AX58 reader | November 2 active wl0.1/Pi trial: nine raw datagrams and verified cleanup | Sustained behavior and separately scoped Pi integration |
 | Stock network export | No working IP/port CSI configuration identified in the examined releases | Do not assume RemoteWL forwards measurements |
 | Receive layer | October 28 bounded SSH channel-to-journal adapter implemented; local validation described in RAW-PIPELINE.md | Reviewed source dispatch/termination, Pi deployment and measured capacity |
 | Pi | October 28 synthetic receiver run: 32 frames / 69,118 bytes journaled, exact replay and temporary-file rollback verified | Actual live transport integration and sustained capacity; synthetic check does not qualify active CSI |
-| AX58 interpretation | No active AX58 payload validated | Source-specific format/timing validation before decoding or motion claims |
+| AX58 interpretation | Nine complete raw datagrams retained; payload not decoded | Source-specific format/timing validation before decoding or motion claims |
 
-The October 28 ordinary-document review is complete within its stated scope:
-31,934 GPL documents/scripts plus primary public documentation did not establish
-an applicable AX58 acquisition procedure. Repeating idle queries or synthetic
-receiver tests is not the next step. The user declined the proposed isolated
-bench on October 28: AX58 must remain in the home network. Do not remove it from
-service, change its role, or activate the unqualified capture path. Live AX58
-acquisition is blocked under the current network-stability constraint; the
-receiver and Pi checks do not resolve it. Revisit activation only with materially
-new applicable compatibility evidence, not a repeated idle check, command-order
-guess or failure experiment. Preserve the AX58/Pi goal; do not silently replace
-it with GT work or treat the declined bench as awaiting approval.
+The October 28 review and stability restrictions below are historical context.
+The November 2 explicitly accepted one-shot trial superseded the active block
+only for that completed operation. AX58 stays in the home network; no further
+capture or continuous collection is queued for unattended execution.
 
-Once that prerequisite is resolved, prepare one bounded capture: record the
-baseline and exact owned files/processes/settings, implement and check scoped
-rollback, then receive complete raw bytes with stderr and exit metadata on Pi.
-Verify cleanup and unchanged device/network state before accepting the capture.
-Do not enable continuous collection as part of that first trial. Only validated
-AX58 records can support the subsequent decoder and continuous integration.
-The existing passive authorization does not qualify the active procedure.
+Resume in this order:
+1. Identify AX58 PHY packing and valid payload length from retained applicable
+   source/build evidence. Preserve all raw bytes; do not reuse the GT decoder.
+2. Validate candidate timing and signal interpretation independently. The nine
+   unlabelled records cannot establish motion response or object position.
+3. Prepare bounded AX58-to-Pi transport integration with baseline, exact scope,
+   rollback and acceptance criteria before any newly authorized device trial.
+4. After source-specific validation, assess motion/localization toward the
+   observation system; 3D skeleton output remains a later unvalidated goal.
 
 ## Ordered milestones
 
@@ -83,11 +94,13 @@ The existing passive authorization does not qualify the active procedure.
    the earlier direct-request 401 and decompression blockers are superseded.
    The October 13 offline checkpoint found NIC Netlink export implementations in
    both exact-release images, with published image hashes verified. Both
-   dispatchers reject ADD_AP command 5; no repeater raw capture is validated.
+   dispatchers reject ADD_AP command 5. At that checkpoint no repeater capture
+   was validated; the November 2 AX58 AP/Pi raw trial is now confirmed.
    The October 14–15 continuation traced ordinary ADD and the reader contract:
    ADD success does not prove peer activation; the lookup/association paths
    do not establish Managed upstream support. AX58's enable path also lacks
-   AX56's null-result guard. Keep capture blocked; do not reproduce the risk.
+   AX56's null-result guard. These historical findings do not authorize
+   further device experiments or establish sustained safety.
    The October 15 [offline prototype](RAW-PIPELINE.md) now journals complete
    input independently of deferred decoding, including partial/error evidence.
    **Offline interrupted-journal recovery and legacy GT SQLite import are
@@ -106,8 +119,8 @@ The existing passive authorization does not qualify the active procedure.
    socket-free ARM self-test passed on AX58 with exact temporary-file rollback
    verified (`54eb642bed79`), without CSI or Netlink reception in that self-test.
    Separately, passive protocol-23 reception with CSI disabled passed on October 22 with
-   no data and verified cleanup. Active capture and
-   decoder validation remain pending.
+   no data and verified cleanup. November 2 active acquisition produced nine
+   raw datagrams; decoder validation and sustained Pi integration remain pending.
    The incident report and October 13 decision are
    already recorded; do not require resubmission or reopen milestone 1. Next
    establish a safe source-local reader/activation contract from the retained

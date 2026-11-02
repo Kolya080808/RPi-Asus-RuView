@@ -58,3 +58,21 @@ test('Swagger deep links stay inside the API workspace across direct loads',()=>
   assert.equal(h.run("pageFromHash('#/Sessions%20and%20replay/get_api_sessions').preserve"),true);
   assert.equal(h.run("pageFromHash('#sessions').name"),'sessions');
 });
+
+test('discontinuous replay uses record order and retains segment-local time',()=>{
+  const h=harness();
+  h.run("state.replay={summary:{timeline_continuous:false,duration_s:null},samples:[{seq:0,sample_index:0,valid:true,seconds:null,segment:0,segment_seconds:0,smooth:null,step:null,amplitude_rms:10},{seq:1,sample_index:1,valid:true,seconds:null,segment:1,segment_seconds:0,discontinuity:true,smooth:null,step:null,amplitude_rms:20},{seq:2,sample_index:2,valid:true,seconds:null,segment:1,segment_seconds:.2,smooth:.1,step:.1,amplitude_rms:30}]};state.annotations=[];state.position=1;renderChart();showPosition();");
+  assert.equal(h.run('replayExtent()'),2);
+  assert.equal(h.nodes.get('playback-time').textContent,'Record 2 / 3');
+  assert.match(h.nodes.get('sample-state').textContent,/segment 2/);
+  for(const node of h.nodes.get('signal-chart').children){
+    assert.doesNotMatch(JSON.stringify(node.attrs),/NaN|Infinity/);
+  }
+  assert.ok(h.nodes.get('signal-chart').children.some(node=>node.attrs.d?.includes('782.00')));
+  assert.match(h.nodes.get('active-label').textContent,/cannot be aligned/);
+});
+
+test('live recovery cannot plot unknown global times as zero',()=>{
+  const h=harness();h.run('renderLive([{valid:true,seconds:null,smooth:.1}])');
+  assert.match(h.nodes.get('live-signal-chart').children[0].textContent,/Time breaks/);
+});

@@ -397,7 +397,7 @@
         "summary": "Valid/invalid samples, amplitude metrics, cadence and gap summary",
         "responses": {
           "200": {
-            "description": "Decoded measurement samples and signal summary."
+            "description": "Decoded measurement samples and signal summary. Unresolved timer jumps return 200 with discontinuities, segment and segment_seconds per valid sample, sample_index, and summary.timeline_continuous=false. In that case all global seconds and duration_s are null; cadence excludes segment boundaries. Time annotations are refused with 422; raw records remain unchanged."
           },
           "400": {
             "description": "Stored session metadata could not be decoded.",

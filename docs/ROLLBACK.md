@@ -1,5 +1,90 @@
 # Experiment rollback
 
+## Temporary Pi roam guardian - November 2, 2026
+
+User explicitly authorized temporary Pi reconnection to AX58 AP
+A0:36:BC:9B:BF:8A and return afterward. `scripts/pi_roam_probe.py prepare`
+records the original NetworkManager UUID, BSSID and boot ID, code hash and
+absence of `/tmp/ruview-roam-<12hex>.jsonl` in `deployment.json:pi_roam_checks`.
+Check with `scripts/rollback.py --pi-roam-only --check` before launch.
+
+No NetworkManager profile is cloned, edited or saved. A foreground Python
+process started through nohup issues the standard transient wpa_cli roam,
+waits 60 seconds and requests return to the original BSSID. It runs independently
+of SSH and attempts return in finally on command failure or TERM/INT. Each
+subprocess has an eight-second timeout; return state is checked for twelve
+seconds. A different active profile is treated as external user intervention
+and is not overwritten. One ordinary directed SSID scan refreshed the BSS cache
+before the successful attempt; no radio restart or package installation.
+
+The only added file is its private mode-600 JSONL log; the process/code/target
+and original identifiers are manifest-scoped. Log records include its PID,
+operation ID, boot and final profile/BSSID status. After the timed return,
+`--pi-roam-only --check` verifies original profile/BSSID/boot, a successful final
+log event and absence of the exact owned process. `--apply` copies the complete
+log to recordings/pi-roam-<12hex>.jsonl, compares bytes again and deletes only
+that exact regular file. A separate final check verifies absence. If return
+fails or evidence is incomplete, preserve it and inspect; do not reset Wi-Fi
+or silently change a profile. This is separate from AX58 monitor/file rollback.
+
+Local fake-command tests passed: timed return, rejected target and refusal to
+overwrite an externally changed profile. Plan 70f638a52d74 confirmed the target
+and timed return; check/apply/check passed, log preserved locally and removed
+from Pi. Original profile/BSSID/boot independently matched. The earlier rejected
+roam 19d800f2a36b was also restored and its log retained.
+
+## One active AX58 operation - November 1-2, 2026
+
+User accepted one ordinary short CSI trial despite possible AX58 hang/reboot;
+no automatic repeat. Operation ee8a83f9ee78 completed with nine datagrams and
+verified cleanup: unchanged boot, disabled/empty monitors, no owned processes
+or CSI userspace listeners, both exact temporary files absent. A later scoped
+check passed. Baseline and after-state remain in deployment.json.
+
+`scripts/active_reader_probe.py prepare` must record idle monitors, boot ID,
+exact installed module hash, virtual AP/Pi readiness and absence of two paths
+in `deployment.json:active_reader_checks`. It fixes AP `wl0.1`, Pi peer
+`88:A2:9E:94:7D:80`, protocol 23, five seconds and 500 ms requested interval.
+Run `scripts/rollback.py --active-reader-only --check` before upload. Only the
+exact ARM builds recorded in `recordings/ax58-active-build-20261101/build.json`
+may be uploaded to `/tmp/ruview-active-<12hex>-reader` and `...-supervisor`.
+Files start at mode 600 and become 700; socket-free self-tests precede dispatch.
+
+The supervisor waits for a dedicated post-bind readiness byte, then invokes
+`wl -i wl0.1 csimon add <Pi-MAC> 500` and `enable`. After five seconds, or on
+HUP/INT/TERM, it attempts `disable` and `del <Pi-MAC>`. Each wl child is waited
+for one second, then only that still-unreaped child is signalled. A kernel-
+blocked child is explicitly reported. Reader lifetime is eight seconds plus its
+existing emergency alarm, with at most 64 datagrams and bounded output waits.
+The source-local cleanup cannot recover a stuck kernel. No settings outside
+this monitor/peer, services, startup, packages, firmware or keys are in scope.
+
+All stdout/stderr/exit evidence is retained on PC. First-trial source validation
+is not continuous Pi integration. Only after source cleanup, idle monitors,
+no CSI userspace listeners, unchanged boot and absence of owned processes are
+confirmed can file rollback remove the two exact-byte files and verify absence.
+It never removes partial/unknown files or signals unknown tasks. Cleanup failure,
+reboot or unknown state stops automation for inspection; no silent ioctl retry,
+factory reset or automatic active rerun. A separate final narrow check is required.
+
+## Replay repair deployment — November 1, 2026
+
+Operation `20261101T181210Z-31c28c` is applied and verified. Pre/post rollback
+checks passed, service active, whole-history counts/raw digest unchanged. Saved
+replay acceptance passed (HTTP 200, 21 records, one explicit break). Original
+file backups are in `recordings/panel-deploy-20261101T181210Z-31c28c/`.
+
+Use the existing panel-only file deployment/rollback scope. Preparation records
+all 17 mapped panel files, their original bytes/modes, service unit/state and
+history counts/raw digest in `deployment.json:panel_updates`; backups are retained
+under its operation-specific recordings directory. Changes affect saved-record
+replay, API documentation and UI; applying restarts the existing panel briefly.
+No router, capture, package, schema or startup-setting change is included.
+Before apply run `scripts/rollback.py --panel-only --check`. After apply check
+the same scope, read the known failed session through GET measurements/export,
+and verify the raw digest/counts and service state. Restoration uses
+`--panel-only --apply`, retaining current history rather than restoring an old DB.
+
 ## Synthetic Pi receiver check — October 28, 2026
 
 Executed operation `39ab258501ff`: pre-run check, post-run check, scoped apply

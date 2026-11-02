@@ -1,5 +1,174 @@
 # Experiments
 
+## Offline AX58 structure audit — November 2, 2026
+
+Analyzed only the nine retained frames from ee8a83f9ee78; no network/device
+commands. Added scripts/inspect_ax58_payload.py, a bounded read-only audit with
+exclusive report creation. Reproduce with:
+
+```powershell
+.venv/Scripts/python.exe scripts/inspect_ax58_payload.py --input recordings/ax58-active-20261101/ee8a83f9ee78/20261101T233945Z-63aa99aa7f1e/stdout.bin --output <new-local-report.json>
+```
+
+All offsets below are payload-relative, after the retained 16-byte Netlink
+header. The stream SHA-256 remains bed6904c71800308fd6066264e9afb7a25d8a2a3c8f21a4ba49fdc15c0294248.
+The private structure.json beside the original evidence contains all fields,
+intervals, payload hashes and changing byte offsets, without assigning IQ values.
+
+| Offset | Observation across nine records | Interpretation limit |
+|---|---|---|
+| 4..9 | Exact known Pi MAC | Agrees with independently recorded peer baseline |
+| 10..15 | Exact known AX58 AP BSSID | Agrees with independently recorded association |
+| 16..19 | LE word 0x02011004 | Different from GT decoder gate 0x04041004; semantics unvalidated |
+| 20..23 | Increasing LE uint32 | Candidate timer only, units and RF event unknown |
+| 24..27 | Constant 0x89947124 | Not a per-record timestamp in this sample |
+| 28..31 | Signed view [-47 or -48, -30, -128, -128] | RSSI-like pattern only; no unit/calibration established |
+| 96..2047 | Dense bytes; changes present | Not established as 976 int16 coefficients or any other IQ layout |
+
+Nine payload hashes are distinct; 1,947 byte positions vary, including offsets
+20,21,22,28,68,69 in the first 96 bytes. Changing data alone does not establish
+motion, a valid coefficient region, valid tail length or absence of stale bytes.
+The retained GPL bcm_csimon.h (dec941981c85-bcm_csimon.h) defines a 2,048-byte
+ring item and explicitly allows actual data to be smaller; it does not define
+the observed PHY coefficient layout. Prior sender analysis independently supports
+a 16-byte transport header plus 2,048-byte copy, not valid measurement length.
+
+Candidate word deltas: 504044, 503957, 504025, 563832, 445555, 502575, 504011,
+504003 ticks. Under an unvalidated microsecond hypothesis their total is
+4.032002 s, versus 4.0559531 s of reader monotonic time. Per-interval residuals
+range from -74.4436 to +88.00532 ms. Thus the two clocks are approximately
+consistent over this short span but cannot be substituted sample-by-sample.
+Buffering/polling is a possible explanation, not proven; nine records cannot
+identify clock units, drift, wrap behavior or loss. No production timestamp
+conversion or GT decoder change was introduced.
+
+Independent byte slicing/int.from_bytes extraction reproduced all address and
+candidate timer fields; this checks extraction, not their physical meaning.
+Tests: five test_ax58_payload tests passed (including every partial-frame cut,
+error flags, length mismatch, non-increasing clock and modular candidate delta);
+20 test_raw_pipeline tests passed. Commands: unittest discover -s tests -p
+ test_ax58_payload.py -v and -p test_raw_pipeline.py -q using the project Python.
+Source hash remained unchanged. Next: establish PHY word packing and valid data
+length from applicable retained source/build evidence before enabling any decoder.
+A later separately scoped capture with known conditions is needed to validate
+signal response; this sample contains no motion ground truth.
+
+## AX58 first active AP/Pi acquisition — November 2, 2026
+
+User authorized one active trial and temporary Pi reassociation. Operation
+`ee8a83f9ee78` ran at 2026-11-01 23:39:45 UTC (November 2, 02:39 Moscow).
+Source: RP-AX58 firmware 3.0.0.4.388_24694-g71d4ea1, wl0.1 AP/radio 0,
+identified Pi peer, Netlink protocol 23/group 2. Installed module hash and
+baseline are retained in deployment.json. Requested interval 500 ms; monitor
+window five seconds, reader eight seconds. ADD/enable/disable/delete and reader
+all exited zero. No second active attempt was made.
+
+Nine complete 2,064-byte datagrams arrived in 19,538 envelope bytes. Reader
+sequences are 0..8, all truncated=false and receive_error=null. Independent
+manual envelope parsing agrees with raw_pipeline replay: nine frames, zero
+invalid envelopes. The radio DDR transfer counter independently increased
+0 -> 9; ACK-failure/overflow counters stayed zero. Reader receive-time intervals
+are approximately 520 ms except one 416 ms; these are not verified RF timestamps
+or a driver-loss measurement. Netlink length fields equal 2,064; type/sequence
+fields differ on one datagram and are not interpreted as reliable counters.
+
+Raw SHA-256: bed6904c71800308fd6066264e9afb7a25d8a2a3c8f21a4ba49fdc15c0294248.
+Private evidence: recordings/ax58-active-20261101/ee8a83f9ee78/
+20261101T233945Z-63aa99aa7f1e/ (stdout.bin, stderr.bin, events.jsonl,
+validation.json, raw.sqlite3, derived.sqlite3). SQLite ingestion is explicitly
+an offline import of retained live evidence; journal reconstruction is byte-
+identical. All frames remain raw-only with profile=null. No GT decoder applied,
+no validated AX58 coefficients, motion/localization or pose result claimed.
+
+Pi roam plan 19d800f2a36b was rejected before acquisition and returned to its
+original association; evidence retained. A single ordinary directed ASUS_65
+SSID discovery refreshed Pi's BSS cache. Plan 70f638a52d74 then confirmed AX58
+association and returned to the original AX56 BSSID/profile after roughly 61 s.
+The guardian's final log and a separate SSH identity/boot check agree. Scoped
+check/apply/check preserved the log locally and removed only its owned remote
+file. AX58 retained its boot ID, both monitors are disabled/empty, no CSI
+userspace listener or helper remains, and exact temporary binaries were removed;
+a later active-reader check passed. This excludes observed device reboot, not
+all possible transient impact on other home clients. Original state and rollback
+are recorded in deployment.json and ROLLBACK.md.
+
+Final local validation: `.venv/Scripts/python.exe -m unittest discover -s tests -q`
+ran 187 tests in 78.066 s: 178 passed and nine opt-in native tests skipped.
+The separate local Linux runs passed all five supervisor and four reader tests
+before device dispatch. `node --test tests/test_panel_ui.cjs`: nine passed.
+`git diff --check` passed (only Windows line-ending notices). Full Python log:
+recordings/ax58-active-20261101/final-tests.log. These tests use fixtures;
+their simulated device-cleanup messages are not additional device experiments.
+
+Next: inspect AX58 payload structure/timing offline, then design a separately
+bounded Pi receiver integration. One short success does not establish sustained
+safety, losslessness, a validated decoder or a deployable observation system.
+
+## Active-trial preflight and local supervisor checks - November 1-2, 2026
+
+User explicitly accepted one active AX58 trial and its reboot/hang risk. All
+activity in this checkpoint remained read-only on devices. Monitors were disabled
+and empty, installed module hash matched the retained build. Eth1 BSS was down;
+eth2 had the Managed GT upstream connection. Virtual AP wl0.1 was up with Pi
+initially present, independently identified from Pi wlan0 address. A later
+prepare recheck found that list empty; no plan entry/upload/activation followed.
+Pi NetworkManager cached BSSID showed AX56 A0:36:BC:16:85:B9; target AX58 AP
+address read directly was A0:36:BC:9B:BF:8A. No scan was triggered. The radio
+association snapshot is not a guarantee against later roaming.
+
+Private baseline/command evidence: recordings/ax58-active-20261101/.
+Build manifest: recordings/ax58-active-build-20261101/build.json. Both ARM
+executables are ELF32 little-endian ARM, flags 0x5000200. Static builds use the
+already installed Zig 0.15.2; no router package/runtime installation.
+
+Linux supervisor tests replace wl with a harmless logging fixture and use a
+socket-free fake reader. Initial failures were exit 127 from a CRLF shebang;
+correcting the fixture produced five passing cases in 15.250 s. They cover
+ordinary command order/output separation, no activation before readiness,
+cleanup after ADD/enable errors, and HUP. Four Linux native-reader tests passed.
+Five PC active-plan tests pass, including changed peer/path/bounds, reboot,
+partial-file refusal, explicit risk gate and Pi disappearing before activation.
+Full Windows discovery before the last guard test: 183 tests, 174 passed/nine
+opt-in skips, 79.718 s; log retained in the preflight evidence directory.
+Diff check passed. No live cleanup or acquisition claim follows from these tests.
+
+## Saved-record replay acceptance — November 1, 2026
+
+Before update, GET measurements for October 20 session
+`210ad70f-fd78-4bfb-bb92-f776e36ef038` returned 422. Read-only export retained all
+21 prefixes and labels locally. Independent uint32 extraction at offset 20
+again gave a first delta of 1,186.090651 s under the provisional interpretation.
+Local segmented processing retained all 21 samples, one discontinuity/two
+segments, one ordinary gap and median within-segment interval 0.200021 s.
+Global duration is unknown; a stale initial record remains only a hypothesis.
+
+Panel deployment `20261101T181210Z-31c28c` used the existing 17-file mapping,
+original-byte/mode backups, service/history baseline and checked panel-only
+rollback. Deployment verified identical whole-history counts/raw hash and active
+service. Post-deployment GET returns 200 for the same session with the expected
+segmentation. Exported records and annotations compare equal before/after.
+Raw concatenation SHA-256:
+`893362248e0b2548f0333a4e902ca73c6d6c8f1c319cc5847466dc83354743db`.
+Post-deployment `scripts/rollback.py --panel-only --check` passed. No rollback
+apply was needed; no radio settings, capture, package, schema or history change.
+
+Evidence in ignored `recordings/replay-repair-20261101/`: before export,
+local-replay.json, remote-acceptance.json and full-tests.log. Synthetic regression
+checks cover wrap, repeated/backward/large jumps, invalid records, filter restart,
+API annotation refusal without mutation, record-order rendering and live-window
+handling. Commands/results:
+
+```powershell
+.venv/Scripts/python.exe -m unittest discover -s tests -q
+node --test tests/test_panel_ui.cjs
+git diff --check
+```
+
+Python: 174 discovered, 170 passed/four opt-in skips, 78.310 s. Node: nine
+passed. Diff check passed. Actual browser visual inspection was not performed.
+The original acquisition controls were not re-tested; their October 20 evidence
+is retained. Initial stream provenance remains an open source-side question.
+
 ## Ordinary acquisition documentation search — October 28, 2026
 
 PC-only search streamed the already retained exact-release ASUS GPL archive;

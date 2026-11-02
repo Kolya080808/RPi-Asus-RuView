@@ -628,6 +628,8 @@ def save_route(connection, body):
 def save_annotation(connection, sid, body):
     session = get_session(connection, sid)
     summary = replay(connection, session)['summary']
+    if not summary.get('timeline_continuous', True):
+        raise RequestError('Session has unresolved time discontinuities; time annotations are unavailable', 422)
     duration = summary['duration_s']
     if duration is None or duration <= 0:
         raise RequestError('This session has no usable timeline')

@@ -81,7 +81,8 @@ int main(int argc, char **argv) {
     struct sigaction action;
     /* No implicit protocol or run. The self-test opens no socket. */
     int self_test = argc == 2 && strcmp(argv[1], "--self-test") == 0;
-    if (!self_test && (argc != 3 ||
+    int ready_fd = argc == 4 && strcmp(argv[3], "--ready-fd=3") == 0;
+    if (!self_test && ((argc != 3 && !ready_fd) ||
         (strcmp(argv[1], "22") != 0 && strcmp(argv[1], "23") != 0) ||
         strlen(argv[2]) != 1 || argv[2][0] < '1' || argv[2][0] > '8')) {
         fprintf(stderr, "usage: ax58-netlink-reader {22|23} {1..8}\n"
@@ -121,6 +122,11 @@ int main(int argc, char **argv) {
     address.nl_groups = 2; /* Inspected exporter broadcasts to group 2. */
     if (bind(fd, (struct sockaddr *)&address, sizeof(address))) {
         perror("netlink bind"); goto done;
+    }
+    /* Dedicated pipe from the owned supervisor, never raw stdout. */
+    if (ready_fd) {
+        if (write(3, "R", 1) != 1) { perror("reader readiness"); goto done; }
+        close(3);
     }
     while (!stopped && now_ns() < deadline && count < MAX_RECORDS) {
         struct pollfd ready = {fd, POLLIN, 0};
