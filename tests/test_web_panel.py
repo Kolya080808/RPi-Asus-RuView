@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import sqlite3
 import struct
+import subprocess
 import sys
 import tempfile
 import threading
@@ -100,6 +101,62 @@ class APITests(unittest.TestCase):
         self.assertEqual(route['context']['point_snapshots'][1]['x'],1)
         self.assertIn('floorplan_sha256',route['context']['map_sources'])
         self.assertEqual(self.request('/api/routes',{'label':'bad','points':['p1','missing']})[0],400)
+
+    def test_point_scorer_reads_two_downloaded_panel_exports(self):
+        """Real annotation and export endpoints, disposable GT records, loopback only."""
+        root = Path(self.temp.name)
+        paths = []
+        for point, x in [('near', 0), ('far', 1)]:
+            status, _ = self.request('/api/points', dict(id=point, label=point, region='R08', x=x, y=0))
+            self.assertEqual(status, 201)
+        for sid, first in [('cal', 'near'), ('test', 'far')]:
+            meta = dict(interval_ms=500, interface='eth6', peer='00:00:00:00:00:00',
+                        decoder=panel.PROFILE)
+            with closing(panel.db()) as c, c:
+                c.execute('INSERT INTO sessions VALUES(?,?,?,?,?,?)',
+                          (sid, 1000, 1031, 'captured', json.dumps(meta), ''))
+                for seq in range(63):
+                    near = (seq < 30) == (first == 'near')
+                    record = raw(seq * 500000 + int(sid == 'test'), changed=near)[:320]
+                    c.execute('INSERT INTO records VALUES(?,?,?,?)', (sid, seq, record, '{}'))
+            for point, start, end in [(first, 0, 15), ('far' if first == 'near' else 'near', 15, 30)]:
+                status, _ = self.request(f'/api/sessions/{sid}/annotations',
+                    dict(point_id=point, start_s=start, end_s=end, activity='still',
+                         kind='observed', timing_uncertainty_s=.5))
+                self.assertEqual(status, 201)
+            status, export = self.request(f'/api/sessions/{sid}/export')
+            self.assertEqual(status, 200)
+            path = root / (sid + '.json')
+            path.write_text(json.dumps(export), encoding='utf-8')
+            paths.append(path)
+        script = Path(__file__).resolve().parents[1] / 'scripts/evaluate_gt_points.py'
+        def run(*args):
+            process = subprocess.run([sys.executable, script, *args], capture_output=True,
+                                     timeout=15, text=True)
+            self.assertEqual(process.returncode, 0, process.stderr)
+            return json.loads(process.stdout)
+        from_files = run('--exports', *paths)
+        from_db = run('--history', panel.HISTORY, '--calibration', 'cal', '--heldout', 'test')
+        self.assertEqual(from_files, from_db)
+        self.assertEqual(from_files['status'], 'scored')
+        self.assertEqual(from_files['heldout_reference_windows'], {'near': 3, 'far': 3})
+        self.assertEqual(from_files['scores']['profile']['correct'], 6)
+        self.assertEqual(from_files['scores']['training_majority']['correct'], 3)
+
+    def test_annotation_accepts_exact_end_after_100ms_steps(self):
+        sid = 'exact-end'
+        with closing(panel.db()) as c, c:
+            c.execute('INSERT INTO sessions VALUES(?,?,?,?,?,?)',
+                      (sid, 1000, 1012, 'captured', '{"interval_ms":100}', ''))
+            c.executemany('INSERT INTO records VALUES(?,?,?,?)',
+                          [(sid, n, raw(n * 100000), '{}') for n in range(121)])
+        replay = self.request(f'/api/sessions/{sid}/measurements')[1]
+        self.assertEqual(replay['summary']['duration_s'], 12.0)
+        payload = dict(start_s=9, end_s=12, activity='still', kind='observed',
+                       timing_uncertainty_s=0)
+        self.assertEqual(self.request(f'/api/sessions/{sid}/annotations', payload)[0], 201)
+        payload['end_s'] = 12.001
+        self.assertEqual(self.request(f'/api/sessions/{sid}/annotations', payload)[0], 400)
 
     def test_annotations_and_export_keep_raw_bytes(self):
         payload={'start_s':.2,'end_s':1.2,'activity':'walking','kind':'observed','timing_uncertainty_s':.3}

@@ -1,7 +1,24 @@
 # Next steps
 
-Updated 2026-11-02. Current state and completed work: [HANDOFF.md](HANDOFF.md).
+Updated 2026-11-13. Current state and completed work: [HANDOFF.md](HANDOFF.md).
 Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
+
+## Current localization step — November 13
+
+The next experiment is a separately authorized GT-only repeat at two marked
+near/far positions. Use separate calibration and held-out sessions with
+reversed visit order, independently timestamp arrivals/departures and score
+stationary windows separately from walking. This tests the strongest contrast
+in the saved position session while breaking the original time/order confound.
+No device work is authorized by the offline task. Revisit AX58 ordering when
+a producer listing, report definition or known complex vector becomes available.
+
+Plan about 20 seconds per stationary stop and record actual timing uncertainty.
+Save the two annotated panel exports separately. The offline scorer and activity-only/majority comparisons are ready. The
+fixed-position arm control changed profile by 0.817 versus 0.775 between near
+and far. Include observed activity and uncertainty with each endpoint. Run the
+[two-point evaluation](RECORDING.md#offline-gt-two-point-evaluation) on the new
+sessions and report coverage and abstentions alongside the confusion matrices.
 
 ## Panel repair (selected continuation on November 1)
 

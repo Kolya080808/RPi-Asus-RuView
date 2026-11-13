@@ -19,6 +19,23 @@ LOG = logging.getLogger('ruview.ax58_payload')
 MAX_BYTES = 6 * 1024**2
 
 
+def compare_two_apart(payloads):
+    """Compare capture order, without assuming consecutive hardware samples."""
+    if len(payloads) < 3:
+        return None
+    later = payloads[2:]
+    changed = [any(a[i] != b[i] for a, b in zip(payloads, later))
+               for i in range(2048)]
+    edges = [i for i in range(2048) if changed[i] != (i > 0 and changed[i - 1])]
+    if changed[-1]:
+        edges.append(2048)
+    spans = list(zip(edges[::2], edges[1::2]))
+    suffix_start = edges[-1] if edges else 0
+    return dict(pair_count=len(payloads) - 2, differing_ranges_half_open=spans,
+                identical_suffix_start=suffix_start,
+                distinct_suffixes=len({p[suffix_start:] for p in payloads}))
+
+
 def inspect(data):
     if len(data) > MAX_BYTES or not data.startswith(MAGIC):
         raise ValueError('Expected bounded RUVRAW1 stream')
@@ -70,6 +87,7 @@ def inspect(data):
                 varying_byte_offsets=[i for i in range(2048)
                                       if len({p[i] for p in payloads}) > 1],
                 distinct_payloads=len({r['payload_sha256'] for r in rows}),
+                two_apart=compare_two_apart(payloads),
                 limits='Structural observations only; timer units, IQ layout, loss and motion unvalidated')
 
 

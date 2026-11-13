@@ -143,6 +143,13 @@ larger sessions. History pages contain at most 100 sessions. Existing raw CSI,
 session logs and metadata are retained. Point/route editing, annotation
 corrections, room names, and versioned geometry editing are follow-up work.
 
+November 13 local changes: live/replay elapsed time now accumulates integer
+device ticks before conversion to provisional seconds. The annotation form
+keeps its suggested end within the recording's millisecond input grid,
+including at the last sample. Both changes were tested on the PC and have
+not been deployed to the Pi. Existing panel v2 exports already contain the
+fields required for the [offline GT evaluator](RECORDING.md#offline-gt-two-point-evaluation).
+
 ## API and access
 
 See [API.openapi.json](API.openapi.json), the raw `/api/openapi.json` contract,

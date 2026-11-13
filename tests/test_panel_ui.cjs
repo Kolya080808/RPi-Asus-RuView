@@ -11,6 +11,15 @@ function harness(){
   vm.runInContext("load=async()=>{};toast=()=>{};pause=()=>{};state.capture={id:'current',session:{id:'current',status:'running',records:0}};",context);
   return {context,nodes,timers,run:s=>vm.runInContext(s,context)};
 }
+test('annotation at replay end fits the millisecond form and the recording',()=>{
+  const h=harness();
+  h.run("$('annotation-start').focus=()=>{};state.replay={summary:{timeline_continuous:true,duration_s:11.999877}};state.position=11.999877;openAnnotationForm()");
+  assert.equal(h.nodes.get('annotation-end').value,'11.999');
+  assert.equal(h.nodes.get('annotation-start').value,'10.999');
+  h.run("state.position=3.125;openAnnotationForm()");
+  assert.equal(h.nodes.get('annotation-start').value,'3.125');
+  assert.equal(h.nodes.get('annotation-end').value,'4.125');
+});
 test('repeated polling retains ID and redraws a growing live trace',async()=>{
   const h=harness();let calls=0;const urls=[];
   h.context.fetch=async url=>{urls.push(url);calls++;return {ok:true,json:async()=>({session:{id:'current',status:'running',records:calls+1},samples:Array.from({length:calls+1},(_,i)=>({valid:true,seconds:i,smooth:i*.01}))})};};

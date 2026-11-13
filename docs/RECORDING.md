@@ -1,5 +1,93 @@
 # Collection and history on Raspberry Pi
 
+## Offline GT two-point evaluation
+
+Use two saved panel exports or a local history snapshot containing two separately recorded GT eth6 sessions.
+Select and mark two points before capture. Use the same peer/AP, interval,
+device placement and point IDs throughout. In calibration, visit near then far;
+in the held-out session, reverse the order. Record arrivals, departures,
+activity and uncertainty independently of the CSI display. Allow enough dwell
+at each point for several complete three-second windows after trimming timing
+uncertainty. Plan about 20 seconds stationary per stop and measure the actual
+arrival/departure times. Keep the walk between stops separate. A replay of
+the two September timing traces compared 15, 18 and 20 seconds per stop;
+the 20-second schedule tolerated more gaps on those traces. Details and
+limits are in [EXPERIMENTS.md](EXPERIMENTS.md#gt-panel-export-and-dwell-time-rehearsal--november-13-2026).
+
+GT-only refers to the CSI source. Its radio peer is still part of the
+measurement. The historical September sessions used the peer later identified
+as AX58 eth1. The repaired panel uses AX56 eth1 as GT's peer (see
+[HOME-MAP.md](HOME-MAP.md)). A new panel trial therefore needs its own
+calibration on that link. The repeater need not run an AX58 CSI reader.
+
+In panel annotations, set kind to `observed`, activity to `still`, and choose the
+point for stationary intervals. Enter the measured timing uncertainty on the
+provisional device-relative clock. Record how the independent event clock was
+aligned to replay seconds and the estimated alignment error in the observation
+notes. The capture-button time includes startup; the first retained record
+defines replay zero. A wall-clock timestamp alone does not establish that offset.
+An unknown uncertainty prevents scoring.
+Keep planned cues as planned annotations. The scorer checks saved point
+coordinates and map/layout hashes across sessions. The old September sessions
+have coarse chat cues and can be inspected with the control comparison below.
+They do not supply observed panel labels for a held-out score. After finishing
+annotations in the panel library, download each session's JSON export and
+save them locally under distinct names. Each export contains raw measurement
+bytes and private reference data. Keep both original files.
+
+```powershell
+.venv/Scripts/python.exe scripts/evaluate_gt_points.py --exports calibration.json heldout.json
+.venv/Scripts/python.exe scripts/evaluate_gt_points.py --history <local-snapshot> --calibration <first-session-id> --heldout <independent-session-id>
+.venv/Scripts/python.exe scripts/compare_gt_controls.py --history history-snapshot.sqlite3
+```
+
+The first command scores the panel's version 2 export files, with calibration
+first. The second reads the two sessions directly from a database. Both write
+the same report to stdout and leave input files intact. The evaluator reads 320-byte panel prefixes or
+longer GT records from the same verified profile, checks sequence and link,
+and uses the panel replay clock. A discontinuity, unsupported profile or even
+one identical 320-byte record prefix across the two sessions stops evaluation.
+The prefix includes the raw timer and measured coefficients. Both sessions use
+nonoverlapping three-second windows starting at the first record. Partial
+final windows are omitted. A cadence gap inside a window or insufficient
+edge coverage excludes that window. Each packet has unit RMS before averaging.
+
+The training set supplies one mean amplitude profile and one mean window
+movement score per point. The movement score is the median normalized step
+between samples in the window. Predictions for all usable held-out windows
+are made before reading their reference annotations. Score only windows wholly
+inside one observed stationary interval after its timing uncertainty is
+removed from both ends. Reference endpoints are rounded to the nearest
+provisional timer tick (one microsecond); positive uncertainty is rounded
+upward. This preserves exact window boundaries during float-duration replay.
+An overlapping observation whose uncertainty touches
+the window excludes it. At least two calibration windows and one scored
+held-out window per point are needed to compute this exploratory comparison.
+
+Compare nearest profile, nearest profile with a training radius, movement
+score alone, and always predicting the most frequent calibration point.
+The radius is the maximum distance from a calibration window to the mean of
+the remaining windows at that point. The guarded comparison abstains outside
+the nearest point's radius; equal distances also abstain. A majority tie is
+settled by point ID. In each confusion matrix rows are observed points and
+columns are predictions. Abstentions are separate and count in the scored
+denominator. `correct_fraction_of_reference` and `decision_coverage_on_reference`
+also include quality-excluded windows with eligible reference labels. Check
+both measures and counts per point before interpreting a difference. The test
+evaluates stationary endpoints, with no position estimate during walking.
+
+On success the CLI returns exit code 0 and `status=scored`. If the stationary
+reference or signal coverage is insufficient, it returns code 3, identifies
+the affected stage and writes `scores: null`. For each point, compare
+`eligible` (full windows inside the trimmed reference) with `usable` (those
+passing signal quality). A zero eligible count can result from a short or
+conflicting annotation or missing labels. A positive eligible count with zero
+usable windows indicates signal coverage problems; the reasons are counted
+per point. A damaged export, changed geometry or incompatible capture exits
+with an error and no score report.
+
+## Capturing and reviewing history
+
 For a one-command PC workflow that records, exports, and opens a motion PNG,
 see [CAPTURE-PLOT.md](CAPTURE-PLOT.md). Direct Pi commands are below.
 

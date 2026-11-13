@@ -1,5 +1,19 @@
 # AX58 raw reader candidate
 
+## Observed AX58 report boundaries — November 13, 2026
+
+The populated two-chain VASIP image has two 2,048-byte slots. Exact-build
+loader, address units, candidate program hash and the unresolved producer
+ordering are recorded in [the producer search](EXPERIMENTS.md#ax58-producer-search-and-gt-position-baseline--november-13-2026).
+
+For the retained wl0.1/Pi trial, skip 16 transport bytes when expressing
+payload offsets. The host fills fields in the first 64 bytes and DMA copies
+1,984 bytes from a PHY report buffer. After a 32-byte PHY-side prefix, the
+112 bytes at [96,208) change within each buffer parity. The final 1,840 bytes
+alternate between two exact patterns. Preserve the entire datagram. The
+28 adjacent pairs of signed LE halfwords are a candidate representation for
+this trial. See [the byte comparisons and firmware evidence](EXPERIMENTS.md#ax58-two-buffer-comparison--november-13-2026).
+
 ## Offline structure inspection — November 2, 2026
 
 Use scripts/inspect_ax58_payload.py --input <retained-stdout.bin> --output

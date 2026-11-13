@@ -1,5 +1,270 @@
 # Experiments
 
+## GT panel export and dwell time rehearsal — November 13, 2026
+
+Exercised the panel annotation and v2 export endpoints on PC loopback with a
+disposable database. Each synthetic session had 63 GT-compatible 320-byte
+records 500 ms apart, two 15-second stops and 0.5 s reference uncertainty.
+The held-out order was reversed. The CLI produced identical JSON from the
+two downloaded exports and from the SQLite snapshot. Six windows qualified
+(three per point). Nearest profile scored 6/6 and calibration majority 3/6
+on this constructed signal. These figures check the software path only.
+Separately, two synthetic 10,000-record exports at 100 ms, the panel export
+limit, produced 333 full held-out windows, 329 eligible, all 329 scored.
+
+The evaluator now reports how many reference windows per point survive the
+signal checks. A held-out stop [0.7,4.8) can contain zero complete three-second
+grid windows even with perfect reception. In a separate fixture [0,6) contains
+two complete windows, both rejected by internal gaps. Both cases produce
+insufficient-reference status, with different counts and no accuracy. Running
+against the actual November 1 backup of the two September sessions reports
+insufficient calibration labels. A boundary regression also reproduced panel
+duration 11.999999999999973 s after 120 increments of 0.1 s. Tick-based
+comparison retains the last [9,12) window at zero uncertainty. The local
+panel now sums integer deltas and returns exactly 12 s in this case.
+Its annotation endpoint accepts 12.000 s and rejects 12.001 s. A separate
+integer-timer reconstruction matched all returned sample times for synthetic
+wraparound traces of 6,001, 3,001 and 1,201 samples at the three supported
+cadences (about ten minutes each, with jitter). The form defaults stay inside
+the last whole millisecond of a recording. Existing Pi deployment is unchanged.
+
+**Future dwell duration.** Used only timestamps and gap locations from the
+595-record position session and 592-record arm session identified below.
+Place two hypothetical equal stops on each timeline with a five-second
+transition. Slide the start in 100 ms increments from zero while both stops
+fit. Use the evaluator's capture-anchored grid and signal coverage checks and
+trim each stop by the indicated uncertainty at both ends. The table counts
+placements with at least two usable windows at each stop (the calibration
+minimum). These overlapping placements are a deterministic sensitivity check,
+not independent trials or new position labels.
+
+| Seconds per stop | Uncertainty per edge | Position trace | Arm trace |
+|---:|---:|---:|---:|
+| 15 | 1 s | 230 / 249 | 211 / 249 |
+| 15 | 2 s | 192 / 249 | 153 / 249 |
+| 18 | 1 s | 189 / 189 | 189 / 189 |
+| 18 | 2 s | 180 / 189 | 171 / 189 |
+| 20 | 1 s | 149 / 149 | 149 / 149 |
+| 20 | 2 s | 149 / 149 | 149 / 149 |
+
+With 20-second stops the minimum per point was three windows at 1 s uncertainty
+and two at 2 s, in both traces. Direct modulo-32-bit timer slicing and NumPy
+checks of sample-to-edge and within-window spacing reproduced the 15- and
+20-second rows. This motivates a 20-second starting duration for the next
+trial. Future acquisition, timing uncertainty and RF classification performance
+require separate measurement.
+
+Closeout validation on the PC:
+
+- `.venv/Scripts/python.exe -m unittest discover -s tests -q`: 212 discovered,
+  203 passed on Windows; nine Linux-only cases skipped there.
+- `python3 -m unittest discover -s tests -p 'test_native*.py' -v`: all nine
+  Linux-only cases passed separately in local Ubuntu WSL. Set
+  `RUVIEW_READER_TEST_BINARY` to the retained x86 reader and
+  `RUVIEW_SUPERVISOR_TEST_BINARY` to the x86 test supervisor from
+  `recordings/ax58-active-build-20261101/`. The latter points to the local
+  fake wl script. No device execution.
+- `node --test tests/test_panel_ui.cjs`: ten passed. The new check covers
+  the editable interval at a fractional-millisecond replay end.
+- The calibration/held-out CLI returns code 3 and JSON with no scores for
+  unusable references. A truncated v2 export returns 1 with no JSON on stdout.
+  Fifty thousand deterministic comparisons against a separate decimal interval
+  implementation agreed on reference eligibility, including overlaps.
+
+## GT position and motion controls — November 13, 2026
+
+Two retained GT eth6 sessions have matching recorded peer/AP fields, nominal
+100 ms cadence and continuous provisional clocks. They include 595 records
+from the near/middle/far traversal and 592 from the fixed-position arm
+experiment. The operator gave rough activity cues for both. The exact position
+in the arm experiment relative to the near/far markers is unknown.
+The two sets of 320-byte measurement prefixes are disjoint (595/592 unique,
+zero shared). Both use the legacy GT-to-AX58 peer, identified on October 6.
+The repaired panel's GT-to-AX56 link is a different measurement geometry.
+
+Reproduce locally (JSON on stdout, read-only database):
+
+```powershell
+.venv/Scripts/python.exe scripts/compare_gt_controls.py --history history-snapshot.sqlite3
+```
+
+Each packet contributes its 56 amplitudes divided by the packet RMS. Within
+each documented interval, start three-second windows at its left edge and
+drop the partial last window. Require samples near both window edges and
+no internal step longer than 1.8 nominal intervals. The position intervals
+are trimmed by three seconds at each end as in the previous entry. The control
+uses the existing [1,8), [16,30), [43,54) intervals. This leaves 3 near, 2
+middle, 7 far, 1 still-before, 2 arm-motion and 2 still-after windows. Two
+position windows and four control windows were excluded by the gap/coverage
+rule. Whole-session replay counted three and seven cadence gaps respectively.
+These describe observed spacing; source-side loss is unknown.
+
+| Comparison | Distance between mean 56-tone profiles | Projection along the near-to-far direction |
+|---|---:|---:|
+| Near to far | 0.775 | +0.775 |
+| Still before to arm motion at the same spot | 0.817 | +0.046 |
+| Still before to still after at the same spot | 0.633 | +0.088 |
+| Arm motion to still after | 0.683 | +0.042 |
+
+The size of a profile change can be as large for a change in activity as for
+a change in position. The directions differ in these data. As a separate
+check, pair the near and far windows with the most similar median step
+between normalized observations, choosing the pair using only that scalar.
+The selected windows start at 3 and 36 s, with steps 0.05892 and 0.05848.
+Their profile distance remains 0.776. This single pair cannot isolate
+position from elapsed time, facing direction or other changes.
+
+On a forced nearest-center comparison, all five activity-control windows
+choose near. Their distances to that center are 2.300–2.452. For comparison,
+the largest leave-one-window-out calibration distances are 0.294 for near
+and 0.531 for far. Requiring support inside the nearest point's training
+radius abstains on all five. This illustrates why coverage must accompany
+accuracy. The control has no independent near/far reference, so five
+abstentions give no estimate of false positives or location accuracy.
+The radius is an exploratory baseline chosen after inspecting these two
+sessions. Reserve later whole sessions to test it without retuning.
+
+Independent check: direct LE int16 extraction, modulo-32-bit integer timer
+differences, NumPy hypot/normalization and explicit omission of each calibration
+window reproduced the window counts, distances, projections and radii above.
+The [16,19) control window has 29 records but ends 196.487 ms before the
+boundary; the 180 ms edge tolerance excludes it even though its internal
+steps pass. Moving the window origins within the cue intervals and varying
+the width checked sensitivity to the grid. For widths 2/3/4 s, try all integer
+offsets 0 through width minus one. Four of nine settings retain both controls:
+near/far centroid distance 0.772–0.787, still/arms 0.817–0.842, projection
++0.046 to +0.048. Five settings lack a complete covered still-before window,
+including every four-second setting. Both analyses use the same two sessions.
+An independent RF repeat is pending.
+
+There is a practical distinction between exploring the hand-cued controls
+and scoring a future blind test. On a three-second grid fixed at capture
+start, the original still-before interval [1,8) contains just one full slot,
+[3,6). Its internal cadence gap excludes it. There are **zero** usable
+still-before windows on that grid. The one retained exploratory window starts
+at 1 s. Do not slide the grid after seeing held-out labels to recover a score.
+Longer independently timed stationary stops give the next test more coverage.
+
+Local validation: `.venv/Scripts/python.exe -m unittest discover -s tests -q`
+ran 206 tests (197 passed, nine opt-in Linux tests skipped). The 13 new
+evaluator tests cover reversed order, duplicate and partially overlapping
+streams, conflicting annotations, uncertainty, gaps, all supported cadences,
+abstention, label swapping, changed geometry and the read-only CLI.
+`node --test tests/test_panel_ui.cjs` passed nine tests. The November 1 local
+panel-history snapshot reproduced the historical control JSON exactly.
+Running the held-out CLI against the actual September sessions in that
+snapshot correctly refused scoring because observed point annotations are
+absent. All checks in this entry ran on the PC.
+
+## AX58 producer search and GT position baseline — November 13, 2026
+
+**AX58.** Used the retained release 24694-g71d4ea1 wl.ko identified below.
+Read its ARM code with Capstone and resolved the ELF relocations with
+pyelftools. In wlc_vasip_init, 0x38f06c counts bits in a hardware mask.
+For count 2 and D11 core revision 130, the minor revision at hardware context
++0x4af selects the descriptor: 0/1 selects vasip_11ax_2x2_fw, 2/3 selects
+vasip_11ax_2x2_160_fw (0x38f188–0x38f1a8). The minor-revision reader stores
+register bits 14–15 at +0x4af (0x28351c–0x283520). Other supported paths in
+this selector use three or four mask bits. The plain 2x2 image has just one
+program word and one map word. The 2x2_160 descriptor is the populated
+two-chain candidate. The saved BCM6756 identity and two RSSI-like entries
+support this choice indirectly. The retained AX58 evidence examined does
+not report the wl0 D11 major/minor and mask used by the loader. Boot-log
+revision 132 belongs to the M2M core. The image name does not give the
+bandwidth of the capture.
+
+Four relocations at descriptor offsets 0/4/8/12 select its map, sizes,
+program and initialized data. The program has 16,528 words (66,112 bytes),
+SHA-256 019ddb513d3bd04d41f3ff88f65e24c54a80cb2032fbc3227de33503b9a08b5b.
+Read map entries 5/6 as LE32 and size entries 5/6 as LE16. They give
+0x24000/0x24400 and 0x400 each. Independently, wlc_vasip_addr_int at
+0x38ef10 doubles the map offset before adding the base. Slot spacing is
+therefore 2,048 bytes. For **this image**, payload [96,208) corresponds to
+word ranges [0x24010,0x24048) / [0x24410,0x24448) in 16-bit address units.
+The initializer at 0x38f110 walks (word count, destination, data) blocks.
+All seven blocks in the candidate DMW terminate below 0x9b01 in the same
+address units. None initializes either report buffer. The GPL member index
+lists the Broadcom AC/common VASIP directories without producer source files.
+The module has no debug sections. No standalone LE32 literal for either
+slot base or first candidate coefficient was found in the program bytes.
+That search misses encoded, split or indirect addressing. The ARM loader and
+the copies above establish neither the producer loop bounds nor component
+order. Further AX58 decoding requires a matching producer listing with
+instruction semantics, a report specification or a known complex test vector.
+
+**GT.** Reused only the 595 records of the documented position session
+60d03eaf-0351-4b28-ad17-d169bc5f2ac1 from history-snapshot.sqlite3 opened
+read-only. Sequence numbers are contiguous; provisional duration 59.811626 s.
+Using src/decoder.py, normalize each packet's 56 amplitudes to unit RMS,
+average within nonoverlapping three-second windows and take Euclidean distances
+between window means. Use the original near/middle/far cue intervals
+[0,15), [15,30), [30,60). Removing three seconds at each end leaves 3/3/8
+windows. Each unordered pair within a group is counted once.
+
+| Window groups | Pair count | Min / median / max distance |
+|---|---:|---|
+| Near / near | 3 | 0.120 / 0.276 / 0.323 |
+| Middle / middle | 3 | 0.303 / 0.471 / 0.479 |
+| Far / far | 28 | 0.090 / 0.290 / 0.661 |
+| Near / middle | 9 | 0.592 / 0.875 / 0.913 |
+| Near / far | 24 | 0.720 / 0.833 / 0.964 |
+| Middle / far | 24 | 0.287 / 0.426 / 0.664 |
+
+With the full intervals, the near/middle minimum falls to 0.283 and their
+within-group ranges overlap it. Middle/far also overlap within-group spread
+with either trim. Near/far separation is the most consistent observation
+here (full-window minimum 0.677, far/far maximum 0.661). These are repeated
+windows from one traversal with coarse timing. Position, elapsed time and
+activity are confounded. The latest retained panel history backup inspected
+(November 1) contains zero session_annotations, map_points and map_routes.
+There is no independently labelled repeat in that evidence for a localization
+accuracy estimate. Reserve whole new sessions for evaluation.
+
+## AX58 two-buffer comparison — November 13, 2026
+
+Reused the November 2 stream below (operation `ee8a83f9ee78`, nine datagrams,
+same SHA-256). All ranges here are half-open and relative to the payload.
+Run the existing inspector command below with a new output path. Its
+`two_apart` field compares frames in receive order. Seven comparisons of
+frame n with n+2 give the union of differing ranges
+`[20,23), [28,29), [68,70), [96,208)`. Each pair differs at 207.
+There are nine distinct 112-byte slices at [96,208). The remaining 1,840
+bytes at [208,2048) repeat exactly A/B/A/B/A/B/A/B/A. Their SHA-256
+prefixes are 8e828e8ac5942790 and 6492488cb29ab20e. An independent parser
+reassembled the original stream from ordered chunks in the read-only raw
+journal, checked the stream hash and reproduced the two suffixes by direct
+slicing. This is a second extraction of the same trial.
+
+The matching AX58 wl.ko (SHA-256 dabb2f7e716d63f4ffa9163773b7f87c15050cb442d021db528194f0b25e68a8)
+provides independent evidence for the boundary between host and PHY data.
+In wlc_csimon_record_copy (0x2b5ec0), the host writes fields before offset
+64. It writes offset 16 as a halfword and 18 and 19 separately. It selects
+VASIP shared offset index 5 or 6 and submits an m2m_dd_xfer to ring item
++64 for 0x7c0 (1,984) bytes at 0x2b61f8. The success path toggles the index
+modulo two. wlapi_get_svmp_addr_csi_rpt independently maps report numbers
+0/1 to indices 5/6. The GPL bcm_csimon.h describes the 2,048-byte ring item.
+Thus [64,96) is a 32-byte PHY-side prefix to the varying run. The transfer
+length includes both the candidate coefficients and the alternating suffix.
+The data support excluding the suffix from fresh-sample analysis for this
+profile. They cannot distinguish stale memory from stable per-slot contents.
+
+For each [96,208) slice, interpret consecutive byte pairs as signed words.
+All 504 little-endian values fit [-2077,2175], versus [-32517,32764] for
+big-endian (only 71/504 fit signed 13-bit range). Three LE values exceed
+signed 12-bit range. Grouping adjacent LE words into 28 complex candidates
+also gives structure: for each frame form z from consecutive pairs and compute
+abs(sum(z[2:] * conj(z[:-2]))) divided by the product of the two vector norms.
+The nine values round to 0.96–0.98, versus 0.43–0.71 at lag one. This supports
+testing two interleaved series. Swapping the components preserves this score.
+Neither the observed numerical width nor this correlation establishes effective
+precision, I/Q order, sign convention, scaling, chain count or tone ordering.
+The copy routine transports opaque PHY bytes. A producer definition or known
+input/output vector for this build is needed to label the 28 pairs.
+
+Local checks: six inspector tests and twenty raw-pipeline tests passed with
+`unittest discover -s tests -p test_ax58_payload.py` and
+`unittest discover -s tests -p test_raw_pipeline.py`. No new RF trial.
+
 ## Offline AX58 structure audit — November 2, 2026
 
 Analyzed only the nine retained frames from ee8a83f9ee78; no network/device

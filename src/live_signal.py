@@ -49,7 +49,11 @@ class LiveSignal:
         self.timer = None
         self.previous = None
         self.smooth = None
-        self.seconds = 0.0
+        self.elapsed_ticks = 0
+
+    @property
+    def seconds(self):
+        return self.elapsed_ticks / 1e6
 
     def reset_filter(self):
         self.previous = None
@@ -62,14 +66,15 @@ class LiveSignal:
             self.reset_filter()
             raise
         timer = d['timer_candidate']
-        dt = None if self.timer is None else ((timer-self.timer)&0xffffffff)/1e6
+        ticks = None if self.timer is None else (timer - self.timer) & 0xffffffff
+        dt = None if ticks is None else ticks / 1e6
         if dt is not None and (dt <= 0 or dt > 10):
             self.reset_filter()
             raise ValueError('Device timer repeated or reset; start a new capture')
         gap = dt is not None and dt > self.interval * 1.8
         if gap:
             self.reset_filter()
-        self.seconds += dt or 0
+        self.elapsed_ticks += ticks or 0
         a = d['amplitude']
         power = math.sqrt(sum(x*x for x in a)/len(a))
         unit = [x/max(power,1e-9) for x in a]

@@ -1,5 +1,50 @@
 # Project handoff
 
+## End-of-day checkpoint — November 13, 2026
+
+Resume with one GT calibration session and one separately recorded, reversed
+held-out session on the same GT/AX56 link, once device work is authorized.
+Mark the same two physical points, allow about 20 seconds per observed stop,
+and save the two annotated panel v2 exports. The exact points and clock
+alignment still require field observations. [Protocol and PC scorer](RECORDING.md#offline-gt-two-point-evaluation).
+
+PC loopback rehearsal verified that actual panel downloads and SQLite produce
+identical scores. A short or gap-covered reference now produces explicit
+coverage diagnostics with no two-point accuracy. The panel clock and form
+endpoint fixes are local only. No Pi access or deployment is needed to score
+existing exports. AX58 decoding remains parked at the 112-byte candidate
+slice pending producer evidence. The working tree on main is uncommitted.
+For verification, 203 Python tests passed on Windows and the remaining nine
+Linux-only tests passed locally under WSL. Ten Node UI tests passed. At
+closeout the inspector still reported nine AX58 frames, seven two-apart pairs
+and an identical suffix within each parity starting at payload offset 208.
+
+## GT controls and offline evaluator — November 13, 2026
+
+Replayed both September trials locally. A fixed-position activity change
+produced a profile shift comparable in magnitude to the near/far difference.
+Five control windows all fell outside the two-point calibration radii. The
+controls lack independent position labels. See [EXPERIMENTS.md](EXPERIMENTS.md)
+for the directional and matched-movement checks. The [offline evaluator](RECORDING.md#offline-gt-two-point-evaluation)
+now scores separate, observed sessions and compares four simple baselines.
+The remaining empirical step is the reversed-order GT repeat on marked points.
+No hardware or panel deployment changed.
+
+## Offline AX58 checkpoint — November 13, 2026
+
+Later the same day the loader search identified a populated two-chain image
+and the candidate report addresses. Runtime selection and component stores
+remain unverified. AX58 interpretation is parked pending producer evidence.
+A local GT window comparison found reproducible near/far separation within
+one traversal and overlap for middle/far. An independently labelled GT repeat
+is the next practical milestone. Details in [EXPERIMENTS.md](EXPERIMENTS.md).
+
+Resumed from November 2 on main at bc2f482. Seven same-parity comparisons
+and the exact-build DMA path narrow the candidate coefficient slice to
+[96,208) for this trial. The inspector now reports same-parity differences.
+The component and tone/chain mapping is open. See [EXPERIMENTS.md](EXPERIMENTS.md)
+for the evidence and [NEXT-STEPS.md](NEXT-STEPS.md) for the offline continuation.
+
 ## End-of-session checkpoint — November 2, 2026
 
 User requested stopping for today after documentation reconciliation. No further

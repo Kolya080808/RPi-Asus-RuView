@@ -17,6 +17,20 @@ def frame(tick=1, receive=1000, **kwargs):
 
 
 class PayloadAuditTests(unittest.TestCase):
+    def test_two_apart_reports_observed_ranges_and_suffix(self):
+        base = bytes(2048)
+        alternate = bytes([1]) * 2048
+        changed = bytearray(base)
+        changed[0] = changed[207] = 1
+        report = audit.compare_two_apart([base, alternate, bytes(changed), alternate])
+        self.assertEqual(report['differing_ranges_half_open'], [(0, 1), (207, 208)])
+        self.assertEqual(report['identical_suffix_start'], 208)
+        self.assertEqual(report['distinct_suffixes'], 2)
+        self.assertIsNone(audit.compare_two_apart([base, alternate]))
+        self.assertEqual(audit.compare_two_apart([base] * 3)['identical_suffix_start'], 0)
+        self.assertEqual(audit.compare_two_apart([base, base, alternate])[
+            'identical_suffix_start'], 2048)
+
     def test_modular_candidate_is_separate_from_receive_clock(self):
         result = audit.inspect(MAGIC + frame(0xfffffff0, 1000) + frame(0x10, 65000))
         self.assertEqual(result['intervals'][0]['candidate_ticks'], 32)
