@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import Mock, patch
 
@@ -118,7 +119,8 @@ class APITests(unittest.TestCase):
                 for seq in range(63):
                     near = (seq < 30) == (first == 'near')
                     record = raw(seq * 500000 + int(sid == 'test'), changed=near)[:320]
-                    c.execute('INSERT INTO records VALUES(?,?,?,?)', (sid, seq, record, '{}'))
+                    received = json.dumps({'pi_read_monotonic_ns': 9_000_000_000 + seq * 500_000_000})
+                    c.execute('INSERT INTO records VALUES(?,?,?,?)', (sid, seq, record, received))
             for point, start, end in [(first, 0, 15), ('far' if first == 'near' else 'near', 15, 30)]:
                 status, _ = self.request(f'/api/sessions/{sid}/annotations',
                     dict(point_id=point, start_s=start, end_s=end, activity='still',
@@ -136,6 +138,14 @@ class APITests(unittest.TestCase):
             self.assertEqual(process.returncode, 0, process.stderr)
             return json.loads(process.stdout)
         from_files = run('--exports', *paths)
+        first_only = run('--check-calibration', paths[0])
+        self.assertEqual(first_only['status'], 'calibration_ready')
+        self.assertNotIn('heldout', first_only)
+        self.assertNotIn('scores', first_only)
+        self.assertEqual(first_only['calibration_reference_coverage'],
+                         from_files['calibration_reference_coverage'])
+        self.assertEqual(first_only['calibration_read_clock'], dict(records=63, timestamped=63,
+                         distinct_read_times=63, relative_clock_residual_range_ms=0))
         from_db = run('--history', panel.HISTORY, '--calibration', 'cal', '--heldout', 'test')
         self.assertEqual(from_files, from_db)
         self.assertEqual(from_files['status'], 'scored')
@@ -226,14 +236,14 @@ class APITests(unittest.TestCase):
         job = panel.CaptureJob('empty-session', 60, 100)
         with patch.object(panel, 'LATEST_CAPTURE', job):
             for seq in range(5):
-                job._append(raw(seq * 100000), seq)
+                job._append(raw(seq * 100000), seq, time.monotonic_ns())
             with patch.object(panel, 'replay', side_effect=AssertionError('Full replay called')):
                 status, first = self.request('/api/captures/empty-session/live?after=-1')
                 self.assertEqual(status, 200)
                 self.assertTrue(first['reset'])
                 self.assertEqual(first['next_seq'], 4)
                 self.assertEqual(len(first['samples']), 5)
-                job._append(raw(500000, True), 5)
+                job._append(raw(500000, True), 5, time.monotonic_ns())
                 update = self.request('/api/captures/empty-session/live?after=4')[1]
                 self.assertFalse(update['reset'])
                 self.assertEqual([p['seq'] for p in update['samples']], [5])

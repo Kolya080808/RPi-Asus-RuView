@@ -1,5 +1,47 @@
 # Experiments
 
+## AX58 candidate word alignment — November 16, 2026
+
+Reran the local structural inspector on the original 19,538-byte stream
+`ee8a83f9ee78` (SHA-256 `bed6904c71800308fd6066264e9afb7a25d8a2a3c8f21a4ba49fdc15c0294248`).
+The union of changed offsets across seven two-apart comparisons matched
+the November 13 result. The nine 112-byte slices at payload offsets [96,208) were distinct.
+For each slice, unpack 56 signed little-endian halfwords and take the even
+and odd word indices separately. Each group contains 252 values. The first
+group spans −2,049 to 2,005 and contains 132 odd values. The second spans
+−2,077 to 2,175 and contains 121 odd values. Every residue modulo 16 occurs
+in each group. Direct byte slicing, taking the low nibble of payload bytes
+at 96 and 98 with stride four up to 208, produced all 16 values even when
+the two frame parities were counted separately. This rules out a common
+zero-padded low bit in either group under that alignment. These counts are
+properties of the saved bytes. They
+do not establish converter resolution, phase convention or the PHY's ordering.
+
+## GT calibration and Pi read-clock rehearsal — November 16, 2026
+
+Read-only checks on the Pi at about 19:11 UTC found an active panel service,
+healthy v2 API, 13 sessions, 2,120 records, 11,718,803,456 free bytes, no
+active capture and zero saved reference points. A separate GET of the session
+list accounted for all 2,120 records. It reported nine captured, two stopped,
+one interrupted and one failed session, with zero annotations across all 13.
+The history therefore has no observed stationary intervals for this scorer.
+SQLite 3.46.1 passed the JSON validity check. File hashes matched the CRLF versions of
+`web_panel.py` and the OpenAPI document at PC commit `77a642d`.
+Installed `live_signal.py` and `web/app.js` matched historical file versions
+from `97d8f90` and `bc2f482` respectively. No files were deployed.
+
+On PC loopback, the same two synthetic 63-record GT sessions produced
+identical evaluations from downloaded exports and local SQLite, including
+the optional read-clock metrics. A fragmented pipe fixture checked that two
+records completed in the same read shared its timestamp. A separate clock
+fixture with a missing stamp and a repeated stamp gave 350 ms residual
+range. A separate CLI check of an unannotated synthetic 121-record legacy
+export returned exit 3, zero timestamped records and no scores. The
+standalone calibration check uses the same reference coverage as the
+two-session scorer. These checks establish software behaviour. The
+operator could not occupy the points, so there is no new RF evidence or
+measured localization accuracy from this session.
+
 ## GT panel export and dwell time rehearsal — November 13, 2026
 
 Exercised the panel annotation and v2 export endpoints on PC loopback with a

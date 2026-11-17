@@ -20,7 +20,7 @@ from decimal import Decimal, ROUND_CEILING
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from decoder import PROFILE
 from panel_signal import measurements
-from web_panel import MAX_RECORDS, annotations
+from web_panel import MAX_RECORDS, annotations, timed_record_rows
 
 WIDTH = 3
 TICKS_PER_SECOND = 1_000_000
@@ -38,7 +38,10 @@ def read_session(db, sid):
     row = db.execute('SELECT status,metadata FROM sessions WHERE id=?', (sid,)).fetchone()
     if row is None:
         raise ValueError(f'{sid}: session not found')
-    rows = db.execute('SELECT seq,raw FROM records WHERE session=? ORDER BY seq', (sid,))
+    if any(col[1] == 'decoded' for col in db.execute('PRAGMA table_info(records)')):
+        rows = timed_record_rows(db, sid)
+    else:
+        rows = db.execute('SELECT seq,raw,NULL FROM records WHERE session=? ORDER BY seq', (sid,))
     return decode_session(sid, row[0], json.loads(row[1]), rows)
 
 
@@ -55,7 +58,7 @@ def decode_session(sid, status, meta, rows):
         raise ValueError(f'{sid}: no records')
     link = None
     fingerprints = set()
-    for index, (seq, raw) in enumerate(rows):
+    for index, (seq, raw, _) in enumerate(rows):
         if type(seq) is not int or seq != index or not isinstance(raw, bytes) or not 320 <= len(raw) <= 2048:
             raise ValueError(f'{sid}: invalid sequence or record length at index {index}')
         if link is None:
@@ -66,10 +69,19 @@ def decode_session(sid, status, meta, rows):
             raise ValueError(f'{sid}: link changed at record {index}')
         # Prefix-only panel exports and full recorder copies compare identically.
         fingerprints.add(hashlib.sha256(raw[:320]).digest())
-    replay = measurements(rows, interval)
+    replay = measurements(((seq, raw) for seq, raw, _ in rows), interval)
     if not replay['summary']['timeline_continuous'] or replay['summary']['invalid_records']:
         raise ValueError(f'{sid}: unresolved timeline or unsupported record')
     samples = replay['samples']
+    previous_read = None
+    for sample, (_, _, stamp) in zip(samples, rows):
+        if stamp is None:
+            continue
+        if (type(stamp) is not int or not 0 <= stamp < 2**63 or
+                (previous_read is not None and stamp < previous_read)):
+            raise ValueError(f'{sid}: invalid Pi read clock at record {sample["seq"]}')
+        sample['pi_read_monotonic_ns'] = stamp
+        previous_read = stamp
     if any(s['amplitude_rms'] == 0 for s in samples):
         raise ValueError(f'{sid}: zero-power record cannot be normalized')
     return samples, interval, link, fingerprints
@@ -105,8 +117,24 @@ def read_export(path):
             raw = bytes.fromhex(r['raw_hex'])
         except ValueError as exc:
             raise ValueError(f'{sid}: invalid raw hex at index {index}') from exc
-        rows.append((r.get('seq'), raw))
+        rows.append((r.get('seq'), raw, r.get('pi_read_monotonic_ns')))
     return sid, decode_session(sid, header.get('status'), header.get('metadata'), rows), labels
+
+
+def read_clock_summary(samples):
+    """Variation between elapsed clocks. Absolute transport delay is unknown."""
+    stamped = [s for s in samples if 'pi_read_monotonic_ns' in s]
+    summary = dict(records=len(samples), timestamped=len(stamped))
+    if len(stamped) < 2:
+        return summary
+    first = stamped[0]
+    residuals = [
+        (s['pi_read_monotonic_ns'] - first['pi_read_monotonic_ns']) -
+        (round(s['seconds'] * TICKS_PER_SECOND) - round(first['seconds'] * TICKS_PER_SECOND)) * 1000
+        for s in stamped]
+    summary.update(distinct_read_times=len({s['pi_read_monotonic_ns'] for s in stamped}),
+                   relative_clock_residual_range_ms=(max(residuals) - min(residuals)) / 1e6)
+    return summary
 
 
 def _window_grid(samples, interval, *, start_s=0, end_s=None):
@@ -247,31 +275,49 @@ def evaluate_exports(calibration_path, heldout_path):
                              lambda: train_labels, lambda: test_labels)
 
 
-def evaluate_sessions(calibration_id, heldout_id, training, testing, train_labels, test_labels):
-    if calibration_id == heldout_id:
-        raise ValueError('Use different calibration and held-out sessions')
-    train, interval, link, train_frames = training
-    test, test_interval, test_link, test_frames = testing
-    if (interval, link) != (test_interval, test_link):
-        raise ValueError('Sessions have different radio links or capture intervals')
-    if not train_frames.isdisjoint(test_frames):
-        raise ValueError('Use independent sessions: calibration and held-out records overlap')
+def prepare_calibration(calibration_id, training, labels):
+    """Check the first capture independently of any held-out capture."""
+    train, interval, _, _ = training
     train_windows, train_excluded = _window_grid(train, interval)
-    test_windows, test_excluded = _window_grid(test, interval)
-    train_truth, train_points = reference_intervals(train_labels(), calibration_id, train[-1]['seconds'])
+    train_truth, train_points = reference_intervals(labels, calibration_id, train[-1]['seconds'])
+    if len(train_points) == 2:
+        first, second = train_points.values()
+        if first[4:] != second[4:]:
+            raise ValueError(f'{calibration_id}: calibration points use different maps or device layouts')
+        if first[1:4] == second[1:4]:
+            raise ValueError(f'{calibration_id}: calibration points have identical coordinates')
     by_point = {}
     for w in train_windows:
         target = label_for(w.start, train_truth)
         if target is not None:
             by_point.setdefault(target, []).append(w)
     train_reference = reference_coverage(train_windows, train_excluded, train_truth, train_points)
-    report = dict(calibration=calibration_id, heldout=heldout_id, window_s=WIDTH,
+    report = dict(calibration=calibration_id, window_s=WIDTH, status='calibration_ready',
+                  calibration_read_clock=read_clock_summary(train),
                   calibration_windows={p: v['usable'] for p, v in train_reference.items()},
                   calibration_reference_coverage=train_reference,
                   calibration_quality_exclusions=dict(Counter(train_excluded.values())))
     if len(train_points) != 2 or any(v['usable'] < 2 for v in train_reference.values()):
-        return dict(report, status='insufficient_reference', stage='calibration', scores=None,
-                    reason='Need two observed points with at least two usable windows each')
+        report.update(status='insufficient_reference', stage='calibration', scores=None,
+                      reason='Need two observed points with at least two usable windows each')
+    return report, by_point, train_points
+
+
+def evaluate_sessions(calibration_id, heldout_id, training, testing, train_labels, test_labels):
+    if calibration_id == heldout_id:
+        raise ValueError('Use different calibration and held-out sessions')
+    _, interval, link, train_frames = training
+    test, test_interval, test_link, test_frames = testing
+    if (interval, link) != (test_interval, test_link):
+        raise ValueError('Sessions have different radio links or capture intervals')
+    if not train_frames.isdisjoint(test_frames):
+        raise ValueError('Use independent sessions: calibration and held-out records overlap')
+    report, by_point, train_points = prepare_calibration(calibration_id, training, train_labels())
+    report['heldout'] = heldout_id
+    report['heldout_read_clock'] = read_clock_summary(test)
+    if report.get('status') == 'insufficient_reference':
+        return report
+    test_windows, test_excluded = _window_grid(test, interval)
     profile, movement, counts, radii = prototypes(by_point)
     # The training majority baseline uses stable point ID order to break a tie.
     majority = min(counts, key=lambda p: (-counts[p], p))
@@ -343,15 +389,20 @@ def main():
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument('--history', type=Path)
     source.add_argument('--exports', type=Path, nargs=2, metavar=('CALIBRATION_JSON', 'HELDOUT_JSON'))
+    source.add_argument('--check-calibration', type=Path, metavar='CALIBRATION_JSON',
+                        help='Check the first panel export before collecting the held-out session')
     parser.add_argument('--calibration', help='Calibration session ID in --history')
     parser.add_argument('--heldout', help='Held-out session ID in --history')
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
     try:
-        if args.exports:
+        if args.exports or args.check_calibration:
             if args.calibration or args.heldout:
-                parser.error('--exports reads session IDs from the files')
-            report = evaluate_exports(*args.exports)
+                parser.error('Panel export inputs supply their own session IDs')
+            if args.check_calibration:
+                report, _, _ = prepare_calibration(*read_export(args.check_calibration))
+            else:
+                report = evaluate_exports(*args.exports)
         else:
             if not args.calibration or not args.heldout:
                 parser.error('--history requires both --calibration and --heldout')

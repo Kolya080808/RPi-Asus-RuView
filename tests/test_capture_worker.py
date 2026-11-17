@@ -61,6 +61,31 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(result['status'], 'captured')
         self.assertEqual(result['records'], 1)
 
+    def test_receive_clock_uses_read_completing_each_prefix(self):
+        # The first read completes no record. The next completes two; a
+        # separate final read completes an unrecognized profile.
+        def record(profile, tick):
+            words = [0] * 80
+            words[4:6] = [profile, tick]
+            return b'CSI record:\n' + b' '.join(b'0x%08x' % n for n in words) + b'\n'
+        first = record(0x04041004, 100000)
+        proc = Mock(stdin=io.BytesIO(), returncode=0)
+        proc.stdout.read1.side_effect = [first[:25], first[25:] + record(0x04041004, 200000),
+                                         record(0, 300000), b'']
+        proc.poll.return_value = 0
+        job = panel.CaptureJob('fixture', 1, 100)
+        with patch.object(panel.subprocess, 'Popen', return_value=proc), \
+             patch.object(panel.time, 'monotonic_ns', side_effect=[100, 200, 300]):
+            job.run()
+        with closing(panel.db()) as c:
+            records = list(panel.export_records(c, 'fixture'))
+            status = c.execute("SELECT status FROM sessions WHERE id='fixture'").fetchone()[0]
+        self.assertEqual(status, 'failed')  # A shortened synthetic stream still retains its evidence.
+        self.assertEqual([r['pi_read_monotonic_ns'] for r in records], [200, 200, 300])
+        self.assertEqual([r['seq'] for r in records], [0, 1, 2])
+        self.assertEqual([s['valid'] for s in job.live_samples], [True, True, False])
+        self.assertEqual(job.last_received, 200 / 1e9)
+
     def test_clock_decreases_freezes_and_resumes_without_charging_pause(self):
         job = panel.CaptureJob('fixture', 60, 100)
         with patch.object(panel.time, 'monotonic', return_value=10):

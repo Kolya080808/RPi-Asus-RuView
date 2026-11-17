@@ -199,6 +199,19 @@ class PointTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'definitions must match'):
             gt.evaluate(self.db, 'cal', 'test')
 
+    def test_calibration_needs_distinct_coordinates_on_one_map(self):
+        self.session('cal', 'near')
+        train = gt.read_session(self.db, 'cal')
+        for old, new, reason in [('"x": 1', '"x": 0', 'identical coordinates'),
+                                 ('"map"', '"other"', 'different maps')]:
+            with self.subTest(reason=reason):
+                self.db.execute('UPDATE session_annotations SET notes=replace(notes,?,?) '
+                                "WHERE point_id='near'", (old, new))
+                with self.assertRaisesRegex(ValueError, reason):
+                    gt.prepare_calibration('cal', train, gt.annotations(self.db, 'cal'))
+                self.db.execute('UPDATE session_annotations SET notes=replace(notes,?,?) '
+                                "WHERE point_id='near'", (new, old))
+
     def test_short_reference_and_complete_signal_loss_have_different_reports(self):
         self.session('cal', 'near')
         self.session('test', 'far')
@@ -248,6 +261,17 @@ class PointTests(unittest.TestCase):
                     path.write_text(json.dumps({**doc, **changes}), encoding='utf-8')
                     with self.assertRaisesRegex(ValueError, error):
                         gt.read_export(path)
+
+    def test_pi_read_clock_counts_batches_and_missing_stamps(self):
+        meta = dict(interval_ms=100, interface='eth6', decoder=gt.PROFILE, peer=bytes(range(6)).hex(':'))
+        stamps = [8_000_000_000, None, 8_000_000_000, 8_450_000_000]
+        rows = [(i, frame(i * 100000, 'near'), stamp) for i, stamp in enumerate(stamps)]
+        samples, *_ = gt.decode_session('fixture', 'captured', meta, rows)
+        self.assertEqual(gt.read_clock_summary(samples), dict(records=4, timestamped=3,
+                         distinct_read_times=2, relative_clock_residual_range_ms=350))
+        for bad in (False, -1, 2**63, '8000000000', 7_999_999_999):
+            with self.subTest(bad=bad), self.assertRaisesRegex(ValueError, 'read clock'):
+                gt.decode_session('fixture', 'captured', meta, [*rows[:3], (3, rows[3][1], bad)])
 
     def test_cli_reads_saved_database_without_modification(self):
         self.session('cal', 'near', interval=500, size=2048)

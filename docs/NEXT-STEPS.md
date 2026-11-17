@@ -1,16 +1,18 @@
 # Next steps
 
-Updated 2026-11-13. Current state and completed work: [HANDOFF.md](HANDOFF.md).
+Updated 2026-11-16. Current state and completed work: [HANDOFF.md](HANDOFF.md).
 Detailed product and delivery decisions: [REQUIREMENTS.md](REQUIREMENTS.md).
 
-## Current localization step — November 13
+## Current localization step — November 16
 
 The next experiment is a separately authorized GT-only repeat at two marked
 near/far positions. Use separate calibration and held-out sessions with
 reversed visit order, independently timestamp arrivals/departures and score
 stationary windows separately from walking. This tests the strongest contrast
 in the saved position session while breaking the original time/order confound.
-No device work is authorized by the offline task. Revisit AX58 ordering when
+Pi availability and panel status were checked on November 16. The first
+calibration awaits the operator at the physical points. Check its export with
+`--check-calibration` before the reversed session. Revisit AX58 ordering when
 a producer listing, report definition or known complex vector becomes available.
 
 Plan about 20 seconds per stationary stop and record actual timing uncertainty.

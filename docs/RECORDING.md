@@ -35,6 +35,13 @@ annotations in the panel library, download each session's JSON export and
 save them locally under distinct names. Each export contains raw measurement
 bytes and private reference data. Keep both original files.
 
+After the first session, check its export on the PC before making the second
+pass. Run `.venv/Scripts/python.exe scripts/evaluate_gt_points.py --check-calibration calibration.json`.
+`calibration_ready` means both observed points have at least two usable
+three-second windows each, with distinct coordinates on the same floorplan
+and device layout. If coverage is insufficient, the command exits
+with code 3 and reports exclusions. Only the independent session tests accuracy.
+
 ```powershell
 .venv/Scripts/python.exe scripts/evaluate_gt_points.py --exports calibration.json heldout.json
 .venv/Scripts/python.exe scripts/evaluate_gt_points.py --history <local-snapshot> --calibration <first-session-id> --heldout <independent-session-id>
@@ -51,6 +58,15 @@ The prefix includes the raw timer and measured coefficients. Both sessions use
 nonoverlapping three-second windows starting at the first record. Partial
 final windows are omitted. A cadence gap inside a window or insufficient
 edge coverage excludes that window. Each packet has unit RMS before averaging.
+
+The read-clock summary counts all records and records with a Pi monotonic
+timestamp. With at least two stamps it also reports distinct read times and
+the range in milliseconds of elapsed Pi read time minus elapsed GT replay
+time. This measures relative clock variation, including pipe buffering and
+reader scheduling. Records delivered by one read can share a stamp. A
+constant transport delay cancels in this calculation. These stamps do not
+align a phone clock or establish absolute radio-to-panel latency. Older
+exports have zero timestamped records and remain eligible for scoring.
 
 The training set supplies one mean amplitude profile and one mean window
 movement score per point. The movement score is the median normalized step

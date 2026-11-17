@@ -206,11 +206,12 @@ class CaptureJob:
             values.append(self.session)
             connection.execute('UPDATE sessions SET ' + ','.join(fields) + ' WHERE id=?', values)
 
-    def _append(self, raw, seq):
+    def _append(self, raw, seq, receive_ns):
         try:
             decoded = decode(raw)
         except ValueError as exc:
             decoded = {'error': str(exc)}
+        decoded['pi_read_monotonic_ns'] = receive_ns
         with closing(db()) as connection, connection:
             connection.execute('INSERT INTO records VALUES (?,?,?,?)',
                                (self.session, seq, raw, json.dumps(decoded)))
@@ -219,7 +220,7 @@ class CaptureJob:
             try:
                 point = self.live_signal.add(raw)
                 self.live_samples.append({**point, 'seq': seq, 'valid': True})
-                self.last_received = time.monotonic()
+                self.last_received = receive_ns / 1e9
             except ValueError as exc:
                 self.live_error = str(exc)
                 self.live_samples.append({'seq': seq, 'valid': False, 'seconds': None})
@@ -276,7 +277,9 @@ class CaptureJob:
                             chunk = process.stdout.read1(65536)
                             if not chunk:
                                 break
-                            enqueue(chunk)
+                            # Timestamp the read that completed the CSI prefix, before
+                            # queueing. One read can complete several records.
+                            enqueue((time.monotonic_ns(), chunk))
                     except Exception as exc:
                         enqueue(exc)
                     finally:
@@ -308,7 +311,8 @@ class CaptureJob:
                         break
                     if isinstance(chunk, Exception):
                         raise chunk
-                    text = chunk.decode('ascii', errors='replace')
+                    receive_ns, data = chunk
+                    text = data.decode('ascii', errors='replace')
                     if not capture_started and 'RUVIEW_CAPTURE_STARTED' in control_tail + text:
                         capture_started = True
                         with CAPTURE_LOCK:
@@ -317,7 +321,8 @@ class CaptureJob:
                     control_tail = (control_tail + text)[-64:]
                     output.append(text)
                     for raw in parser.feed(text):
-                        self._append(raw, seq); seq += 1
+                        self._append(raw, seq, receive_ns)
+                        seq += 1
                 try:
                     self.process.wait(timeout=10)
                 except subprocess.TimeoutExpired:
@@ -579,6 +584,22 @@ def annotations(connection, sid):
         'SELECT * FROM session_annotations WHERE session=? ORDER BY start_s,created', (sid,))]
 
 
+def timed_record_rows(connection, sid):
+    # Older captures may contain only raw bytes or unusable derived JSON.
+    query = '''SELECT seq,raw,CASE WHEN json_valid(decoded)
+               THEN json_extract(decoded,'$.pi_read_monotonic_ns') END
+               FROM records WHERE session=? ORDER BY seq'''
+    return connection.execute(query, (sid,))
+
+
+def export_records(connection, sid):
+    for seq, raw, receive_ns in timed_record_rows(connection, sid):
+        record = {'seq': seq, 'raw_hex': raw.hex()}
+        if receive_ns is not None:
+            record['pi_read_monotonic_ns'] = receive_ns
+        yield record
+
+
 def replay(connection, session):
     rows = connection.execute('SELECT seq,raw FROM records WHERE session=? ORDER BY seq LIMIT ?',
                               (session['id'], MAX_RECORDS + 1)).fetchall()
@@ -802,8 +823,7 @@ class Handler(BaseHTTPRequestHandler):
                 count = session['records']
                 if count > MAX_RECORDS:
                     raise RequestError('Export exceeds 10000 records; use recorder CLI', 413)
-                result['records'] = [{'seq': row[0], 'raw_hex': row[1].hex()} for row in connection.execute(
-                    'SELECT seq,raw FROM records WHERE session=? ORDER BY seq', (parts[3],))]
+                result['records'] = list(export_records(connection, parts[3]))
                 result['map_at_capture'] = None
                 result['export_version'] = 2
             self.send_json(result, attachment='ruview-session.json' if path.endswith('/export') else None)

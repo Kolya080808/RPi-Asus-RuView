@@ -172,6 +172,11 @@ the session, annotations, raw records as `raw_hex`, `map_at_capture: null`,
 and `export_version: 2`. Raw CSI records are retained so future analysis does
 not require repeating the experiment.
 
+A record can also contain `pi_read_monotonic_ns`, the integer monotonic time
+in nanoseconds when the Pi worker read the pipe chunk completing that record.
+Multiple records can share a timestamp. It is local to the Pi boot and
+independent of wall-clock time. Historical exports omit this optional field.
+
 ## Reference annotations
 
 Create an annotation with `POST /api/sessions/{id}/annotations`:

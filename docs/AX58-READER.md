@@ -14,6 +14,10 @@ alternate between two exact patterns. Preserve the entire datagram. The
 28 adjacent pairs of signed LE halfwords are a candidate representation for
 this trial. See [the byte comparisons and firmware evidence](EXPERIMENTS.md#ax58-two-buffer-comparison--november-13-2026).
 
+Both candidate halfword positions use all 16 low-nibble values in the nine
+saved frames. This rules out uniform low-bit zero padding at that alignment.
+See the [word-alignment check](EXPERIMENTS.md#ax58-candidate-word-alignment--november-16-2026).
+
 ## Offline structure inspection — November 2, 2026
 
 Use scripts/inspect_ax58_payload.py --input <retained-stdout.bin> --output

@@ -1,5 +1,26 @@
 # Project handoff
 
+## November 16, 2026 — GT calibration preflight
+
+Pi read-only inspection found the panel active with 13 sessions, 2,120 records,
+zero saved reference points and zero annotations across all sessions.
+The operator was unavailable for the two
+physical stops. No session was started. The next field step is the first
+annotated near/far calibration on the GT/AX56 link. Check its export with
+`--check-calibration` before collecting the reversed held-out session.
+See the [recording protocol](RECORDING.md#offline-gt-two-point-evaluation).
+
+The optional Pi read clock and standalone calibration check were implemented
+and tested on the PC. The installed panel does not yet write these timestamps.
+Existing exports can still be checked. The phone-to-replay time offset needs
+an independent observation even when Pi read timestamps are available.
+
+PC verification used `python -m unittest discover -s tests -q` (206 passed,
+9 skipped on Windows), the Linux-only `test_native*.py` suite (all 9 passed
+under WSL with the local test binaries), and `node --test tests/test_panel_ui.cjs`
+(10 passed). The saved AX58 stream also reproduced the candidate slice and
+provided a [low-bit padding check](EXPERIMENTS.md#ax58-candidate-word-alignment--november-16-2026).
+
 ## End-of-day checkpoint — November 13, 2026
 
 Resume with one GT calibration session and one separately recorded, reversed

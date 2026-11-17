@@ -470,7 +470,7 @@
         "summary": "Download raw hex records, metadata and annotation provenance",
         "responses": {
           "200": {
-            "description": "Session metadata, annotations, and raw records as a downloadable JSON file."
+            "description": "Session metadata, annotations, and raw records as a downloadable JSON file. A record may include pi_read_monotonic_ns, an integer nanosecond timestamp of the Pi pipe read that completed the record. Records completed by the same read share its timestamp."
           },
           "400": {
             "description": "Stored session metadata could not be decoded.",
